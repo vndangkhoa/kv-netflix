@@ -70,21 +70,64 @@ export const Layout = ({ children }: { children: ReactNode }) => {
                     ))}
                 </nav>
 
-                <div className="p-4 mt-auto">
-                    <div className="text-xs text-gray-500 text-center lg:text-left">
+                <div className="p-4 mt-auto space-y-4">
+                    {/* PC/Tablet Sidebar Install Link */}
+                    <a
+                        href="/streamflow-tv.apk"
+                        download="streamflow-tv.apk"
+                        className="flex items-center gap-4 px-4 py-3 rounded-md transition-all duration-300 text-red-600 border border-red-900/30 hover:bg-red-600/10 group shadow-[0_0_15px_rgba(220,38,38,0.1)] hover:shadow-[0_0_20px_rgba(220,38,38,0.3)] bg-gradient-to-r from-red-600/5 to-transparent"
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-6 h-6 group-hover:scale-110 transition-transform"
+                        >
+                            <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+                            <polyline points="17 2 12 7 7 2" />
+                        </svg>
+                        <span className="hidden lg:block text-sm font-bold tracking-wide">TV APP</span>
+                    </a>
+
+                    <div className="text-xs text-gray-500 text-center lg:text-left pt-2 border-t border-white/5 font-medium">
                         &copy; 2026 StreamFlow
                     </div>
                 </div>
             </aside>
 
             {/* Mobile Bottom Nav (Visible only on small screens) */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-white/10 z-50 flex justify-around p-3">
-                {NAV_ITEMS.slice(0, 5).map((item) => (
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-white/10 z-50 flex justify-around p-3 items-center">
+                {NAV_ITEMS.slice(0, 4).map((item) => (
                     <Link key={item.name} to={item.path} className={`flex flex-col items-center gap-1 ${isActive(item.path) ? 'text-white' : 'text-gray-500'}`}>
                         <item.icon className="w-5 h-5" />
                         <span className="text-[10px]">{item.name}</span>
                     </Link>
                 ))}
+                {/* APK Download in Mobile Nav */}
+                <a
+                    href="/streamflow-tv.apk"
+                    download="streamflow-tv.apk"
+                    className="flex flex-col items-center gap-1 text-red-600 animate-pulse font-bold"
+                >
+                    <div className="bg-red-600 rounded-lg p-1">
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-4 h-4"
+                        >
+                            <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+                            <polyline points="17 2 12 7 7 2" />
+                        </svg>
+                    </div>
+                    <span className="text-[10px]">TV App</span>
+                </a>
             </div>
 
             {/* Main Content Area */}

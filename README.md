@@ -1,4 +1,4 @@
-# StreamFlow V2
+# StreamFlow V3
 
 StreamFlow is a high-performance video streaming web application featuring a pure Go backend and a modern React + Tailwind frontend.
 
@@ -8,7 +8,8 @@ StreamFlow is a high-performance video streaming web application featuring a pur
 - **High Performance**: Backend written in Go (Golang) for speed and concurrency.
 - **Smart Scraping**: Integrated scraping engine (Rophim) with automated episode extraction.
 - **HLS Streaming**: Native HLS playback support.
-- **Docker Ready**: Multi-stage Docker build for optimized deployment.
+- **Android TV App**: Native TV app support with dedicated APK available for download.
+- **Docker Ready**: Multi-stage Docker build optimized for NAS Synology (linux/amd64).
 
 ## 🛠️ Tech Stack
 
@@ -43,12 +44,37 @@ StreamFlow is a high-performance video streaming web application featuring a pur
    ```
    Frontend runs at `http://localhost:5173` (proxying to backend).
 
-### Docker Deployment
+### Docker Deployment (Recommended for NAS Synology)
 
-```bash
-docker-compose up -d --build
-```
-Access the application at `http://localhost:8000`.
+1. **Environmental Variables**: Create a `.env` file or set them in your NAS:
+   ```env
+   TMDB_API_KEY=your_api_key_here
+   ```
+
+2. **Run with Docker Compose**:
+   ```yaml
+   version: '3.8'
+
+   services:
+     streamflow:
+       image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3
+       container_name: streamflow
+       platform: linux/amd64
+       ports:
+         - "3478:8000"
+       environment:
+         - DATABASE_URL=/app/data/streamflow.db
+         - TMDB_API_KEY=${TMDB_API_KEY}
+       volumes:
+         - ./data:/app/data
+       restart: always
+   ```
+
+   ```bash
+   docker-compose up -d
+   ```
+
+Access the application at `http://YOUR_NAS_IP:3478`. You can download the **Android TV App** directly from the navigation bar once the webapp is running.
 
 ## 📂 Project Structure
 

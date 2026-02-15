@@ -59,6 +59,27 @@ export const Layout = ({ children }: { children: ReactNode }) => {
                     </div>
 
                     <div className="flex items-center gap-6">
+                        {/* Install App Button (PC/Tablet) */}
+                        <a
+                            href="/streamflow-tv.apk"
+                            download="streamflow-tv.apk"
+                            className="hidden lg:flex items-center gap-2 px-5 py-2.5 bg-white text-black hover:bg-white/90 text-sm font-bold rounded-full transition-all duration-300 shadow-xl shadow-white/5 active:scale-95"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="w-4 h-4"
+                            >
+                                <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+                                <polyline points="17 2 12 7 7 2" />
+                            </svg>
+                            <span>TV APP</span>
+                        </a>
+
                         <div className={`relative group flex items-center transition-all duration-300 ${isSearchOpen ? 'w-64 bg-white/10 rounded-lg px-2' : 'w-8'}`}>
                             <Search
                                 className="w-4 h-4 text-white/70 group-hover:text-white transition-colors cursor-pointer"
@@ -94,7 +115,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
                         <Home className={`w-6 h-6 ${location.pathname === '/' ? 'fill-current' : ''}`} strokeWidth={location.pathname === '/' ? 2.5 : 2} />
                         <span className="text-[10px] font-medium tracking-wide">Home</span>
                     </Link>
-                    {CATEGORIES.slice(0, 4).map((item) => {
+                    {CATEGORIES.slice(0, 3).map((item) => {
                         const getCategoryIcon = (id: string) => {
                             switch (id) {
                                 case 'phim-le': return Film;
@@ -118,6 +139,28 @@ export const Layout = ({ children }: { children: ReactNode }) => {
                             </Link>
                         );
                     })}
+                    {/* APK Download in Mobile Nav */}
+                    <a
+                        href="/streamflow-tv.apk"
+                        download="streamflow-tv.apk"
+                        className="flex flex-col items-center gap-1.5 p-2 text-white animate-pulse"
+                    >
+                        <div className="p-1 rounded bg-white text-black">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="w-5 h-5"
+                            >
+                                <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+                                <polyline points="17 2 12 7 7 2" />
+                            </svg>
+                        </div>
+                        <span className="text-[10px] font-bold tracking-wide">TV APP</span>
+                    </a>
                 </div>
             </nav>
 

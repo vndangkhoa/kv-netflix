@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <!-- Background -->
+    <path
+        android:pathData="M0,0h320v180H0z"
+        android:fillColor="#141414"/>
+
+    <!-- Gradient accent bar -->
+    <path
+        android:pathData="M0,160h320v20H0z"
+        android:fillColor="#06B6D4"/>
+
+    <!-- Icon circle -->
+    <path
+        android:pathData="M160,75m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"
+        android:fillColor="#06B6D4"/>
+
+    <!-- Play triangle -->
+    <path
+        android:pathData="M152,60L172,75L152,90z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Text: StreamFlow -->
+    <path
+        android:pathData="M95,130h130"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="0.5"/>
+</vector>
