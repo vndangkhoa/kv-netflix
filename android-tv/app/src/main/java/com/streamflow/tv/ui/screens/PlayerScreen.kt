@@ -9,9 +9,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
@@ -36,6 +40,7 @@ fun PlayerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val colors = StreamFlowTheme.colors
+    var playerView by remember { mutableStateOf<PlayerView?>(null) }
 
     LaunchedEffect(slug, episode) {
         viewModel.loadPlayer(slug, episode)
@@ -89,11 +94,53 @@ fun PlayerScreen(
         }
     }
 
+    val focusRequester = remember { FocusRequester() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                        android.view.KeyEvent.KEYCODE_ENTER -> {
+                            // Toggle controls visibility
+                            if (playerView?.isControllerFullyVisible == true) {
+                                playerView?.hideController()
+                            } else {
+                                playerView?.showController()
+                            }
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            // Seek backward 10s
+                            playerView?.showController()
+                            exoPlayer.seekTo(maxOf(0, exoPlayer.currentPosition - 10000))
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            // Seek forward 10s
+                            playerView?.showController()
+                            exoPlayer.seekTo(minOf(exoPlayer.duration, exoPlayer.currentPosition + 10000))
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_UP,
+                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            playerView?.showController()
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            }
     ) {
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+
         if (uiState.isLoading || uiState.source == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -117,10 +164,14 @@ fun PlayerScreen(
                     PlayerView(ctx).apply {
                         player = exoPlayer
                         useController = true
+                        setShowNextButton(false)
+                        setShowPreviousButton(false)
+                        controllerAutoShow = true
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
+                        playerView = this
                     }
                 },
                 modifier = Modifier.fillMaxSize()

@@ -1,4 +1,4 @@
-# StreamFlow V3
+# StreamFlow V3.1
 
 StreamFlow is a high-performance video streaming web application featuring a pure Go backend and a modern React + Tailwind frontend.
 
@@ -8,6 +8,8 @@ StreamFlow is a high-performance video streaming web application featuring a pur
 - **High Performance**: Backend written in Go (Golang) for speed and concurrency.
 - **Smart Scraping**: Integrated scraping engine (Rophim) with automated episode extraction.
 - **HLS Streaming**: Native HLS playback support.
+- **Android TV Support (New)**: Optimized TV client with D-pad controls and 10s skip.
+- **Performance Optimized**: Parallel API fetching and global image caching for instant loading.
 - **Android TV App**: Native TV app support with dedicated APK available for download.
 - **Docker Ready**: Multi-stage Docker build optimized for NAS Synology (linux/amd64).
 

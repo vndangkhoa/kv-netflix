@@ -22,10 +22,31 @@ import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.ui.theme.StreamFlowTvTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import coil.Coil
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Setup Coil with caching
+        val imageLoader = ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(this.cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02)
+                    .build()
+            }
+            .build()
+        Coil.setImageLoader(imageLoader)
+
         setContent {
             StreamFlowTvApp()
         }

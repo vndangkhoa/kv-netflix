@@ -3,14 +3,14 @@ version: '3.8'
 services:
   streamflow:
     # build: .
-    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3
+    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.1
     container_name: streamflow
     platform: linux/amd64
     ports:
       - "3478:8000"
     environment:
       - DATABASE_URL=/app/data/streamflow.db
-      - TMDB_API_KEY=${TMDB_API_KEY}
+    # - TMDB_API_KEY=${TMDB_API_KEY}
     volumes:
       - ./data:/app/data
     restart: always
