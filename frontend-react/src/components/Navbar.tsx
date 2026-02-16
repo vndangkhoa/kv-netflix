@@ -29,11 +29,11 @@ const Navbar = () => {
                 <div className="flex items-center justify-between h-16">
                     <div className="flex items-center gap-8">
                         <Link to="/" className="flex items-center gap-2 group">
-                            <div className="bg-gradient-to-tr from-cyan-500 to-blue-600 p-2 rounded-lg group-hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all duration-300">
+                            <div className="bg-gradient-to-tr from-red-600 to-red-800 p-2 rounded-lg group-hover:shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all duration-300">
                                 <Film className="w-5 h-5 text-white" />
                             </div>
-                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                                StreamFlow
+                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-red-400 tracking-tighter uppercase">
+                                kv-netflix
                             </span>
                         </Link>
 
@@ -74,17 +74,17 @@ const Navbar = () => {
                             download="streamflow-tv.apk"
                             className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white text-sm font-bold rounded-full shadow-lg shadow-cyan-900/20 hover:shadow-cyan-500/40 transition-all duration-300 active:scale-95 border border-white/10"
                         >
-                            <svg 
-                                viewBox="0 0 24 24" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                strokeWidth="2.5" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                                 className="w-4 h-4"
                             >
-                                <rect width="20" height="15" x="2" y="7" rx="2" ry="2"/>
-                                <polyline points="17 2 12 7 7 2"/>
+                                <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+                                <polyline points="17 2 12 7 7 2" />
                             </svg>
                             <span>Install App</span>
                         </a>
@@ -111,17 +111,17 @@ const Navbar = () => {
                             className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-700 text-white font-bold rounded-lg mb-4"
                             onClick={() => setIsMenuOpen(false)}
                         >
-                            <svg 
-                                viewBox="0 0 24 24" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                strokeWidth="2.5" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                                 className="w-5 h-5"
                             >
-                                <rect width="20" height="15" x="2" y="7" rx="2" ry="2"/>
-                                <polyline points="17 2 12 7 7 2"/>
+                                <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+                                <polyline points="17 2 12 7 7 2" />
                             </svg>
                             <span>Download Android TV App</span>
                         </a>
