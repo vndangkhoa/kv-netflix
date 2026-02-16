@@ -23,8 +23,9 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o server cm
 FROM alpine:latest
 WORKDIR /app
 
-# Install runtime dependencies (sqlite)
-RUN apk add --no-cache sqlite ca-certificates tzdata
+# Install runtime dependencies (sqlite + yt-dlp for video extraction fallback)
+RUN apk add --no-cache sqlite ca-certificates tzdata python3 py3-pip && \
+    pip3 install --break-system-packages yt-dlp
 
 # Copy backend binary
 COPY --from=backend-builder /app/backend/server .

@@ -32,7 +32,13 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             try {
                 const ep = movie.episodes?.find(e => e.number === currentEpisode);
 
-                if (ep && (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8'))) {
+                // If no episode or no URL, don't try to extract — let WatchPage show "Coming Soon"
+                if (!ep?.url) {
+                    setLoading(false);
+                    return;
+                }
+
+                if (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8')) {
                     setSource({
                         stream_url: ep.url,
                         resolution: 'HD',
