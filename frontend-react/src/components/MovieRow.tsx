@@ -86,7 +86,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {[...Array(10)].map((_, i) => (
                         <div key={i} className="aspect-[2/3] bg-white/5 rounded-xl animate-pulse" />
                     ))}
@@ -144,8 +144,8 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
 
     return (
         <div className="mb-10 group/row relative">
-            <h2 className="text-xl md:text-2xl font-bold mb-4 text-white flex items-center gap-2">
-                <span className="w-1 h-6 bg-cyan-500 rounded-full"></span>
+            <h2 className="text-xl md:text-2xl font-bold mb-6 text-white flex items-center gap-3">
+                <span className="w-1.5 h-8 bg-cyan-500 rounded-full"></span>
                 {title}
                 <Link to={`/?category=${category}`} className="text-xs font-normal text-gray-500 hover:text-cyan-400 ml-2 transition-colors">
                     Xem tất cả
@@ -206,7 +206,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                                         </div>
                                     )}
                                 </Link>
-                                <div className="mt-2 text-center md:text-left">
+                                <div className="mt-2 text-left">
                                     <h3 className="font-medium text-white text-sm truncate group-hover/card:text-cyan-400 transition-colors">
                                         {movie.title}
                                     </h3>
@@ -223,7 +223,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
                     {movies.map((movie) => (
                         <div key={movie.id} className="relative group flex flex-col h-full">
                             <Link to={`/watch/${movie.slug}`} className="block relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-[#1a1a1a]">
