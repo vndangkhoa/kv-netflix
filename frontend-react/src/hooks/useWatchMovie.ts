@@ -88,6 +88,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         let wakeLock: any = null;
 
         const requestWakeLock = async () => {
+            if (wakeLock !== null) return;
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await (navigator as any).wakeLock.request('screen');
@@ -105,7 +106,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                     wakeLock = null;
                     // console.log('Wake Lock released');
                 } catch (err) {
-                    console.warn('Wake Lock release failed:', err);
+                    // console.warn('Wake Lock release failed:', err);
                 }
             }
         };
@@ -118,6 +119,11 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             video.addEventListener('play', onPlay);
             video.addEventListener('pause', onPause);
             video.addEventListener('ended', onEnded);
+
+            // If already playing (HLS might auto-start before this effect)
+            if (!video.paused) {
+                requestWakeLock();
+            }
 
             // Re-acquire on visibility change if playing
             const onVisibilityChange = () => {
@@ -135,7 +141,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                 releaseWakeLock();
             };
         }
-    }, [source]); // Re-run when source changes (new video loaded)
+    }, [source]);
 
     return {
         movie,

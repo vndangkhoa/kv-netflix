@@ -167,6 +167,7 @@ fun PlayerScreen(
                         setShowNextButton(false)
                         setShowPreviousButton(false)
                         controllerAutoShow = true
+                        keepScreenOn = true // Prevent screen sleep during playback
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
