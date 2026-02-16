@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,9 @@ import (
 )
 
 func main() {
+	// Register .apk MIME type
+	mime.AddExtensionType(".apk", "application/vnd.android.package-archive")
+
 	// Initialize Database
 	dbPath := os.Getenv("DATABASE_URL")
 	if dbPath == "" {
