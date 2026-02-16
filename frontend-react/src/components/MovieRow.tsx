@@ -86,7 +86,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {[...Array(10)].map((_, i) => (
                         <div key={i} className="aspect-[2/3] bg-white/5 rounded-xl animate-pulse" />
                     ))}
@@ -170,7 +170,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                         onPointerMove={handlePointerMove}
                     >
                         {movies.map((movie) => (
-                            <div key={movie.id} className="min-w-[150px] md:min-w-[180px] lg:min-w-[200px] snap-start relative group/card">
+                            <div key={movie.id} className="min-w-[130px] sm:min-w-[150px] md:min-w-[180px] lg:min-w-[200px] snap-start relative group/card">
                                 <Link
                                     to={`/watch/${movie.slug}`}
                                     className={`block relative aspect-[2/3] rounded-xl overflow-hidden bg-white/5 ${isDragging ? 'pointer-events-none' : ''}`}
@@ -223,7 +223,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 md:gap-4">
+                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
                     {movies.map((movie) => (
                         <div key={movie.id} className="relative group flex flex-col h-full">
                             <Link to={`/watch/${movie.slug}`} className="block relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-[#1a1a1a]">
