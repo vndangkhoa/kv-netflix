@@ -9,11 +9,29 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     const navigate = useNavigate();
     const { movie, loading, currentEpisode, setCurrentEpisode, videoRef } = useWatchMovie(slug, episode);
     const [expanded, setExpanded] = useState(false);
+    const [selectedServer, setSelectedServer] = useState<string>('');
+
+    // Group episodes by server
+    const episodesByServer = movie?.episodes?.reduce((acc, ep) => {
+        const server = ep.server_name || 'Default';
+        if (!acc[server]) acc[server] = [];
+        acc[server].push(ep);
+        return acc;
+    }, {} as Record<string, typeof movie.episodes>) || {};
+
+    const serverNames = Object.keys(episodesByServer);
+
+    // Initialize selected server
+    if (serverNames.length > 0 && !selectedServer) {
+        // Prefer "Ophim" or "Vietsub #1" if available, else first
+        const defaultServer = serverNames.find(s => s.includes('Ophim')) || serverNames[0];
+        setSelectedServer(defaultServer);
+    }
+
+    const currentServerEpisodes = episodesByServer[selectedServer] || [];
+    const visibleEpisodes = expanded ? currentServerEpisodes : currentServerEpisodes.slice(0, 20);
 
     if (!movie) return <div className="text-white p-10">Loading...</div>;
-
-    const episodes = movie.episodes || [];
-    const visibleEpisodes = expanded ? episodes : episodes.slice(0, 20);
 
     return (
 
@@ -37,7 +55,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     </div>
                 )}
                 {(() => {
-                    const activeEpisode = movie.episodes?.find(e => e.number === currentEpisode);
+                    const activeEpisode = currentServerEpisodes?.find(e => e.number === currentEpisode);
                     if (!activeEpisode?.url) {
                         return (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90">
@@ -89,38 +107,58 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                 </div>
 
                 {/* Episodes Section - Compact Grid */}
-                {episodes.length > 0 && (
+                {currentServerEpisodes.length > 0 && (
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-2xl font-bold border-l-4 border-red-600 pl-4">Episodes</h3>
-                            <div className="text-gray-400 text-sm font-medium">{episodes.length} Items</div>
+                            <div className="flex items-center gap-6">
+                                <h3 className="text-2xl font-bold border-l-4 border-red-600 pl-4">Episodes</h3>
+
+                                {/* Server Selector */}
+                                {serverNames.length > 1 && (
+                                    <div className="flex gap-2">
+                                        {serverNames.map(server => (
+                                            <button
+                                                key={server}
+                                                onClick={() => setSelectedServer(server)}
+                                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${selectedServer === server
+                                                    ? 'bg-red-600 text-white'
+                                                    : 'bg-[#333] text-gray-400 hover:bg-[#444]'
+                                                    }`}
+                                            >
+                                                {server}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-gray-400 text-sm font-medium">{currentServerEpisodes.length} Items</div>
                         </div>
 
-                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                             {visibleEpisodes.map((ep) => (
                                 <button
-                                    key={ep.number}
+                                    key={`${selectedServer}-${ep.number}`}
                                     onClick={() => {
                                         setCurrentEpisode(ep.number);
                                         navigate(`/watch/${slug}/${ep.number}`);
                                     }}
-                                    className={`group relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${currentEpisode === ep.number ? 'border-red-600' : 'border-transparent hover:border-white/50 bg-[#222]'}`}
+                                    className={`group relative py-2 rounded-md overflow-hidden border-2 transition-all ${currentEpisode === ep.number ? 'border-red-600 bg-red-900/10' : 'border-transparent hover:border-white/40 bg-[#222]'}`}
                                 >
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className={`font-bold text-lg ${currentEpisode === ep.number ? 'text-red-500' : 'text-gray-400 group-hover:text-white'}`}>
+                                    <div className="flex items-center justify-center">
+                                        <span className={`font-bold text-sm ${currentEpisode === ep.number ? 'text-red-500' : 'text-gray-400 group-hover:text-white'}`}>
                                             {ep.number}
                                         </span>
                                     </div>
                                     {currentEpisode === ep.number && (
-                                        <div className="absolute bottom-1 right-1">
-                                            <Play className="w-3 h-3 text-red-500 fill-current" />
+                                        <div className="absolute top-1 right-1">
+                                            <Play className="w-2.5 h-2.5 text-red-500 fill-current" />
                                         </div>
                                     )}
                                 </button>
                             ))}
                         </div>
 
-                        {episodes.length > 20 && (
+                        {currentServerEpisodes.length > 20 && (
                             <button
                                 onClick={() => setExpanded(!expanded)}
                                 className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white transition-colors mt-4"

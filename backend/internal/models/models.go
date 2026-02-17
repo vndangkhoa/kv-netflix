@@ -35,16 +35,19 @@ type RophimMovie struct {
 	Genre         string    `json:"genre,omitempty"`
 	Description   string    `json:"description,omitempty"`
 	Category      string    `json:"category"`
+	Provider      string    `json:"provider,omitempty"`
 	Cast          []string  `json:"cast,omitempty" gorm:"-"`
 	Director      string    `json:"director,omitempty"`
 	Country       string    `json:"country,omitempty"`
 	Episodes      []Episode `json:"episodes,omitempty" gorm:"-"`
+	TrailerURL    string    `json:"trailer_url,omitempty"`
 }
 
 type Episode struct {
-	Number int    `json:"number"`
-	Title  string `json:"title"`
-	URL    string `json:"url"`
+	Number     int    `json:"number"`
+	Title      string `json:"title"`
+	URL        string `json:"url"`
+	ServerName string `json:"server_name"`
 }
 
 type Category struct {

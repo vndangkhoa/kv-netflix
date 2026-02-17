@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,13 +31,16 @@ func main() {
 
 	// Initialize Services
 	videoRepo := database.NewVideoRepository(database.DB)
-	scraperService := scraper.NewOphimScraper()
+	ophimService := scraper.NewOphimScraper()
+	phimMoiService := scraper.NewPhimMoiChillScraper()
 	tmdbService := service.NewTMDBService()
 	extractorService := service.NewVideoExtractor()
 	imageService := service.NewImageService()
 
+	providers := []scraper.MovieProvider{ophimService, phimMoiService}
+
 	// Initialize API Handler
-	handler := api.NewHandler(videoRepo, scraperService, tmdbService, extractorService, imageService)
+	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService)
 
 	r := chi.NewRouter()
 
@@ -56,7 +59,7 @@ func main() {
 	// API Routes
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`{"status":"healthy", "version":"2.0-go"}`))
+			w.Write([]byte(`{"status":"healthy", "version":"v3.6-go"}`))
 		})
 
 		api.RegisterRoutes(r, handler)

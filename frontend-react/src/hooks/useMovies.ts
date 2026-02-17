@@ -26,8 +26,8 @@ export const useMovies = () => {
                 }
                 const data = await res.json();
                 setMovies(data || []);
-            } catch (err) {
-                console.error("Failed to fetch movies", err);
+            } catch {
+                console.error("Failed to fetch movies");
             } finally {
                 setLoading(false);
             }

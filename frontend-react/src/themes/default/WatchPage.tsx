@@ -7,6 +7,7 @@ import MovieRow from '../../components/MovieRow';
 export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) => {
     const navigate = useNavigate();
     const { movie, loading, currentEpisode, setCurrentEpisode, videoRef } = useWatchMovie(slug, episode);
+    const [selectedServer, setSelectedServer] = useState<string>('');
     const [expanded, setExpanded] = useState(false);
 
     if (!movie) return (
@@ -24,9 +25,23 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         const cleanUrl = url.replace('img.ophim1.com', 'ssl:img.ophim1.com');
         return `https://wsrv.nl/?url=${encodeURIComponent(cleanUrl)}&w=${width}&output=webp`;
     };
+    const episodesByServer = movie?.episodes?.reduce((acc, ep) => {
+        const server = ep.server_name || 'Default';
+        if (!acc[server]) acc[server] = [];
+        acc[server].push(ep);
+        return acc;
+    }, {} as Record<string, typeof movie.episodes>) || {};
 
-    const episodes = movie.episodes || [];
-    const visibleEpisodes = expanded ? episodes : episodes.slice(0, 20);
+    const serverNames = Object.keys(episodesByServer);
+
+    // Initialize selected server
+    if (serverNames.length > 0 && !selectedServer) {
+        const defaultServer = serverNames.find(s => s.toLowerCase().includes('vietsub #1')) || serverNames[0];
+        setSelectedServer(defaultServer);
+    }
+
+    const currentServerEpisodes = episodesByServer[selectedServer] || [];
+    const visibleEpisodes = expanded ? currentServerEpisodes : currentServerEpisodes.slice(0, 20);
 
     return (
 
@@ -50,7 +65,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     </div>
                 )}
                 {(() => {
-                    const activeEpisode = movie.episodes?.find(e => e.number === currentEpisode);
+                    const activeEpisode = currentServerEpisodes?.find(e => e.number === currentEpisode);
                     if (!activeEpisode?.url) {
                         return (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90">
@@ -70,6 +85,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
                     return (
                         <video
+                            key={activeEpisode.url}
                             ref={videoRef}
                             controls
                             className="w-full h-full max-h-screen object-contain"
@@ -103,40 +119,60 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                 </div>
 
                 {/* Episodes Section - Compact Grid */}
-                {episodes.length > 0 && (
+                {currentServerEpisodes.length > 0 && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-2xl font-bold border-l-4 border-cyan-500 pl-4">Episodes</h3>
-                            <div className="text-gray-400 text-sm font-medium bg-white/5 px-3 py-1 rounded-full">{episodes.length} Items</div>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-6">
+                                <h3 className="text-2xl font-bold border-l-4 border-cyan-500 pl-4 whitespace-nowrap">Episodes</h3>
+
+                                {/* Server Selector */}
+                                {serverNames.length > 1 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {serverNames.map(server => (
+                                            <button
+                                                key={server}
+                                                onClick={() => setSelectedServer(server)}
+                                                className={`px-3 py-1 text-xs font-bold rounded-full transition-all border ${selectedServer === server
+                                                    ? 'bg-cyan-500 text-black border-cyan-500'
+                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                {server}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-gray-400 text-sm font-medium bg-white/5 px-3 py-1 rounded-full w-fit">{currentServerEpisodes.length} Items</div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                             {visibleEpisodes.map((ep) => (
                                 <button
-                                    key={ep.number}
+                                    key={`${ep.number}-${selectedServer}`}
                                     onClick={() => {
                                         setCurrentEpisode(ep.number);
                                         navigate(`/watch/${slug}/${ep.number}`);
                                     }}
-                                    className={`group relative aspect-video rounded-xl overflow-hidden border transition-all duration-300 ${currentEpisode === ep.number
+                                    className={`group relative py-2 rounded-lg border transition-all duration-300 ${currentEpisode === ep.number
                                         ? 'border-cyan-500 bg-cyan-950/30'
-                                        : 'border-transparent bg-[#1a1a1a] hover:bg-[#222] hover:border-white/10'
+                                        : 'border-transparent bg-[#111] hover:bg-[#222] hover:border-white/10'
                                         }`}
                                 >
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className={`font-bold text-lg ${currentEpisode === ep.number ? 'text-cyan-400' : 'text-gray-500 group-hover:text-white'
+                                    <div className="flex items-center justify-center">
+                                        <span className={`font-bold text-sm ${currentEpisode === ep.number ? 'text-cyan-400' : 'text-gray-400 group-hover:text-white'
                                             }`}>
                                             {ep.number}
                                         </span>
                                     </div>
                                     {currentEpisode === ep.number && (
-                                        <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                                     )}
                                 </button>
                             ))}
                         </div>
 
-                        {episodes.length > 20 && (
+                        {currentServerEpisodes.length > 20 && (
                             <button
                                 onClick={() => setExpanded(!expanded)}
                                 className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white transition-colors mt-4 mx-auto"

@@ -17,8 +17,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                 if (!res.ok) throw new Error('Failed to fetch details');
                 const data = await res.json();
                 setMovie(data);
-            } catch (err) {
-                console.error("Failed to fetch details", err);
+            } catch {
+                console.error("Failed to fetch details");
             }
         };
         fetchDetails();
@@ -39,8 +39,11 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                 }
 
                 if (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8')) {
+                    const isPhimMoi = ep.url.includes('phimmoichill') || ep.url.includes('sotrim') || ep.url.includes('phmchill');
                     setSource({
-                        stream_url: ep.url,
+                        stream_url: isPhimMoi
+                            ? `/api/stream?url=${encodeURIComponent(ep.url)}`
+                            : ep.url,
                         resolution: 'HD',
                         format_id: 'hls'
                     });
@@ -58,9 +61,14 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
                 if (!res.ok) throw new Error('Failed to extract');
                 const data = await res.json();
-                setSource(data);
-            } catch (err) {
-                console.error("Failed to extract stream", err);
+                setSource({
+                    ...data,
+                    stream_url: (data.url || data.stream_url).includes('phimmoichill') || (data.url || data.stream_url).includes('sotrim') || (data.url || data.stream_url).includes('phmchill')
+                        ? `/api/stream?url=${encodeURIComponent(data.url || data.stream_url)}`
+                        : (data.url || data.stream_url)
+                });
+            } catch {
+                console.error("Failed to extract stream");
             } finally {
                 setLoading(false);
             }
@@ -71,7 +79,11 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
     useEffect(() => {
         if (source && videoRef.current) {
-            if (Hls.isSupported()) {
+            console.log("Initializing player with source:", source);
+            const isHls = source.stream_url.includes('.m3u8') || source.format_id === 'hls';
+            console.log("Is HLS:", isHls, "Stream URL:", source.stream_url);
+
+            if (isHls && Hls.isSupported()) {
                 const hls = new Hls();
                 hls.loadSource(source.stream_url);
                 hls.attachMedia(videoRef.current);
@@ -81,7 +93,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                 return () => {
                     hls.destroy();
                 };
-            } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+            } else {
+                // MP4 or Native HLS (Safari)
                 videoRef.current.src = source.stream_url;
                 videoRef.current.play().catch(() => { });
             }
@@ -97,11 +110,12 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             if (wakeLock !== null) return;
             try {
                 if ('wakeLock' in navigator) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     wakeLock = await (navigator as any).wakeLock.request('screen');
                     // console.log('Wake Lock active');
                 }
-            } catch (err) {
-                console.warn('Wake Lock failed:', err);
+            } catch {
+                console.warn('Wake Lock failed');
             }
         };
 
@@ -111,8 +125,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                     await wakeLock.release();
                     wakeLock = null;
                     // console.log('Wake Lock released');
-                } catch (err) {
-                    // console.warn('Wake Lock release failed:', err);
+                } catch {
+                    // console.warn('Wake Lock release failed');
                 }
             }
         };

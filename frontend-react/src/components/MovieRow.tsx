@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Movie } from '../types';
+import { MovieCard } from './MovieCard';
 
 interface MovieRowProps {
     title: string;
@@ -59,8 +60,8 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     result = result.slice(0, limit);
                 }
                 setMovies(result);
-            } catch (err) {
-                console.error(`Failed to fetch movies for row ${title}`, err);
+            } catch {
+                console.error(`Failed to fetch movies for row ${title}`);
             } finally {
                 setLoading(false);
             }
@@ -86,9 +87,9 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {[...Array(10)].map((_, i) => (
-                        <div key={i} className="aspect-[2/3] bg-white/5 rounded-xl animate-pulse" />
+                <div className="grid grid-cols-3 min-[480px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
+                    {[...Array(12)].map((_, i) => (
+                        <div key={i} className="aspect-[2/3] bg-white/5 rounded-lg animate-pulse" />
                     ))}
                 </div>
             )}
@@ -144,10 +145,10 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
 
     return (
         <div className="mb-10 group/row relative">
-            <h2 className="text-xl md:text-2xl font-bold mb-6 text-white flex items-center gap-3">
-                <span className="w-1.5 h-8 bg-cyan-500 rounded-full"></span>
+            <h2 className="text-lg md:text-xl font-bold mb-4 text-white flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-cyan-500 rounded-full"></span>
                 {title}
-                <Link to={`/?category=${category}`} className="text-xs font-normal text-gray-500 hover:text-cyan-400 ml-2 transition-colors">
+                <Link to={`/?category=${category}`} className="text-[10px] font-normal text-gray-500 hover:text-cyan-400 ml-2 transition-colors uppercase tracking-wider">
                     Xem tất cả
                 </Link>
             </h2>
@@ -163,54 +164,18 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
 
                     <div
                         ref={rowRef}
-                        className={`flex gap-4 overflow-x-auto px-4 md:px-12 pb-4 scrollbar-hide select-none overscroll-x-contain ${isDragging ? 'cursor-grabbing snap-none' : 'cursor-grab snap-x snap-mandatory'}`}
+                        className={`flex gap-2 md:gap-4 overflow-x-auto px-4 md:px-12 pb-4 scrollbar-hide select-none overscroll-x-contain ${isDragging ? 'cursor-grabbing snap-none' : 'cursor-grab snap-x snap-mandatory'}`}
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                         onPointerDown={handlePointerDown}
                         onPointerUp={handlePointerUp}
                         onPointerMove={handlePointerMove}
                     >
                         {movies.map((movie) => (
-                            <div key={movie.id} className="min-w-[130px] sm:min-w-[150px] md:min-w-[180px] lg:min-w-[200px] snap-start relative group/card">
-                                <Link
-                                    to={`/watch/${movie.slug}`}
-                                    className={`block relative aspect-[2/3] rounded-xl overflow-hidden bg-white/5 ${isDragging ? 'pointer-events-none' : ''}`}
-                                    draggable={false}
-                                >
-                                    <img
-                                        src={`https://wsrv.nl/?url=${encodeURIComponent(movie.thumbnail.replace(/^https?:\/\//, '').replace('img.ophim1.com', 'ssl:img.ophim1.com'))}&w=300&output=webp`}
-                                        alt={movie.title}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                        loading="lazy"
-                                        draggable={false}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                        <div className="bg-white/20 backdrop-blur-md p-3 rounded-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                            <Play className="w-5 h-5 text-white fill-current" />
-                                        </div>
-                                    </div>
-                                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                                        {movie.quality && (
-                                            <div className="bg-cyan-500/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold text-black uppercase tracking-wider shadow-lg">
-                                                {movie.quality}
-                                            </div>
-                                        )}
-                                        {movie.lang && (
-                                            <div className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold border border-white/20 text-gray-200">
-                                                {movie.lang}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {movie.time && (
-                                        <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/10 text-white flex items-center gap-1">
-                                            {movie.time}
-                                        </div>
-                                    )}
-                                </Link>
-                                <div className="mt-2 text-left">
-                                    <h3 className="font-medium text-white text-sm truncate group-hover/card:text-cyan-400 transition-colors">
-                                        {movie.title}
-                                    </h3>
-                                </div>
+                            <div key={movie.id} className="w-[110px] sm:w-[150px] md:w-[180px] lg:w-[200px] flex-shrink-0 snap-start">
+                                <MovieCard
+                                    movie={movie}
+                                    isDragging={isDragging}
+                                />
                             </div>
                         ))}
                     </div>
@@ -223,35 +188,9 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+                <div className="grid grid-cols-3 min-[480px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
                     {movies.map((movie) => (
-                        <div key={movie.id} className="relative group flex flex-col h-full">
-                            <Link to={`/watch/${movie.slug}`} className="block relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-[#1a1a1a]">
-                                <img
-                                    src={`https://wsrv.nl/?url=${encodeURIComponent(movie.thumbnail.replace(/^https?:\/\//, '').replace('img.ophim1.com', 'ssl:img.ophim1.com'))}&w=300&output=webp`}
-                                    alt={movie.title}
-                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    loading="lazy"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                    <div className="bg-white/20 backdrop-blur-md p-3 rounded-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                        <Play className="w-5 h-5 text-white fill-current" />
-                                    </div>
-                                </div>
-                                <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                                    {movie.quality && (
-                                        <div className="bg-cyan-500/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold text-black uppercase tracking-wider shadow-lg">
-                                            {movie.quality}
-                                        </div>
-                                    )}
-                                </div>
-                            </Link>
-                            <div className="mt-2">
-                                <h3 className="font-medium text-white text-sm truncate group-hover:text-cyan-400 transition-colors">
-                                    {movie.title}
-                                </h3>
-                            </div>
-                        </div>
+                        <MovieCard key={movie.id} movie={movie} />
                     ))}
                 </div>
             )}

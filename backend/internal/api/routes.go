@@ -12,4 +12,5 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/images/proxy", h.ProxyImage)
 	r.Get("/categories/genres", h.GetGenres)
 	r.Get("/categories/countries", h.GetCountries)
+	r.Get("/stream", h.StreamVideo)
 }

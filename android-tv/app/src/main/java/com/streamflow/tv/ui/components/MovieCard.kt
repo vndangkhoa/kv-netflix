@@ -65,6 +65,25 @@ fun MovieCard(
                 }
             }
 
+            movie.provider?.let { provider ->
+                Box(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopStart)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = provider,
+                        style = StreamFlowTheme.typography.labelSmall.copy(
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = androidx.compose.ui.unit.TextUnit.Unspecified // Default or small
+                        ),
+                        maxLines = 1
+                    )
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

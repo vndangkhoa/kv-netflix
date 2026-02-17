@@ -1,0 +1,18 @@
+﻿Testing extraction for: https://phimmoichill.my/xem/khong-tac-phan-2-tap-1-pm17096
+Extracted Episode ID: 17096
+Extracted Film ID: 4650
+Movie view update response: {"status":"ok"}
+
+--- Testing Server SV=0 ---
+Failed to extract hash for SV=0
+  Snippet: iniPlayers("",2,);
+                     
+
+--- Testing Server SV=1 ---
+Failed to extract hash for SV=1
+
+--- Testing Server SV=2 ---
+Failed to extract hash for SV=2
+
+--- Testing Server SV=3 ---
+Failed to extract hash for SV=3

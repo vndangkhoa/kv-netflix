@@ -34,6 +34,9 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
+      },
+      devOptions: {
+        enabled: false // Explicitly disable in dev to prevent lingering SW issues
       }
     })
   ],

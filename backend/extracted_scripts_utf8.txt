@@ -1,0 +1,64 @@
+﻿<script> var base_url = 'https://phimmoichill.my/'; var is_login = ''; var MAIN_URL = "https://phimmoichill.my"; window.PM_API_URL = "https://api.phimmoi.mx"; window.PM_WS_URL = "wss://api.phimmoi.mx"; </script>
+--- SCRIPT END ---
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+--- SCRIPT END ---
+<script type="text/javascript" src="https://phimmoichill.my/dev/js/jquery-1.11.1.min.js"></script>
+--- SCRIPT END ---
+<script defer type="text/javascript" src="https://phimmoichill.my/dev/js/global.js"></script>
+--- SCRIPT END ---
+<script defer type="text/javascript" src="https://phimmoichill.my/dev/bootstrap/js/bootstrap.min.js"></script>
+--- SCRIPT END ---
+<script defer type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+--- SCRIPT END ---
+<script defer type="text/javascript" src="https://phimmoichill.my/dev/js/lazyz.min.js"></script>
+--- SCRIPT END ---
+<script defer type="text/javascript" src="https://phimmoichill.my/dev/js/functions.js"></script>
+--- SCRIPT END ---
+<script defer type="text/javascript" src="https://phimmoichill.my/dev/js/action.js"></script>
+--- SCRIPT END ---
+<script> var $menu = $("#menu-mobile"); var $over_lay = $('#overlay_menu'); var hw = $(window).height(); function set_height_menu(){ } function open_menu(){ $('body').addClass('menu-active'); $menu.addClass('expanded'); set_height_menu(); $(".btn-humber").addClass('active'); } function close_menu(){ $('body').removeClass('menu-active'); $menu.removeClass('expanded'); var w_scroll_top = $(window).scrollTop(); if(w_scroll_top >= 50){ pos_top_menu = 0; }else{ pos_top_menu = w_scroll_top; } set_height_menu(); $(".btn-humber").removeClass('active'); } $(document).ready(function(){ $(".btn-humber").click(function(){ if($menu.hasClass('expanded')){ close_menu(); }else{ open_menu(); } }); $(window).scroll(function(){ set_height_menu(); }); $(".parent-menu").click(function(e){ e.preventDefault(); $this = $(this); $arrow = $this.find('.fa'); if($arrow.length && event.target.className != 'sub-menu-link'){ if($arrow.hasClass('fa-angle-down')){ $arrow.removeClass('fa-angle-down').addClass('fa-angle-up'); }else{ $arrow.addClass('fa-angle-down').removeClass('fa-angle-up'); } $this.find('.sub-menu').toggle(); return false; }else{ var href = event.target.href; window.location.href = href; } }); });</script>
+--- SCRIPT END ---
+<script src="https://phimmoichill.my/dev/js/phimchill.public.js?v=1.1" type="text/javascript"></script>
+--- SCRIPT END ---
+<script src="https://phimmoichill.my/media/js/phimchill.player-controls.js?v=1.8" type="text/javascript"></script>
+--- SCRIPT END ---
+<script src="https://phimmoichill.my/media/js/promise-polyfill.js" defer type="text/javascript"></script>
+--- SCRIPT END ---
+<script src="https://phimmoichill.my/media/js/devtools-detector.js" defer type="text/javascript"></script>
+--- SCRIPT END ---
+<script type="text/javascript" src="/media/jwplayer863.js"></script>
+--- SCRIPT END ---
+<script type="text/javascript">jwplayer.key="ITWMv7t88JGzI0xPwW8I0+LveiXX9SWbfdmt0ArUSyc=";</script>
+--- SCRIPT END ---
+<script type="text/javascript"> var prerollComplete = 0; var prerollReload = 0; if (typeof AdvPlayer == "undefined") { var AdvPlayer = {}; } AdvPlayer.preroll = function(vastTag, originalPlayer, skipDelay, volume) { window.showPrerollAds = function() { $('#inner-player').html(''); $('#inner-player').hide(); }; window.hidePrerollAds = function(originalPlayer) { prerollComplete = 1; $('#inner-player').html(originalPlayer); $('#inner-player').show(); $("#preroll-player_wrapper").remove(); $("#preroll-player").remove(); $("#preroll-player-skip").remove(); }; $("#preroll-player-skip").off("click").on("click", function() { hidePrerollAds(originalPlayer); }); $("#player-chill").css("position", "relative"); this.setup = function() { showPrerollAds(); this.prerollPlayer = jwplayer("preroll-player").setup({ 'file': "https://phimmoichill.my/media/video.mp4", 'width': '100%', 'height': '100%', 'image': "https://phimmoichill.my/view.png", 'allowscriptaccess': 'always', 'wmode': 'opaque', 'aspectratio': '16:9', primary: "html5", autostart: true, stretching: "exactfit", advertising: { client: 'vast', admessage: 'Qu?ng cáo còn XX giây.', skipoffset: skipDelay, skiptext: 'B? qua qu?ng cáo', skipmessage: 'B? qua sau xxs', schedule: { preroll: { offset: 'pre', tag: vastTag } } }, }).on("adPlay", function() { setTimeout(function() { $("#preroll-player-skip").show(); }, skipDelay * 1000); }).on("adSkipped", function() { $("#preroll-player-skip").click(); }).on("adComplete", function() { $("#preroll-player-skip").click(); }).on("adError", function() { prerollReload = prerollReload + 1; if (prerollReload === 4) { $("#preroll-player-skip").click(); } }); this.prerollPlayer.on('complete', function() { $("#preroll-player-skip").click(); }).on('ready', function() { }); this.prerollPlayer.setVolume(volume); } } </script>
+--- SCRIPT END ---
+<script> $(document).ready(function() { if (prerollComplete > 0) { if (jwplayer('player-chill') != undefined) jwplayer('player-chill').remove(); !function () { /*referans:box*/ navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) || navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) || navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) || navigator.userAgent.match(/Windows Phone/i) || (devtoolsDetector.addListener(function (t, e) { t && (document.location.href = "https://phimmoichill.my") }), devtoolsDetector.lanuch()) }(); chillplay("17096"); } }) </script>
+--- SCRIPT END ---
+<script type="text/javascript"> var adsArray = ['da88.xml']; var rand = Math.random(); if (rand > 0.5) { adsArray = adsArray.reverse() }; uniadPreroll = new AdvPlayer.preroll(adsArray, $('#inner-player').html(), 5, 25); uniadPreroll.setup(); </script>
+--- SCRIPT END ---
+<script src="https://phimmoichill.my/media/js/phimchill.skipintro.js?v=1771254374"></script>
+--- SCRIPT END ---
+<script> $(document).ready(function() { initSkipIntroSystem(17096, 'https://phimmoichill.my'); }); </script>
+--- SCRIPT END ---
+<script src="dev/js/owl.carousel.min.js" defer></script>
+--- SCRIPT END ---
+<script type="text/javascript" src="dev/js/jquery.raty.js" defer></script>
+--- SCRIPT END ---
+<script type="text/javascript" src="dev/js/public.phim.js" defer></script>
+--- SCRIPT END ---
+<script>document.addEventListener('DOMContentLoaded',function(){window._pmAuthInitialized=true;if(typeof PMUserService!=='undefined'){PMUserService.init({filmId:4650,episodeId:17096,filmTitle:'Tân T?m T?n Ky',filmThumb:'https://phimmoichill.my/view.png',filmYear:'2017'}).then(function(){var p=document.getElementById('pm-login-prompt');if(p&&window.PMAuth&&PMAuth.user)p.style.display='none';});}});</script>
+--- SCRIPT END ---
+<script defer> function an_catfish() { var content = document.getElementById('catfishs_content'); var hide = document.getElementById('an_catfish'); if (content.style.display == "none") { content.style.display = "block"; hide.innerHTML = '<a rel="nofollow" href="javascript:an_catfish()">X</a>'; } else { content.style.display = "none"; hide.style.display = "none"; } }</script>
+--- SCRIPT END ---
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-119119344-1"></script>
+--- SCRIPT END ---
+<script defer> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'UA-119119344-1');</script>
+--- SCRIPT END ---
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+--- SCRIPT END ---
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
+--- SCRIPT END ---
+<script src="https://phimmoichill.my/dev/js/user-service.js?v=1771254374" defer></script>
+--- SCRIPT END ---
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"d1338346162642a38d95aab401d5a7cd","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+--- SCRIPT END ---

@@ -17,7 +17,8 @@ data class Movie(
     val time: String? = null,
     val lang: String? = null,
     val director: String? = null,
-    val cast: List<String>? = null
+    val cast: List<String>? = null,
+    val provider: String? = null
 )
 
 @JsonClass(generateAdapter = false)
@@ -38,6 +39,7 @@ data class MovieDetail(
     val director: String? = null,
     val country: String? = null,
     val cast: List<String>? = null,
+    val provider: String? = null,
     val episodes: List<Episode>? = null
 ) {
     fun toMovie(): Movie = Movie(
@@ -51,7 +53,8 @@ data class MovieDetail(
         year = year,
         category = category,
         director = director,
-        cast = cast
+        cast = cast,
+        provider = provider
     )
 }
 

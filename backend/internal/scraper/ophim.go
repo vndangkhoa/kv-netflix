@@ -75,7 +75,8 @@ type OphimMovie struct {
 	Country []struct {
 		Name string `json:"name"`
 	} `json:"country"`
-	Episodes []OphimEpisodeServer `json:"episodes,omitempty"` // Nested episodes?
+	Episodes   []OphimEpisodeServer `json:"episodes,omitempty"` // Nested episodes?
+	TrailerURL string               `json:"trailer_url"`
 }
 
 type OphimEpisodeServer struct {
@@ -236,6 +237,7 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 			Backdrop:      backdrop,
 			Year:          item.Year,
 			Category:      "movies",
+			Provider:      "Ophim",
 			Time:          item.Time,
 			Quality:       item.Quality,
 			Lang:          item.Lang,
@@ -292,31 +294,40 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		}
 	}
 
+	epMap := make(map[string]int) // map[epNum-serverName]sliceIndex
 	for _, server := range rawEpisodes {
 		for _, ep := range server.ServerData {
 			epNum := 0
-			// Parse "Tap 1", "1", "Full"
-			// This can be complex. For now, simple mapping?
-			// The application expects an int number.
-			// Let's try to parse the name.
 			fmt.Sscanf(ep.Name, "%d", &epNum)
 			if epNum == 0 {
-				// Fallback if name is "Full" or "Tap 1"
 				var n int
 				if _, err := fmt.Sscanf(ep.Name, "Tap %d", &n); err == nil {
 					epNum = n
 				} else {
-					// Handle cases like "Tap Full" or just "Full" -> 1?
-					// If it's a movie (single episode), default to 1
 					epNum = 1
 				}
 			}
 
-			episodes = append(episodes, models.Episode{
-				Number: epNum,
-				Title:  ep.Name,
-				URL:    ep.LinkM3U8, // This is the gold!
-			})
+			serverKey := fmt.Sprintf("%d-%s", epNum, server.ServerName)
+			if idx, exists := epMap[serverKey]; exists {
+				// If existing is empty, replace with this one
+				if episodes[idx].URL == "" && ep.LinkM3U8 != "" {
+					episodes[idx].URL = ep.LinkM3U8
+					episodes[idx].Title = ep.Name
+				}
+			} else {
+				if ep.LinkM3U8 == "" && ep.LinkEmbed == "" {
+					continue
+				}
+
+				epMap[serverKey] = len(episodes)
+				episodes = append(episodes, models.Episode{
+					Number:     epNum,
+					Title:      ep.Name,
+					URL:        ep.LinkM3U8,
+					ServerName: server.ServerName,
+				})
+			}
 		}
 	}
 
@@ -336,6 +347,7 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		Country:       safeGetName(movie.Country),
 		Director:      strings.Join(movie.Director, ", "),
 		Genre:         safeGetName(movie.Category),
+		TrailerURL:    movie.TrailerURL,
 	}, nil
 }
 

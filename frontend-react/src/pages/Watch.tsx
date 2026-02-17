@@ -41,8 +41,8 @@ const Watch = () => {
                         cast: data.cast
                     });
                 }
-            } catch (err) {
-                console.error("Failed to fetch for history", err);
+            } catch {
+                console.error("Failed to fetch for history");
             }
         };
         fetchDetail();

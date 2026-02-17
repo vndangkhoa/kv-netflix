@@ -9,6 +9,28 @@
   <meta name="theme-color" content="#141414" />
   <meta name="description" content="Modern Movie Streaming Service" />
   <link rel="apple-touch-icon" href="/icon.png" />
+  <script>
+    // IMMEDIATE CLEANUP: Unregister all service workers and clear caches in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          if (registrations.length > 0) {
+            Promise.all(registrations.map(r => r.unregister())).then(() => {
+              console.log('Unregistered SWs');
+              window.location.reload();
+            });
+          }
+        });
+      }
+      if (window.caches) {
+        caches.keys().then(names => {
+          Promise.all(names.map(name => caches.delete(name))).then(() => {
+            if (names.length > 0) console.log('Cleared Caches');
+          });
+        });
+      }
+    }
+  </script>
 </head>
 
 <body>

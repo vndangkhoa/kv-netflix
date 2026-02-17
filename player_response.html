@@ -1,0 +1,197 @@
+<meta name="referrer" content="origin"><script type="text/javascript" src="https://phimmoichill.my/player/sotrim.js"></script>
+                       <script type="text/javascript">jwplayer.key = "ITWMv7t88JGzI0xPwW8I0+LveiXX9SWbfdmt0ArUSyc=";</script>             
+                        <div id="mediaplayer" style="width: 100%;height: 100% !important;"></div>
+                        <script type="text/javascript"> 
+                        var $cookie = {
+                            getItem: function(sKey) {
+                                return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\s*" + encodeURIComponent(sKey).replace(/[\-\.\+\*]/g, "\$&") + "\s*\=\s*([^;]*).*$)|^.*$"), "$1")) || null;
+                            },
+                            setItem: function(sKey, sValue, vEnd, sPath, sDomain, bSecure) {
+                                if (!sKey || /^(?:expires|max\-age|path|domain|secure)$/i.test(sKey)) {
+                                    return false;
+                                }
+                                var sExpires = "";
+                                if (vEnd) {
+                                    switch (vEnd.constructor) {
+                                        case Number:
+                                            sExpires = vEnd === Infinity ? "; expires=Fri, 31 Dec 9999 23:59:59 GMT" : "; max-age=" + vEnd;
+                                            break;
+                                        case String:
+                                            sExpires = "; expires=" + vEnd;
+                                            break;
+                                        case Date:
+                                            sExpires = "; expires=" + vEnd.toUTCString();
+                                            break;
+                                    }
+                                }
+                                document.cookie = encodeURIComponent(sKey) + "=" + encodeURIComponent(sValue) + sExpires + (sDomain ? "; domain=" + sDomain : "") + (sPath ? "; path=" + sPath : "") + (bSecure ? "; secure" : "");
+                                return true;
+                            },
+                            removeItem: function(sKey, sPath, sDomain) {
+                                if (!sKey || !this.hasItem(sKey)) {
+                                    return false;
+                                }
+                                document.cookie = encodeURIComponent(sKey) + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT" + (sDomain ? "; domain=" + sDomain : "") + (sPath ? "; path=" + sPath : "");
+                                return true;
+                            },
+                            hasItem: function(sKey) {
+                                return (new RegExp("(?:^|;\s*)" + encodeURIComponent(sKey).replace(/[\-\.\+\*]/g, "\$&") + "\s*\=")).test(document.cookie);
+                            },
+                            keys: /* optional method: you can safely remove it! */ function() {
+                                var aKeys = document.cookie.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, "").split(/\s*(?:\=[^;]*)?;\s*/);
+                                for (var nIdx = 0; nIdx < aKeys.length; nIdx++) {
+                                    aKeys[nIdx] = decodeURIComponent(aKeys[nIdx]);
+                                }
+                                return aKeys;
+                            }
+                        };
+                            function initPlayer(playlist) {
+                                var player = jwplayer("mediaplayer");
+                                player.setup({
+                                    "sources": [
+                                        {   "file": playlist,
+                                            "type": "hls",
+                                        }
+                                    ],
+                                    playbackRateControls: true,
+                                    skin: {
+                                        name: "tube",
+                                    },
+                                    image: "https://phimmoichill.my/upload/images/info/f-valentines-day.jpg",
+                                    
+                                    width: "100%",
+                                    height: "100%",
+                                    volume: 100,
+                                    preload: "auto",
+bufferLength: 45,
+bufferAhead: 90,
+maxBufferLength: 180,
+bufferResume: 20,
+                                    primary: "html5",
+                                    androidhls: true,
+                                    aspectratio: "16:9",
+                                    autostart:true,
+                                    cast: {},
+                                    /*advertising: {
+                                    client: "vast",
+                                        admessage: "Vui Lòng chờ XX giây",
+                                        skiptext: "Bỏ Qua Ngay",
+                                        skipmessage: "Bỏ ADS sau xxs",
+                                            schedule: {
+                                                "myAds": {
+                                                    "offset": "pre",
+                                                    "tag": "https://phimmoichill.net/pm.xml"
+                                                }
+                                            }
+                                        }, */  
+                                });
+                                player.addButton("/media/img/forward-10.png", "Next 10s", function () {
+                                    player.seek(player.getPosition() + 10);
+                                }, "Next 10s");
+                                player.addButton("/media/img/back-10.png", "Back 10s", function () {
+                                    player.seek(player.getPosition() - 10);
+                                }, "Back 10s");
+                                player.on("error", function (message) {
+                                    setTimeout(function () {
+                                        player.remove();
+                                        var activeBtn = document.querySelector('.server-select-btn.active');
+                                        var currentIndex = activeBtn ? parseInt(activeBtn.getAttribute('data-index')) || 0 : 0;
+                                        var nextIndex = currentIndex + 1;
+                                        var totalServers = 4;
+                                        
+                                        if (nextIndex < totalServers) {
+                                            var allBtns = document.querySelectorAll('.server-select-btn');
+                                            allBtns.forEach(function(btn) {
+                                                var btnIndex = parseInt(btn.getAttribute('data-index'));
+                                                btn.classList.remove('active');
+                                                var icon = btn.querySelector('i');
+                                                if (icon) {
+                                                    if (btnIndex === nextIndex) {
+                                                        btn.classList.add('active');
+                                                        icon.className = 'fa fa-check';
+                                                    } else {
+                                                        icon.className = 'fa fa-server';
+                                                    }
+                                                }
+                                            });
+                                            ChangePlayer(126216, nextIndex);
+                                        } else {
+                                            document.getElementById('mediaplayer').innerHTML = '<img src="https://i.imgur.com/J9OoJl1.jpg" style="width:100%;height:100%;" />';
+                                        }
+                                    }, 1500);
+                                });
+                                player.on("setupError", function (message) {
+                                    setTimeout(function () {
+                                        player.remove();
+                                        var activeBtn = document.querySelector('.server-select-btn.active');
+                                        var currentIndex = activeBtn ? parseInt(activeBtn.getAttribute('data-index')) || 0 : 0;
+                                        var nextIndex = currentIndex + 1;
+                                        var totalServers = 4;
+                                        
+                                        if (nextIndex < totalServers) {
+                                            var allBtns = document.querySelectorAll('.server-select-btn');
+                                            allBtns.forEach(function(btn) {
+                                                var btnIndex = parseInt(btn.getAttribute('data-index'));
+                                                btn.classList.remove('active');
+                                                var icon = btn.querySelector('i');
+                                                if (icon) {
+                                                    if (btnIndex === nextIndex) {
+                                                        btn.classList.add('active');
+                                                        icon.className = 'fa fa-check';
+                                                    } else {
+                                                        icon.className = 'fa fa-server';
+                                                    }
+                                                }
+                                            });
+                                            ChangePlayer(126216, nextIndex);
+                                        } else {
+                                            document.getElementById('mediaplayer').innerHTML = '<img src="https://i.imgur.com/J9OoJl1.jpg" style="width:100%;height:100%;" />';
+                                        }
+                                    }, 1500);
+                                });
+                                player.on("time", function(e) {
+                                $cookie.setItem("resumepm126216", Math.floor(e.position) + ":" + player.getDuration(), 82000, window.location.pathname)
+                            });
+                                    player.on("firstFrame", function() {    
+                                        var cookieData = $cookie.getItem("resumepm126216");
+                                        if (cookieData) {
+                                            var resumeAt = cookieData.split(":")[0],
+                                                videoDur = cookieData.split(":")[1];
+                                            if (parseInt(resumeAt) < parseInt(videoDur)) {
+                                                (resumeAt == 0) ? resumeAt = 1: "";
+                                                player.seek(resumeAt);
+                                                toastr.info("Hệ thống nhận thấy bạn đang xem bộ phim này. Mời bạn tiếp tục xem!")
+                                            } else if (cookieData && !(parseInt(resumeAt) < parseInt(videoDur))) {
+                                                logMessage("Video ended last time! Will skip resume behavior")
+                                            }
+                                        } else {
+                                        }
+                                    });
+                                window.autoNextTriggered = false;
+                                player.on("time", function(e) {
+                                    if(!window.autoNextTriggered && typeof autoNextEpisode === 'function') {
+                                        var duration = player.getDuration();
+                                        var position = player.getPosition();
+                                        var remaining = duration - position;
+                                        if(remaining > 0 && remaining <= 20) {
+                                            window.autoNextTriggered = true;
+                                            autoNextEpisode();
+                                        }
+                                    }
+                                });
+                                player.on("complete", function(e) {
+                                    if(!window.autoNextTriggered && typeof autoNextEpisode === 'function') {
+                                        autoNextEpisode();
+                                    } else if(autonext == true){
+                                        var $elm = $('.episodes li a.active');
+                                        if($elm.length){
+                                            var nextEpisode = $elm.closest('li').next().find('a').attr('href');
+                                            if(typeof(nextEpisode) != 'undefined'){
+                                                location.href = nextEpisode;
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            iniPlayers("a28693d69e2d8e0ceb3a104aa0dc8a19",2,);
+                            </script>

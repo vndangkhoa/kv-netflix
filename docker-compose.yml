@@ -3,7 +3,7 @@ version: '3.8'
 services:
   streamflow:
     # build: .
-    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.1
+    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.6
     container_name: streamflow
     platform: linux/amd64
     ports:

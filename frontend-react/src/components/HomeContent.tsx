@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { Play } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import type { Movie } from '../types';
 import MovieRow from './MovieRow';
+import { MovieCard } from './MovieCard';
 import { CATEGORIES } from '../constants';
 
 import { useMyList } from '../hooks/useMyList';
@@ -70,8 +70,8 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
                 } else {
                     setMovies(prev => page === 1 ? data : [...prev, ...data]);
                 }
-            } catch (err) {
-                console.error("Failed to fetch movies", err);
+            } catch {
+                console.error("Failed to fetch movies");
             } finally {
                 setLoading(false);
                 setFetchingMore(false);
@@ -141,15 +141,15 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
                         <>
                             {lastWatched.director && (
                                 <MovieRow
-                                    title={`Đạo diễn ${lastWatched.director}`}
-                                    searchQuery={lastWatched.director}
+                                    title={`Đạo diễn ${lastWatched.director.replace(/,$/, '').trim()}`}
+                                    searchQuery={lastWatched.director.replace(/,$/, '').trim()}
                                     key={`dir-${lastWatched.id}`}
                                 />
                             )}
                             {lastWatched.cast && lastWatched.cast.length > 0 && (
                                 <MovieRow
-                                    title={`Diễn viên ${lastWatched.cast[0]}`}
-                                    searchQuery={lastWatched.cast[0]}
+                                    title={`Diễn viên ${lastWatched.cast[0].replace(/,$/, '').trim()}`}
+                                    searchQuery={lastWatched.cast[0].replace(/,$/, '').trim()}
                                     key={`act-${lastWatched.id}`}
                                 />
                             )}
@@ -183,61 +183,19 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
                     {getTitle()}
                 </h2>
 
-                <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-                    {movies.map((movie, index) => {
-                        return (
-                            <div
-                                key={`${movie.id}-${index}`}
-                                className="relative group flex flex-col h-full"
-                            >
-                                <Link to={`/watch/${movie.slug}`} className="block relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-[#1a1a1a]">
-                                    <img
-                                        src={`https://wsrv.nl/?url=${encodeURIComponent(movie.thumbnail.replace(/^https?:\/\//, '').replace('img.ophim1.com', 'ssl:img.ophim1.com'))}&w=300&output=webp`}
-                                        alt={movie.title}
-                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                        loading="lazy"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                        <div className="bg-white/20 backdrop-blur-md p-3 rounded-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                            <Play className="w-5 h-5 text-white fill-current" />
-                                        </div>
-                                    </div>
-                                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                                        {movie.quality && (
-                                            <div className="bg-cyan-500/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold text-black uppercase tracking-wider shadow-lg">
-                                                {movie.quality}
-                                            </div>
-                                        )}
-                                        {movie.lang && (
-                                            <div className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold border border-white/20 text-gray-200">
-                                                {movie.lang}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {movie.time && (
-                                        <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/10 text-white flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                                            {movie.time}
-                                        </div>
-                                    )}
-                                </Link>
-                                <div className="mt-2">
-                                    <h3 className="font-medium text-white text-sm truncate group-hover:text-cyan-400 transition-colors">
-                                        {movie.title}
-                                    </h3>
-                                </div>
-                            </div>
-                        );
-                    })}
+                <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
+                    {movies.map((movie, index) => (
+                        <MovieCard key={`${movie.id}-${index}`} movie={movie} />
+                    ))}
                 </div>
 
                 {/* Sentinel element for infinite scroll */}
                 <div ref={lastElementRef} className="h-10 w-full" />
 
                 {loading && (
-                    <div className="grid grid-cols-2 min-[450px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 mt-4">
-                        {[...Array(14)].map((_, i) => (
-                            <div key={i} className="aspect-[2/3] bg-white/5 rounded-xl animate-pulse" />
+                    <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4 mt-4">
+                        {[...Array(12)].map((_, i) => (
+                            <div key={i} className="aspect-[2/3] bg-white/5 rounded-lg animate-pulse" />
                         ))}
                     </div>
                 )}

@@ -1,4 +1,4 @@
-# StreamFlow V3.1
+# StreamFlow V3.6
 
 StreamFlow is a high-performance video streaming web application featuring a pure Go backend and a modern React + Tailwind frontend.
 
@@ -59,7 +59,7 @@ StreamFlow is a high-performance video streaming web application featuring a pur
 
    services:
      streamflow:
-       image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3
+       image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.6
        container_name: streamflow
        platform: linux/amd64
        ports:

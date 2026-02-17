@@ -11,8 +11,8 @@ android {
         applicationId = "com.streamflow.tv"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 37
+        versionName = "3.7.0"
     }
 
     buildTypes {

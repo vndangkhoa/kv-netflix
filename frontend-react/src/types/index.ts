@@ -10,6 +10,7 @@ export interface Movie {
     category: string;
     time?: string;
     lang?: string;
+    provider?: string;
     director?: string;
     cast?: string[];
 }
@@ -29,6 +30,7 @@ export interface Episode {
     number: number;
     title: string;
     url: string;
+    server_name?: string;
 }
 
 export interface VideoSource {
