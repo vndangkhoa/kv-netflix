@@ -57,7 +57,7 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`{"status":"healthy", "version":"v3.6-go"}`))
+			w.Write([]byte(`{"status":"healthy", "version":"v3.7"}`))
 		})
 
 		api.RegisterRoutes(r, handler)

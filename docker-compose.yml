@@ -2,19 +2,21 @@ version: '3.8'
 
 services:
   streamflow:
-    # build: .
-    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.6
+    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.7
     container_name: streamflow
     platform: linux/amd64
     ports:
       - "3478:8000"
     environment:
       - DATABASE_URL=/app/data/streamflow.db
-    # - TMDB_API_KEY=${TMDB_API_KEY}
+      - PORT=8000
+      - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data
-    restart: always
-
-volumes:
-  streamflow_data:
-  streamflow_cache:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

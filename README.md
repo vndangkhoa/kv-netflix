@@ -1,4 +1,4 @@
-# StreamFlow V3.6
+# StreamFlow V3.7
 
 StreamFlow is a high-performance video streaming web application featuring a pure Go backend and a modern React + Tailwind frontend.
 
@@ -8,15 +8,16 @@ StreamFlow is a high-performance video streaming web application featuring a pur
 - **High Performance**: Backend written in Go (Golang) for speed and concurrency.
 - **Smart Scraping**: Integrated scraping engine (Rophim) with automated episode extraction.
 - **HLS Streaming**: Native HLS playback support.
-- **Android TV Support (New)**: Optimized TV client with D-pad controls and 10s skip.
+- **Android TV Support**: Optimized TV client with D-pad controls and 10s skip.
 - **Performance Optimized**: Parallel API fetching and global image caching for instant loading.
 - **Android TV App**: Native TV app support with dedicated APK available for download.
 - **Docker Ready**: Multi-stage Docker build optimized for NAS Synology (linux/amd64).
+- **PWA Support**: Install as a progressive web app on mobile devices.
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Go (Chi Router, GORM, GoQuery)
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS
+- **Backend**: Go 1.23 (Chi Router, GORM, GoQuery)
+- **Frontend**: React 19, TypeScript, Vite 7, Tailwind CSS 4
 - **Database**: SQLite
 - **Deployment**: Docker
 
@@ -24,7 +25,7 @@ StreamFlow is a high-performance video streaming web application featuring a pur
 
 ### Prerequisites
 
-- Go 1.22+
+- Go 1.23+
 - Node.js 20+
 - Docker (optional)
 
@@ -48,28 +49,23 @@ StreamFlow is a high-performance video streaming web application featuring a pur
 
 ### Docker Deployment (Recommended for NAS Synology)
 
-1. **Environmental Variables**: Create a `.env` file or set them in your NAS:
-   ```env
-   TMDB_API_KEY=your_api_key_here
-   ```
-
-2. **Run with Docker Compose**:
+1. **Run with Docker Compose**:
    ```yaml
    version: '3.8'
 
    services:
      streamflow:
-       image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.6
+       image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.7
        container_name: streamflow
        platform: linux/amd64
        ports:
          - "3478:8000"
        environment:
          - DATABASE_URL=/app/data/streamflow.db
-         - TMDB_API_KEY=${TMDB_API_KEY}
+         - TZ=Asia/Ho_Chi_Minh
        volumes:
          - ./data:/app/data
-       restart: always
+       restart: unless-stopped
    ```
 
    ```bash
