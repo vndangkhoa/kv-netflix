@@ -1,86 +1,148 @@
 # StreamFlow V3.7
 
-StreamFlow is a high-performance video streaming web application featuring a pure Go backend and a modern React + Tailwind frontend.
+A high-performance video streaming web application with a pure Go backend and modern React + Tailwind frontend.
 
-## 🚀 Features
+## Features
 
-- **Modern UI**: Built with React, TypeScript, and Tailwind CSS for a premium, responsive experience.
-- **High Performance**: Backend written in Go (Golang) for speed and concurrency.
-- **Smart Scraping**: Integrated scraping engine (Rophim) with automated episode extraction.
-- **HLS Streaming**: Native HLS playback support.
-- **Android TV Support**: Optimized TV client with D-pad controls and 10s skip.
-- **Performance Optimized**: Parallel API fetching and global image caching for instant loading.
-- **Android TV App**: Native TV app support with dedicated APK available for download.
-- **Docker Ready**: Multi-stage Docker build optimized for NAS Synology (linux/amd64).
-- **PWA Support**: Install as a progressive web app on mobile devices.
+- **Modern UI** - React 19, TypeScript, Vite 7, Tailwind CSS 4
+- **High Performance** - Go backend with concurrent API fetching
+- **Smart Scraping** - Multi-provider support (Ophim, PhimMoiChill)
+- **HLS Streaming** - Native HLS playback with proxy support
+- **Android TV** - Native TV app with D-pad controls and 10s skip
+- **PWA Support** - Install as a progressive web app
+- **Docker Ready** - Multi-stage build for Synology NAS (linux/amd64)
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Backend**: Go 1.23 (Chi Router, GORM, GoQuery)
-- **Frontend**: React 19, TypeScript, Vite 7, Tailwind CSS 4
-- **Database**: SQLite
-- **Deployment**: Docker
+| Component | Technology |
+|-----------|------------|
+| Backend | Go 1.24, Chi Router, GORM, SQLite |
+| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS 4 |
+| Mobile | Android TV (Kotlin + Jetpack Compose) |
+| Deployment | Docker multi-stage build |
 
-## 📦 Installation
+## Quick Start
 
-### Prerequisites
+### Docker (Recommended)
 
-- Go 1.23+
-- Node.js 20+
-- Docker (optional)
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  streamflow:
+    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.7
+    container_name: streamflow
+    platform: linux/amd64
+    ports:
+      - "3478:8000"
+    environment:
+      - DATABASE_URL=/app/data/streamflow.db
+      - TZ=Asia/Ho_Chi_Minh
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+```
+
+```bash
+docker-compose up -d
+```
+
+Access at: `http://YOUR_NAS_IP:3478`
 
 ### Local Development
 
-1. **Backend**
-   ```bash
-   cd backend
-   go mod tidy
-   go run ./cmd/server/main.go
-   ```
-   Server runs at `http://localhost:8000`.
+**Prerequisites:** Go 1.24+, Node.js 20+
 
-2. **Frontend**
-   ```bash
-   cd frontend-react
-   npm install
-   npm run dev
-   ```
-   Frontend runs at `http://localhost:5173` (proxying to backend).
+```bash
+# Backend (port 8000)
+cd backend
+go mod tidy
+go run ./cmd/server/main.go
 
-### Docker Deployment (Recommended for NAS Synology)
+# Frontend (port 5173)
+cd frontend-react
+npm install
+npm run dev
+```
 
-1. **Run with Docker Compose**:
-   ```yaml
-   version: '3.8'
+## API Endpoints
 
-   services:
-     streamflow:
-       image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.7
-       container_name: streamflow
-       platform: linux/amd64
-       ports:
-         - "3478:8000"
-       environment:
-         - DATABASE_URL=/app/data/streamflow.db
-         - TZ=Asia/Ho_Chi_Minh
-       volumes:
-         - ./data:/app/data
-       restart: unless-stopped
-   ```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/videos/home` | GET | Get home page movies |
+| `/api/videos/search?q=` | GET | Search movies |
+| `/api/videos/{slug}` | GET | Get movie details |
+| `/api/extract` | POST | Extract video URL |
+| `/api/stream?url=` | GET | Proxy video stream |
+| `/api/images/proxy?url=` | GET | Proxy images |
+| `/api/categories/genres` | GET | Get genre list |
+| `/api/categories/countries` | GET | Get country list |
 
-   ```bash
-   docker-compose up -d
-   ```
+## Project Structure
 
-Access the application at `http://YOUR_NAS_IP:3478`. You can download the **Android TV App** directly from the navigation bar once the webapp is running.
+```
+Streamflow/
+├── backend/
+│   ├── cmd/server/main.go      # Entry point
+│   ├── internal/
+│   │   ├── api/                # HTTP handlers & routes
+│   │   ├── config/             # Configuration
+│   │   ├── database/           # Database layer
+│   │   ├── models/             # Data models
+│   │   ├── scraper/            # Movie providers
+│   │   └── service/            # Business logic
+│   ├── go.mod
+│   └── go.sum
+├── frontend-react/
+│   ├── src/
+│   │   ├── components/         # React components
+│   │   ├── context/            # React context
+│   │   ├── hooks/              # Custom hooks
+│   │   ├── pages/              # Page components
+│   │   ├── themes/             # Theme variants
+│   │   └── types/              # TypeScript types
+│   ├── package.json
+│   └── vite.config.ts
+├── android-tv/                 # Android TV app
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+```
 
-## 📂 Project Structure
+## Changelog
 
-- `backend/` - Go source code
-- `frontend-react/` - React source code
-- `Dockerfile` - Multi-stage build definition
-- `docker-compose.yml` - Deployment configuration
+### v3.7 (Current)
+- Codebase cleanup and security improvements
+- Added SSRF protection with URL validation
+- Added graceful shutdown and config module
+- Added React ErrorBoundary and lazy loading
+- Refactored handlers to reduce code duplication
+- Updated to Go 1.24 and Node.js 20
+- Added healthcheck to Docker Compose
 
-## 📝 License
+### v3.6
+- Fixed duplicate episodes
+- Updated Android TV app
+
+### v3.5
+- Fixed extract 500 error
+- Fixed Android TV crash
+
+### v3.4
+- Prevent screen sleep during playback
+
+### v3.3
+- Rebranded to kv-netflix
+- Added PWA support
+
+## License
 
 MIT
