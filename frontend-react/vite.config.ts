@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -10,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'kv-netflix',
-        short_name: 'kv-netflix',
+        name: 'StreamFlow',
+        short_name: 'StreamFlow',
         description: 'Modern Movie Streaming Service',
         theme_color: '#141414',
         background_color: '#141414',
@@ -36,7 +35,7 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: false // Explicitly disable in dev to prevent lingering SW issues
+        enabled: false
       }
     })
   ],
@@ -48,5 +47,11 @@ export default defineConfig({
         secure: false,
       },
     },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
   },
 })

@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"log"
 	"mime"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"streamflow-backend/internal/api"
+	"streamflow-backend/internal/config"
 	"streamflow-backend/internal/database"
 	"streamflow-backend/internal/scraper"
 	"streamflow-backend/internal/service"
@@ -19,17 +24,12 @@ import (
 )
 
 func main() {
-	// Register .apk MIME type
 	mime.AddExtensionType(".apk", "application/vnd.android.package-archive")
 
-	// Initialize Database
-	dbPath := os.Getenv("DATABASE_URL")
-	if dbPath == "" {
-		dbPath = "streamflow.db"
-	}
-	database.InitDB(dbPath)
+	cfg := config.Load()
 
-	// Initialize Services
+	database.InitDB(cfg.DatabaseURL)
+
 	videoRepo := database.NewVideoRepository(database.DB)
 	ophimService := scraper.NewOphimScraper()
 	phimMoiService := scraper.NewPhimMoiChillScraper()
@@ -39,24 +39,22 @@ func main() {
 
 	providers := []scraper.MovieProvider{ophimService, phimMoiService}
 
-	// Initialize API Handler
 	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService)
 
 	r := chi.NewRouter()
 
-	// Middleware
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
+		ExposedHeaders:   []string{"Link", "X-Request-ID"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
-	// API Routes
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"status":"healthy", "version":"v3.6-go"}`))
@@ -65,16 +63,13 @@ func main() {
 		api.RegisterRoutes(r, handler)
 	})
 
-	// Static Files (Frontend)
 	workDir, _ := os.Getwd()
-	frontendDir := filepath.Join(workDir, "dist") // Production (Docker)
+	frontendDir := filepath.Join(workDir, "dist")
 
-	// Check if frontend build exists in local dist, otherwise try dev path
 	if _, err := os.Stat(frontendDir); os.IsNotExist(err) {
-		frontendDir = filepath.Join(workDir, "..", "frontend-react", "dist") // Development
+		frontendDir = filepath.Join(workDir, "..", "frontend-react", "dist")
 	}
 
-	// Check if frontend build exists
 	if _, err := os.Stat(frontendDir); os.IsNotExist(err) {
 		log.Println("Frontend build not found at", frontendDir)
 	} else {
@@ -82,19 +77,37 @@ func main() {
 		FileServer(r, "/", http.Dir(frontendDir))
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	log.Printf("Server starting on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		log.Fatal(err)
+	go func() {
+		log.Printf("Server starting on port %s", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
+
+	log.Println("Server exited")
 }
 
-// FileServer conveniently sets up a http.FileServer handler to serve
-// static files from a http.FileSystem.
 func FileServer(r chi.Router, path string, root http.FileSystem) {
 	if path != "/" && path[len(path)-1] != '/' {
 		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)

@@ -6,19 +6,34 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"streamflow-backend/internal/database"
 	"streamflow-backend/internal/models"
 	"streamflow-backend/internal/scraper"
 	"streamflow-backend/internal/service"
 
-	"regexp"
-	"sync"
-
 	"github.com/go-chi/chi/v5"
+)
+
+const (
+	defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+	defaultReferer   = "https://phimmoichill.my/"
+)
+
+var (
+	blockedHosts = []string{
+		"localhost",
+		"127.0.0.1",
+		"0.0.0.0",
+		"169.254.169.254",
+		"[::1]",
+	}
+	privateIPRegex = regexp.MustCompile(`^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|169\.254\.)`)
 )
 
 type Handler struct {
@@ -52,71 +67,11 @@ func (h *Handler) GetHomeVideos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	category := r.URL.Query().Get("category")
+	movies := h.fetchAndMergeMovies(func(p scraper.MovieProvider) ([]models.RophimMovie, error) {
+		return p.GetMoviesByCategory(category, page)
+	})
 
-	var providerResults [][]models.RophimMovie
-	maxLen := 0
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-
-	for _, provider := range h.Providers {
-		wg.Add(1)
-		go func(p scraper.MovieProvider) {
-			defer wg.Done()
-			movies, err := p.GetMoviesByCategory(category, page)
-			if err == nil {
-				mu.Lock()
-				providerResults = append(providerResults, movies)
-				if len(movies) > maxLen {
-					maxLen = len(movies)
-				}
-				mu.Unlock()
-			}
-		}(provider)
-	}
-	wg.Wait()
-
-	if len(providerResults) == 0 {
-		json.NewEncoder(w).Encode([]models.RophimMovie{})
-		return
-	}
-
-	var allMovies []models.RophimMovie
-	seenID := make(map[string]int)
-	seenTitle := make(map[string]int)
-
-	// Interleave results and deduplicate
-	for i := 0; i < maxLen; i++ {
-		for _, movies := range providerResults {
-			if i < len(movies) {
-				movie := movies[i]
-
-				// Dedup by ID
-				if idx, found := seenID[movie.ID]; found {
-					h.mergeMovieMetadata(&allMovies[idx], &movie)
-					continue
-				}
-
-				// Dedup by Title
-				titleKey := normalizeKey(movie.OriginalTitle)
-				if titleKey == "" {
-					titleKey = normalizeKey(movie.Title)
-				}
-				if idx, found := seenTitle[titleKey]; found && titleKey != "" {
-					h.mergeMovieMetadata(&allMovies[idx], &movie)
-					continue
-				}
-
-				allMovies = append(allMovies, movie)
-				currIdx := len(allMovies) - 1
-				seenID[movie.ID] = currIdx
-				if titleKey != "" {
-					seenTitle[titleKey] = currIdx
-				}
-			}
-		}
-	}
-
-	json.NewEncoder(w).Encode(allMovies)
+	json.NewEncoder(w).Encode(movies)
 }
 
 func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +86,16 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 
+	movies := h.fetchAndMergeMovies(func(p scraper.MovieProvider) ([]models.RophimMovie, error) {
+		return p.Search(query, page)
+	})
+
+	json.NewEncoder(w).Encode(movies)
+}
+
+type movieFetcher func(p scraper.MovieProvider) ([]models.RophimMovie, error)
+
+func (h *Handler) fetchAndMergeMovies(fetch movieFetcher) []models.RophimMovie {
 	var providerResults [][]models.RophimMovie
 	maxLen := 0
 	var mu sync.Mutex
@@ -140,7 +105,7 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func(p scraper.MovieProvider) {
 			defer wg.Done()
-			movies, err := p.Search(query, page)
+			movies, err := fetch(p)
 			if err == nil {
 				mu.Lock()
 				providerResults = append(providerResults, movies)
@@ -153,6 +118,14 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 	}
 	wg.Wait()
 
+	if len(providerResults) == 0 {
+		return []models.RophimMovie{}
+	}
+
+	return h.mergeMovies(providerResults, maxLen)
+}
+
+func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int) []models.RophimMovie {
 	var allMovies []models.RophimMovie
 	seenID := make(map[string]int)
 	seenTitle := make(map[string]int)
@@ -186,7 +159,7 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(allMovies)
+	return allMovies
 }
 
 func (h *Handler) ExtractVideo(w http.ResponseWriter, r *http.Request) {
@@ -198,9 +171,10 @@ func (h *Handler) ExtractVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Direct HLS check: if URL ends with .m3u8, just return it as source
-	// But the frontend usually calls this if it needs to extract.
-	// If frontend handles m3u8 directly (as planned), this is fallback.
+	if err := validateURL(req.URL); err != nil {
+		http.Error(w, "invalid URL: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	info, err := h.Extractor.Extract(req.URL, "1080p")
 	if err != nil {
@@ -213,21 +187,27 @@ func (h *Handler) ExtractVideo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ProxyImage(w http.ResponseWriter, r *http.Request) {
-	url := r.URL.Query().Get("url")
+	imgURL := r.URL.Query().Get("url")
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 
-	if url == "" {
+	if imgURL == "" {
 		http.Error(w, "url parameter required", http.StatusBadRequest)
 		return
 	}
 
-	data, contentType, err := h.Image.GetProxiedImage(url, width)
+	if err := validateURL(imgURL); err != nil {
+		http.Error(w, "invalid URL: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	data, contentType, err := h.Image.GetProxiedImage(imgURL, width)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
 
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.Write(data)
 }
 
@@ -242,7 +222,6 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 	var primaryProviderIdx int = -1
 	var success bool
 
-	// 1. Find the primary movie from the provider that owns this slug
 	for i, provider := range h.Providers {
 		movie, err := provider.GetMovieDetail(slug)
 		if err == nil && movie != nil {
@@ -258,13 +237,11 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Try to find the same movie in other providers to get more episodes
 	for i, provider := range h.Providers {
 		if i == primaryProviderIdx {
 			continue
 		}
 
-		// Search by OriginalTitle or Title
 		searchQuery := primaryMovie.OriginalTitle
 		if searchQuery == "" {
 			searchQuery = primaryMovie.Title
@@ -273,28 +250,22 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		results, err := provider.Search(searchQuery, 1)
 		if err == nil {
 			for _, res := range results {
-				// Fuzzy match on normalized title
 				if normalizeKey(res.Title) == normalizeKey(primaryMovie.Title) ||
 					(primaryMovie.OriginalTitle != "" && normalizeKey(res.OriginalTitle) == normalizeKey(primaryMovie.OriginalTitle)) {
-					// Found a match! Get details to retrieve episodes
 					details, err := provider.GetMovieDetail(res.Slug)
 					if err == nil && details != nil {
 						h.mergeMovieMetadata(primaryMovie, details)
 					}
-					break // Only one match per provider
+					break
 				}
 			}
 		}
 	}
 
-	// 3. Sort episodes numerically
-	// 3. Sort episodes numerically
 	sort.Slice(primaryMovie.Episodes, func(i, j int) bool {
 		return primaryMovie.Episodes[i].Number < primaryMovie.Episodes[j].Number
 	})
 
-	// Final pass: Consolidate episodes by number to remove duplicates from single provider (e.g. Ophim multi-server)
-	// We re-build the slice, keeping only the first occurrence of each episode number.
 	if len(primaryMovie.Episodes) > 0 {
 		uniqueEps := make([]models.Episode, 0)
 		seenEpNums := make(map[int]bool)
@@ -347,16 +318,25 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create request to upstream video server
+	if err := validateURL(videoURL); err != nil {
+		http.Error(w, "invalid URL: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	parsedURL, err := url.Parse(videoURL)
+	if err != nil {
+		http.Error(w, "invalid url", http.StatusBadRequest)
+		return
+	}
+
 	req, err := http.NewRequest("GET", videoURL, nil)
 	if err != nil {
 		http.Error(w, "invalid url", http.StatusBadRequest)
 		return
 	}
 
-	// Set headers to mimic browser request
-	req.Header.Set("Referer", "https://phimmoichill.my/")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", defaultReferer)
+	req.Header.Set("User-Agent", defaultUserAgent)
 	req.Header.Set("Range", r.Header.Get("Range"))
 
 	client := &http.Client{}
@@ -367,37 +347,11 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// Check if this is a manifest (.m3u8)
-	if strings.Contains(videoURL, ".m3u8") {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("Stream proxy read error: %v\n", err)
-			http.Error(w, "read error", http.StatusInternalServerError)
-			return
-		}
-
-		content := string(body)
-
-		// Regex to find absolute URLs in the manifest
-		re := regexp.MustCompile(`(https?://[^\s"']+)`)
-
-		// Use a relative path so it works through the Vite proxy (localhost:5173 -> localhost:8000)
-		// and doesn't trigger CORS on its own.
-		proxyBase := "/api/stream?url="
-
-		newContent := re.ReplaceAllStringFunc(content, func(match string) string {
-			// Proxy everything for these masters to be safe
-			return proxyBase + url.QueryEscape(match)
-		})
-
-		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(resp.StatusCode)
-		w.Write([]byte(newContent))
+	if strings.HasSuffix(parsedURL.Path, ".m3u8") {
+		h.handleHLSManifest(w, resp)
 		return
 	}
 
-	// For normal segments (TS, MP4), stream the body directly
 	for k, v := range resp.Header {
 		w.Header()[k] = v
 	}
@@ -405,8 +359,30 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
+
+func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response) {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Stream proxy read error: %v\n", err)
+		http.Error(w, "read error", http.StatusInternalServerError)
+		return
+	}
+
+	content := string(body)
+	re := regexp.MustCompile(`(https?://[^\s"']+)`)
+	proxyBase := "/api/stream?url="
+
+	newContent := re.ReplaceAllStringFunc(content, func(match string) string {
+		return proxyBase + url.QueryEscape(match)
+	})
+
+	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(resp.StatusCode)
+	w.Write([]byte(newContent))
+}
+
 func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
-	// Prioritize Ophim thumbnail
 	isNewOphim := strings.Contains(new.Thumbnail, "ophim") || strings.Contains(new.Thumbnail, "img.ophim1.com")
 	isExistingOphim := strings.Contains(existing.Thumbnail, "ophim") || strings.Contains(existing.Thumbnail, "img.ophim1.com")
 
@@ -414,7 +390,6 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 		existing.Thumbnail = new.Thumbnail
 	}
 
-	// Prioritize Quality label that contains episode info (e.g. "Tập" or "Hoàn tất")
 	isNewDetailed := strings.Contains(new.Quality, "Tập") || strings.Contains(new.Quality, "Hoàn tất")
 	isExistingDetailed := strings.Contains(existing.Quality, "Tập") || strings.Contains(existing.Quality, "Hoàn tất")
 
@@ -422,10 +397,7 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 		existing.Quality = new.Quality
 	}
 
-	// Merge episodes by number ONLY to prevent duplicates in UI
-	// This means we prioritized the Provider that came first (usually Ophim)
-	// unless the existing episode has no URL.
-	epMap := make(map[int]int) // map[epNum]existingSliceIndex
+	epMap := make(map[int]int)
 	for i := range existing.Episodes {
 		epMap[existing.Episodes[i].Number] = i
 	}
@@ -433,14 +405,12 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 	for i := range new.Episodes {
 		newEp := &new.Episodes[i]
 		if idx, exists := epMap[newEp.Number]; exists {
-			// If duplicate number, only replace if existing is empty
 			if existing.Episodes[idx].URL == "" && newEp.URL != "" {
 				existing.Episodes[idx].URL = newEp.URL
 				existing.Episodes[idx].Title = newEp.Title
 				existing.Episodes[idx].ServerName = newEp.ServerName
 			}
 		} else {
-			// New episode number
 			epMap[newEp.Number] = len(existing.Episodes)
 			existing.Episodes = append(existing.Episodes, *newEp)
 		}
@@ -449,7 +419,35 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 
 func normalizeKey(s string) string {
 	s = strings.ToLower(s)
-	// Remove all non-alphanumeric characters for fuzzy title match
 	reg := regexp.MustCompile("[^a-z0-9]+")
 	return reg.ReplaceAllString(s, "")
+}
+
+func validateURL(rawURL string) error {
+	if rawURL == "" {
+		return fmt.Errorf("URL is empty")
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL format")
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("only http and https protocols are allowed")
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+
+	for _, blocked := range blockedHosts {
+		if host == blocked || strings.HasPrefix(host, blocked+".") {
+			return fmt.Errorf("access to this host is blocked")
+		}
+	}
+
+	if privateIPRegex.MatchString(host) {
+		return fmt.Errorf("access to private IP addresses is blocked")
+	}
+
+	return nil
 }

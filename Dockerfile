@@ -7,7 +7,7 @@ COPY frontend-react/ .
 RUN npm run build
 
 # Stage 2: Build Image (Backend)
-FROM golang:1.25-alpine AS backend-builder
+FROM golang:1.23-alpine AS backend-builder
 WORKDIR /app/backend
 # Install build dependencies
 RUN apk add --no-cache gcc musl-dev
@@ -41,7 +41,6 @@ RUN mkdir -p data
 # Environment variables
 ENV PORT=8000
 ENV DATABASE_URL=/app/data/streamflow.db
-ENV GIN_MODE=release
 
 # Expose port
 EXPOSE 8000

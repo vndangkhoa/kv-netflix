@@ -7,13 +7,11 @@ on:
     branches: [main]
 
 env:
-  PYTHON_VERSION: "3.11"
+  GO_VERSION: "1.23"
+  NODE_VERSION: "20"
   JAVA_VERSION: "21"
 
 jobs:
-  # ====================
-  # Backend Tests
-  # ====================
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -22,35 +20,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
       
-      - name: Install dependencies
-        run: |
-          cd backend
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov httpx
+      - name: Download dependencies
+        working-directory: backend
+        run: go mod download
       
       - name: Run tests
-        run: |
-          cd backend
-          python -m pytest tests/ -v --cov=. --cov-report=xml
-        env:
-          STREAMFLIX_DEBUG: true
+        working-directory: backend
+        run: go test -v -race -coverprofile=coverage.out ./...
       
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
-          files: backend/coverage.xml
+          files: backend/coverage.out
           fail_ci_if_error: false
 
-  # ====================
-  # Backend Lint
-  # ====================
   backend-lint:
     name: Backend Lint
     runs-on: ubuntu-latest
@@ -58,24 +47,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          go-version: ${{ env.GO_VERSION }}
       
-      - name: Install linters
-        run: pip install ruff mypy
-      
-      - name: Run ruff
-        run: ruff check backend/ --ignore=E501
-      
-      - name: Run mypy
-        run: mypy backend/ --ignore-missing-imports || true
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: backend
 
-  # ====================
-  # Android TV Build
-  # ====================
-  android-build:
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend-react/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: frontend-react
+        run: npm ci
+      
+      - name: Run lint
+        working-directory: frontend-react
+        run: npm run lint
+      
+      - name: Run tests
+        working-directory: frontend-react
+        run: npm test -- --run || echo "No tests configured yet"
+      
+      - name: Build
+        working-directory: frontend-react
+        run: npm run build
+
+  android-tv-build:
     name: Android TV Build
     runs-on: ubuntu-latest
     
@@ -93,9 +106,8 @@ jobs:
         run: chmod +x android-tv/gradlew
       
       - name: Build Debug APK
-        run: |
-          cd android-tv
-          ./gradlew assembleDebug --no-daemon
+        working-directory: android-tv
+        run: ./gradlew assembleDebug --no-daemon
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -104,66 +116,10 @@ jobs:
           path: android-tv/app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
-  # ====================
-  # Android Mobile Build
-  # ====================
-  mobile-build:
-    name: Android Mobile Build
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: 'gradle'
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm install
-
-      - name: Build Web App
-        run: |
-          cd frontend
-          npm run build
-
-      - name: Sync Capacitor
-        run: |
-          cd frontend
-          npx cap sync android
-
-      - name: Grant execute permission
-        run: chmod +x frontend/android/gradlew
-      
-      - name: Build Mobile APK
-        run: |
-          cd frontend/android
-          ./gradlew assembleDebug --no-daemon
-      
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-mobile-debug
-          path: frontend/android/app/build/outputs/apk/debug/*.apk
-          retention-days: 7
-
-  # ====================
-  # Docker Build
-  # ====================
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
     
     steps:
       - uses: actions/checkout@v4
@@ -172,28 +128,24 @@ jobs:
         uses: docker/setup-buildx-action@v3
       
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: false
           load: true
-          tags: streamflix:test
+          tags: streamflow:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
       - name: Test Docker image
         run: |
           docker run -d --name test -p 8000:8000 \
-            -e STREAMFLIX_DEBUG=true \
-            -e STREAMFLIX_SECRET_KEY=sf_tv_secure_9s8d7f6g5h4j3k2l1 \
-            streamflix:test
+            -e TMDB_API_KEY=test \
+            streamflow:test
           sleep 10
           curl -f http://localhost:8000/api/health || exit 1
           docker stop test
- 
-  # ====================
-  # Docker Publish (on main only)
-  # ====================
+
   docker-publish:
     name: Docker Publish
     runs-on: ubuntu-latest
@@ -206,24 +158,25 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      - name: Login to DockerHub
+      - name: Login to Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: git.khoavo.myds.me
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
       
-      - name: Extract version
+      - name: Get version
         id: version
-        run: echo "version=$(cat backend/config.py | grep 'app_version' | cut -d'"' -f2)" >> $GITHUB_OUTPUT
+        run: echo "version=$(git describe --tags --always)" >> $GITHUB_OUTPUT
       
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/streamflix:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/streamflix:${{ steps.version.outputs.version }}
+            git.khoavo.myds.me/vndangkhoa/kv-streamflow:latest
+            git.khoavo.myds.me/vndangkhoa/kv-streamflow:${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

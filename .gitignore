@@ -16,12 +16,33 @@ yarn-error.log
 frontend/dist/
 frontend/.cache/
 
-# Debug files
+# Debug files and temp outputs
 *.png
 !**/res/**/*.png
 debug_*.py
 build_log*.txt
 *.log
+*_response.json
+payload.json
+
+# Backend debug/scraper output files
+backend/*.html
+backend/*.txt
+backend/*.js
+backend/*.json
+!backend/go.json
+
+# Binaries and executables
+*.exe
+*.dll
+*.so
+*.dylib
+backend/server
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Android TV
 android-tv/.gradle/
@@ -35,7 +56,8 @@ android-tv/.kotlin/
 release/
 *.apk
 
-# Environment
+# Environment and IDE
 .agent/
 .vscode/
 .DS_Store
+.idea/
