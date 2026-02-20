@@ -204,14 +204,15 @@ func (s *PhimMoiChillScraper) GetMovieDetail(slug string) (*models.RophimMovie, 
 
 		epNum := 0
 		if strings.EqualFold(epName, "Full") {
-			epNum = 1
-		} else {
-			// Try "Tập 1", "Tập 2"
-			fmt.Sscanf(epName, "Tập %d", &epNum)
+			// Single-movie "Full" — will be handled by the fallback below
+			// Don't assign epNum=1 as it collides with real Episode 1 in series
+			return
 		}
+		// Try "Tập 1", "Tập 2"
+		fmt.Sscanf(epName, "Tập %d", &epNum)
 
 		if epNum == 0 {
-			// Try to extract from title if current text is just "Tap X"
+			// Try plain number
 			fmt.Sscanf(epName, "%d", &epNum)
 		}
 

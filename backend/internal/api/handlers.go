@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 
 	"streamflow-backend/internal/database"
 	"streamflow-backend/internal/models"
@@ -18,6 +19,9 @@ import (
 	"streamflow-backend/internal/service"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -128,6 +132,7 @@ func (h *Handler) fetchAndMergeMovies(fetch movieFetcher) []models.RophimMovie {
 func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int) []models.RophimMovie {
 	var allMovies []models.RophimMovie
 	seenID := make(map[string]int)
+	seenSlug := make(map[string]int)
 	seenTitle := make(map[string]int)
 
 	for i := 0; i < maxLen; i++ {
@@ -135,11 +140,22 @@ func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int
 			if i < len(movies) {
 				movie := movies[i]
 
+				// Check 1: Exact ID match
 				if idx, found := seenID[movie.ID]; found {
 					h.mergeMovieMetadata(&allMovies[idx], &movie)
 					continue
 				}
 
+				// Check 2: Slug match (e.g. "vu-tru-cua-doi-ta" from both providers)
+				slugKey := normalizeKey(movie.Slug)
+				if slugKey != "" {
+					if idx, found := seenSlug[slugKey]; found {
+						h.mergeMovieMetadata(&allMovies[idx], &movie)
+						continue
+					}
+				}
+
+				// Check 3: Normalized title match
 				titleKey := normalizeKey(movie.OriginalTitle)
 				if titleKey == "" {
 					titleKey = normalizeKey(movie.Title)
@@ -152,6 +168,9 @@ func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int
 				allMovies = append(allMovies, movie)
 				currIdx := len(allMovies) - 1
 				seenID[movie.ID] = currIdx
+				if slugKey != "" {
+					seenSlug[slugKey] = currIdx
+				}
 				if titleKey != "" {
 					seenTitle[titleKey] = currIdx
 				}
@@ -418,7 +437,19 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 }
 
 func normalizeKey(s string) string {
+	if s == "" {
+		return ""
+	}
 	s = strings.ToLower(s)
+	// Strip Vietnamese diacritics: Vũ Trụ Của Đôi Ta → vu tru cua doi ta
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	result, _, err := transform.String(t, s)
+	if err == nil {
+		s = result
+	}
+	// Replace đ/Đ which NFD doesn't decompose
+	s = strings.ReplaceAll(s, "đ", "d")
+	// Keep only alphanumeric
 	reg := regexp.MustCompile("[^a-z0-9]+")
 	return reg.ReplaceAllString(s, "")
 }
