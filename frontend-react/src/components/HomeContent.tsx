@@ -68,7 +68,13 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
                 if (!data || data.length === 0) {
                     setHasMore(false);
                 } else {
-                    setMovies(prev => page === 1 ? data : [...prev, ...data]);
+                    setMovies(prev => {
+                        if (page === 1) return data;
+                        // Deduplicate arrays when appending to prevent React StrictMode or fast-scroll double fetches
+                        const existingIds = new Set(prev.map(m => m.id));
+                        const newUniqueMovies = data.filter((m: Movie) => !existingIds.has(m.id));
+                        return [...prev, ...newUniqueMovies];
+                    });
                 }
             } catch {
                 console.error("Failed to fetch movies");

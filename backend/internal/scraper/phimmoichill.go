@@ -236,35 +236,36 @@ func (s *PhimMoiChillScraper) GetMovieDetail(slug string) (*models.RophimMovie, 
 		}
 	})
 
-	// Fallback: If no episodes found, finding "Xem phim" button for single movie
-	if len(episodes) == 0 {
-		// Common selectors for "Watch" button: .btn-watch, a:contains("Xem phim")
-		watchBtn := doc.Find("a.btn-watch, a.btn-see, ul.btn-block a")
-		if watchBtn.Length() > 0 {
-			href, _ := watchBtn.Attr("href")
-			if strings.Contains(href, "/xem/") {
-				episodes = append(episodes, models.Episode{
-					Number:     1,
-					Title:      "Full",
-					URL:        href,
-					ServerName: "PhimMoiChill",
-				})
-			}
-		} else {
-			// Try text content
-			doc.Find("a").Each(func(i int, s *goquery.Selection) {
-				if strings.Contains(strings.ToLower(s.Text()), "xem phim") {
-					href, _ := s.Attr("href")
-					if strings.Contains(href, "/xem/") {
-						episodes = append(episodes, models.Episode{
-							Number:     1,
-							Title:      "Full",
-							URL:        href,
-							ServerName: "PhimMoiChill",
-						})
-						return // Break
-					}
+	// Fallback/Main: Find "Xem phim" button which is often Episode 1 for series,
+	// or the only episode for movies. We always check this, not just when len(episodes)==0.
+	watchBtn := doc.Find("a.btn-watch, a.btn-see, ul.btn-block a")
+	var watchHref string
+	if watchBtn.Length() > 0 {
+		watchHref, _ = watchBtn.Attr("href")
+	} else {
+		doc.Find("a").Each(func(i int, s *goquery.Selection) {
+			if strings.Contains(strings.ToLower(s.Text()), "xem phim") {
+				href, _ := s.Attr("href")
+				if strings.Contains(href, "/xem/") {
+					watchHref = href
 				}
+			}
+		})
+	}
+
+	if watchHref != "" && strings.Contains(watchHref, "/xem/") {
+		// Only add if Episode 1 is not already present
+		if _, exists := epMap[1]; !exists {
+			epMap[1] = len(episodes)
+			title := "Tập 1"
+			if len(episodes) == 0 {
+				title = "Full"
+			}
+			episodes = append(episodes, models.Episode{
+				Number:     1,
+				Title:      title,
+				URL:        watchHref,
+				ServerName: "PhimMoiChill",
 			})
 		}
 	}

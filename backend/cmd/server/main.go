@@ -118,6 +118,20 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
 		rctx := chi.RouteContext(r.Context())
 		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		reqPath := strings.TrimPrefix(r.URL.Path, pathPrefix)
+		if reqPath == "" {
+			reqPath = "/"
+		}
+
+		// Check if file exists in the static directory
+		f, err := root.Open(reqPath)
+		if err == nil {
+			f.Close()
+		} else {
+			// If not found, rewrite path to serve index.html for SPA routing
+			r.URL.Path = pathPrefix + "/index.html"
+		}
+
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
 		fs.ServeHTTP(w, r)
 	})
