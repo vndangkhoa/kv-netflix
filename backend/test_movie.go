@@ -14,6 +14,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	b, _ := json.MarshalIndent(movie, "", "  ")
+	b, _ := json.MarshalIndent(movie.Episodes, "", "  ")
 	fmt.Println(string(b))
 }

@@ -1,6 +1,7 @@
 package com.streamflow.tv
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -22,31 +23,11 @@ import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.ui.theme.StreamFlowTvTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import coil.Coil
-import coil.ImageLoader
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Setup Coil with caching
-        val imageLoader = ImageLoader.Builder(this)
-            .memoryCache {
-                MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
-                    .build()
-            }
-            .diskCache {
-                DiskCache.Builder()
-                    .directory(this.cacheDir.resolve("image_cache"))
-                    .maxSizePercent(0.02)
-                    .build()
-            }
-            .build()
-        Coil.setImageLoader(imageLoader)
-
+        Log.d("MainActivity", "onCreate started")
         setContent {
             StreamFlowTvApp()
         }
@@ -65,10 +46,15 @@ fun StreamFlowTvApp() {
 
     // Load persisted settings
     LaunchedEffect(Unit) {
-        currentTheme = userRepo.theme.first()
-        val serverUrl = userRepo.serverUrl.first()
-        if (serverUrl.isNotBlank()) {
-            ApiClient.baseUrl = serverUrl
+        try {
+            currentTheme = userRepo.theme.first()
+            val serverUrl = userRepo.serverUrl.first()
+            if (serverUrl.isNotBlank()) {
+                ApiClient.baseUrl = serverUrl
+            }
+            Log.d("StreamFlowTvApp", "Settings loaded: theme=$currentTheme, url=$serverUrl")
+        } catch (e: Exception) {
+            Log.e("StreamFlowTvApp", "Error loading settings", e)
         }
     }
 
@@ -146,9 +132,8 @@ fun StreamFlowTvApp() {
                     ) { entry ->
                         val slug = entry.arguments?.getString("slug")
                         val episode = entry.arguments?.getInt("episode") ?: 1
-                        android.util.Log.e("StreamFlowNav", "Navigating to player: slug=$slug, episode=$episode")
+                        Log.d("StreamFlowNav", "Navigating to player: slug=$slug, episode=$episode")
                         if (slug == null) {
-                            android.util.Log.e("StreamFlowNav", "Slug is null - not rendering PlayerScreen")
                             return@composable
                         }
                         PlayerScreen(

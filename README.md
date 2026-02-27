@@ -1,4 +1,4 @@
-# StreamFlow V3.7
+# StreamFlow V3.9
 
 A high-performance video streaming web application with a pure Go backend and modern React + Tailwind frontend.
 
@@ -31,7 +31,7 @@ version: '3.8'
 
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.8
+    image: git.khoavo.myds.me/vndangkhoa/kv-streamflow:v3.9
     container_name: streamflow
     platform: linux/amd64
     ports:
@@ -119,7 +119,14 @@ Streamflow/
 
 ## Changelog
 
-### v3.7 (Current)
+### v3.9 (Current)
+- Bundled Android TV APK with the webapp for direct download
+- Verified D-pad navigation on Android TV app
+
+### v3.8
+- Updated docker compose configuration
+
+### v3.7
 - Codebase cleanup and security improvements
 - Added SSRF protection with URL validation
 - Added graceful shutdown and config module

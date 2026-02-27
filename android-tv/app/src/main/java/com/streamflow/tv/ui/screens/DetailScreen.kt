@@ -36,120 +36,165 @@ fun DetailScreen(
     viewModel: DetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val colors = StreamFlowTheme.colors
     
     LaunchedEffect(slug) {
         viewModel.loadMovie(slug)
     }
 
-    Log.e("DetailScreen", "Composing DetailScreen(slug=$slug, isLoading=${uiState.isLoading})")
+    Log.d("DetailScreen", "Composing DetailScreen(slug=$slug, isLoading=${uiState.isLoading})")
     
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background),
         contentAlignment = Alignment.Center
     ) {
-        val movie = uiState.movie ?: return@Box
-        Log.e("DetailScreen", "Rendering movie details: ${movie.title}")
+        if (uiState.isLoading) {
+            CircularLoadingIndicator()
+        } else if (uiState.error != null) {
+            ErrorState(message = uiState.error ?: "Unknown error", onRetry = { viewModel.loadMovie(slug) })
+        } else {
+            val movie = uiState.movie ?: return@Box
+            Log.d("DetailScreen", "Rendering movie details: ${movie.title}")
 
-        val colors = StreamFlowTheme.colors
+            // Background Image
+            AsyncImage(
+                model = ApiClient.imageProxyUrl(movie.backdrop ?: movie.thumbnail, 1280),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
 
-        // Background Image
-        AsyncImage(
-            model = ApiClient.imageProxyUrl(movie.backdrop ?: movie.thumbnail, 1280),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Gradient Overlays
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            colors.background.copy(alpha = 0.95f),
-                            colors.background.copy(alpha = 0.7f),
-                            Color.Transparent
+            // Gradient Overlays
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                colors.background.copy(alpha = 0.95f),
+                                colors.background.copy(alpha = 0.7f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.3f)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, colors.background)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.3f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, colors.background)
+                        )
                     )
-                )
-        )
+            )
 
-        // Content
-        val focusRequester = remember { FocusRequester() }
+            // Content
+            val focusRequester = remember { FocusRequester() }
 
-        LaunchedEffect(uiState.movie) {
-            if (uiState.movie != null) {
-                focusRequester.requestFocus()
-                android.util.Log.e("DetailScreen", "Focus requested on Play button")
+            LaunchedEffect(uiState.movie) {
+                if (uiState.movie != null) {
+                    focusRequester.requestFocus()
+                }
             }
-        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 48.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = movie.title,
-                style = StreamFlowTheme.typography.displayLarge,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = movie.description,
-                style = StreamFlowTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 600.dp)
-            )
-            
-            Spacer(Modifier.height(32.dp))
-
-            Surface(
-                onClick = { onPlayClick(movie.slug, 1) },
-                shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = colors.primary,
-                    focusedContainerColor = colors.accent
-                ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
-                modifier = Modifier.focusRequester(focusRequester)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 48.dp, vertical = 32.dp),
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    "▶  Play",
-                    style = StreamFlowTheme.typography.titleMedium.copy(color = Color.White),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    text = movie.title,
+                    style = StreamFlowTheme.typography.displayLarge,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
-            }
-
-            if (!movie.episodes.isNullOrEmpty()) {
-                Spacer(Modifier.height(32.dp))
                 
-                EpisodeSelector(
-                    episodes = movie.episodes,
-                    currentEpisode = 1, // Default to 1 for initial detail load
-                    onEpisodeSelect = { episode -> onPlayClick(movie.slug, episode.number) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = movie.description,
+                    style = StreamFlowTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 600.dp)
                 )
+                
+                Spacer(Modifier.height(32.dp))
+
+                Surface(
+                    onClick = { onPlayClick(movie.slug, 1) },
+                    shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = colors.primary,
+                        focusedContainerColor = colors.accent
+                    ),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                    modifier = Modifier.focusRequester(focusRequester)
+                ) {
+                    Text(
+                        "▶  Play",
+                        style = StreamFlowTheme.typography.titleMedium.copy(color = Color.White),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    )
+                }
+
+                if (!movie.episodes.isNullOrEmpty()) {
+                    Spacer(Modifier.height(32.dp))
+                    
+                    EpisodeSelector(
+                        episodes = movie.episodes,
+                        currentEpisode = 1,
+                        onEpisodeSelect = { episode -> onPlayClick(movie.slug, episode.number) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun CircularLoadingIndicator() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "Loading...",
+            style = StreamFlowTheme.typography.headlineMedium.copy(color = StreamFlowTheme.colors.primary)
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun ErrorState(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val colors = StreamFlowTheme.colors
+        Text(
+            text = message,
+            style = StreamFlowTheme.typography.bodyLarge.copy(color = Color.Red),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Surface(
+            onClick = onRetry,
+            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = colors.surfaceVariant
+            )
+        ) {
+            Text(
+                "Retry",
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            )
         }
     }
 }

@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
 import com.streamflow.tv.ui.theme.StreamFlowTheme
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 data class NavItem(
     val id: String,
@@ -39,6 +41,15 @@ fun SideNavRail(
     modifier: Modifier = Modifier
 ) {
     val colors = StreamFlowTheme.colors
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        try {
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
 
     Column(
         modifier = modifier
@@ -71,7 +82,8 @@ fun SideNavRail(
                     item = item,
                     isSelected = selectedId == item.id,
                     onClick = { onNavigate(item) },
-                    accentColor = colors.primary
+                    accentColor = colors.primary,
+                    modifier = if (item.id == "home") Modifier.focusRequester(focusRequester) else Modifier
                 )
             }
         }
@@ -84,13 +96,14 @@ private fun NavRailItem(
     item: NavItem,
     isSelected: Boolean,
     onClick: () -> Unit,
-    accentColor: Color
+    accentColor: Color,
+    modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
     Surface(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .size(48.dp),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(

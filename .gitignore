@@ -55,6 +55,8 @@ android-tv/.kotlin/
 # Build and Release
 release/
 *.apk
+!frontend-react/public/streamflow-tv.apk
+*.zip
 
 # Environment and IDE
 .agent/
