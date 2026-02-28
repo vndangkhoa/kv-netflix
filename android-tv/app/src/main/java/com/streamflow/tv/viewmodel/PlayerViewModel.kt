@@ -71,18 +71,22 @@ class PlayerViewModel : ViewModel() {
                     ),
                     isLoading = false
                 )
-            } else {
-                // Need to extract
-                val targetUrl = ep?.url
-                    ?: "https://phimmoichill.network/xem-phim/${movie.slug}/tap-$episode"
-                
-                android.util.Log.e("PlayerViewModel", "Extracting from URL: $targetUrl")
-                val source = repository.extractVideo(targetUrl)
+            } else if (ep != null && ep.url.isNotEmpty()) {
+                // Non-HLS URL — try to extract via backend
+                android.util.Log.e("PlayerViewModel", "Extracting from URL: ${ep.url}")
+                val source = repository.extractVideo(ep.url)
                 android.util.Log.e("PlayerViewModel", "Extraction successful: $source")
                 
                 _uiState.value = _uiState.value.copy(
                     source = source,
                     isLoading = false
+                )
+            } else {
+                // No valid episode URL found
+                android.util.Log.e("PlayerViewModel", "No stream URL found for episode $episode")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "No stream available for episode $episode"
                 )
             }
         } catch (e: Exception) {

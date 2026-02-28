@@ -11,7 +11,10 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    private var _baseUrl: String = "https://nf.khoavo.myds.me/"
+    // Default base URL for testing
+    // Change this to your production API when ready
+    // var baseUrl: String = "https://nf.khoavo.myds.me"
+    private var _baseUrl: String = "http://10.0.2.2:3478/"
     
     var baseUrl: String
         get() = _baseUrl

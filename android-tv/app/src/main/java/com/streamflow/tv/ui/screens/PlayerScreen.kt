@@ -59,6 +59,49 @@ fun PlayerScreen(
         }
     }
 
+    // Wrap ExoPlayer to intercept next/previous UI clicks
+    val forwardingPlayer = remember(exoPlayer, uiState.movie, uiState.currentEpisode) {
+        object : androidx.media3.common.ForwardingPlayer(exoPlayer) {
+            override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
+                return super.getAvailableCommands().buildUpon()
+                    .add(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT)
+                    .add(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS)
+                    .add(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .add(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .build()
+            }
+
+            override fun hasNextMediaItem(): Boolean {
+                val eps = uiState.movie?.episodes ?: return false
+                if (eps.isEmpty()) return false
+                val maxEp = eps.maxOf { it.number }
+                return uiState.currentEpisode < maxEp
+            }
+            override fun hasPreviousMediaItem(): Boolean {
+                val eps = uiState.movie?.episodes ?: return false
+                if (eps.isEmpty()) return false
+                val minEp = eps.minOf { it.number }
+                return uiState.currentEpisode > minEp
+            }
+            override fun seekToNextMediaItem() {
+                if (hasNextMediaItem()) {
+                    viewModel.changeEpisode(uiState.currentEpisode + 1)
+                }
+            }
+            override fun seekToNext() {
+                seekToNextMediaItem()
+            }
+            override fun seekToPreviousMediaItem() {
+                if (hasPreviousMediaItem()) {
+                    viewModel.changeEpisode(uiState.currentEpisode - 1)
+                }
+            }
+            override fun seekToPrevious() {
+                seekToPreviousMediaItem()
+            }
+        }
+    }
+
     // Update player when source changes
     LaunchedEffect(uiState.source) {
         uiState.source?.let { source ->
@@ -132,6 +175,18 @@ fun PlayerScreen(
                             playerView?.showController()
                             true
                         }
+                        android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                            if (forwardingPlayer.hasNextMediaItem()) {
+                                forwardingPlayer.seekToNextMediaItem()
+                            }
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                            if (forwardingPlayer.hasPreviousMediaItem()) {
+                                forwardingPlayer.seekToPreviousMediaItem()
+                            }
+                            true
+                        }
                         else -> false
                     }
                 } else false
@@ -159,13 +214,15 @@ fun PlayerScreen(
             }
         } else {
             // ExoPlayer View
+            android.util.Log.e("StreamFlowPlayer", "Drawing AndroidView for Player")
             AndroidView(
                 factory = { ctx ->
+                    android.util.Log.e("StreamFlowPlayer", "Creating PlayerView factory")
                     PlayerView(ctx).apply {
-                        player = exoPlayer
+                        player = forwardingPlayer
                         useController = true
-                        setShowNextButton(false)
-                        setShowPreviousButton(false)
+                        setShowNextButton(true)
+                        setShowPreviousButton(true)
                         controllerAutoShow = true
                         keepScreenOn = true // Prevent screen sleep during playback
                         layoutParams = FrameLayout.LayoutParams(

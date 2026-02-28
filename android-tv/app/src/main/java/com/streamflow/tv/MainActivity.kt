@@ -49,9 +49,9 @@ fun StreamFlowTvApp() {
         try {
             currentTheme = userRepo.theme.first()
             val serverUrl = userRepo.serverUrl.first()
-            if (serverUrl.isNotBlank()) {
+            /*if (serverUrl.isNotBlank()) {
                 ApiClient.baseUrl = serverUrl
-            }
+            }*/
             Log.d("StreamFlowTvApp", "Settings loaded: theme=$currentTheme, url=$serverUrl")
         } catch (e: Exception) {
             Log.e("StreamFlowTvApp", "Error loading settings", e)
@@ -128,7 +128,8 @@ fun StreamFlowTvApp() {
                         arguments = listOf(
                             navArgument("slug") { type = NavType.StringType },
                             navArgument("episode") { type = NavType.IntType; defaultValue = 1 }
-                        )
+                        ),
+                        deepLinks = listOf(androidx.navigation.navDeepLink { uriPattern = "streamflow://player/{slug}/{episode}" })
                     ) { entry ->
                         val slug = entry.arguments?.getString("slug")
                         val episode = entry.arguments?.getInt("episode") ?: 1

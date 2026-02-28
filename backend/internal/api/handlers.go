@@ -126,7 +126,16 @@ func (h *Handler) fetchAndMergeMovies(fetch movieFetcher) []models.RophimMovie {
 		return []models.RophimMovie{}
 	}
 
-	return h.mergeMovies(providerResults, maxLen)
+	merged := h.mergeMovies(providerResults, maxLen)
+
+	// Filter out movies with empty thumbnails to avoid blank cover cards
+	filtered := make([]models.RophimMovie, 0, len(merged))
+	for _, m := range merged {
+		if m.Thumbnail != "" {
+			filtered = append(filtered, m)
+		}
+	}
+	return filtered
 }
 
 func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int) []models.RophimMovie {

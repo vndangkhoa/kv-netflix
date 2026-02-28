@@ -304,8 +304,11 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 				if _, err := fmt.Sscanf(ep.Name, "Tap %d", &n); err == nil {
 					epNum = n
 				}
-				// If still 0 (e.g. "Full", "Trailer"), skip — don't default to 1
-				// as that would collide with real Episode 1 during dedup
+				if strings.EqualFold(ep.Name, "Full") || strings.EqualFold(ep.Name, "Trailer") {
+					epNum = 1 // single-movie or trailer as ep 1
+				}
+
+				// If still 0, skip
 				if epNum == 0 {
 					continue
 				}

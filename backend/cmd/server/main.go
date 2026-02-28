@@ -32,12 +32,12 @@ func main() {
 
 	videoRepo := database.NewVideoRepository(database.DB)
 	ophimService := scraper.NewOphimScraper()
-	phimMoiService := scraper.NewPhimMoiChillScraper()
+	phim30Service := scraper.NewPhim30Scraper()
 	tmdbService := service.NewTMDBService()
 	extractorService := service.NewVideoExtractor()
 	imageService := service.NewImageService()
 
-	providers := []scraper.MovieProvider{ophimService, phimMoiService}
+	providers := []scraper.MovieProvider{ophimService, phim30Service}
 
 	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService)
 
