@@ -49,9 +49,9 @@ fun StreamFlowTvApp() {
         try {
             currentTheme = userRepo.theme.first()
             val serverUrl = userRepo.serverUrl.first()
-            /*if (serverUrl.isNotBlank()) {
+            if (serverUrl.isNotBlank()) {
                 ApiClient.baseUrl = serverUrl
-            }*/
+            }
             Log.d("StreamFlowTvApp", "Settings loaded: theme=$currentTheme, url=$serverUrl")
         } catch (e: Exception) {
             Log.e("StreamFlowTvApp", "Error loading settings", e)

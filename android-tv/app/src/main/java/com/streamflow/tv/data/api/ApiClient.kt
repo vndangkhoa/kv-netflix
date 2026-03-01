@@ -14,7 +14,7 @@ object ApiClient {
     // Default base URL for testing
     // Change this to your production API when ready
     // var baseUrl: String = "https://nf.khoavo.myds.me"
-    private var _baseUrl: String = "http://10.0.2.2:3478/"
+    private var _baseUrl: String = "http://10.0.2.2:8000/"
     
     var baseUrl: String
         get() = _baseUrl

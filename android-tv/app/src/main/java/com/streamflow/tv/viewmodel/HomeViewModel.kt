@@ -72,54 +72,20 @@ class HomeViewModel : ViewModel() {
                     val allFlattened = java.util.Collections.synchronizedList(mutableListOf<Movie>())
 
                     kotlinx.coroutines.coroutineScope {
-                        // 1. Initial categories
+                        // Load main categories only (to avoid OOM on TV devices)
                         val categoryTasks = categories.map { (slug, name) ->
                             async {
                                 try {
                                     val response = repository.getHomeVideos(slug)
-                                    allMovies[name] = response.items
-                                    allFlattened.addAll(response.items)
+                                    allMovies[name] = response.items.take(15)
+                                    allFlattened.addAll(response.items.take(15))
                                     response.items
                                 } catch (_: Exception) { emptyList<Movie>() }
                             }
                         }
 
-                        // 2. Fetch Genres & Countries metadata in parallel
-                        val genresDeferred = async { try { repository.getGenres().take(8) } catch (_: Exception) { emptyList() } }
-                        val countriesDeferred = async { try { repository.getCountries().take(5) } catch (_: Exception) { emptyList() } }
-
-                        val genres = genresDeferred.await()
-                        val countries = countriesDeferred.await()
-
-                        // 3. Fetch Genre and Country content in parallel
-                        val genreTasks = genres.map { genre ->
-                            async {
-                                try {
-                                    val response = repository.getHomeVideos(genre.slug)
-                                    if (response.items.isNotEmpty()) {
-                                        allMovies["Genre: ${genre.name}"] = response.items
-                                        allFlattened.addAll(response.items)
-                                    }
-                                } catch (_: Exception) { }
-                            }
-                        }
-
-                        val countryTasks = countries.map { country ->
-                            async {
-                                try {
-                                    val response = repository.getHomeVideos(country.slug)
-                                    if (response.items.isNotEmpty()) {
-                                        allMovies["Country: ${country.name}"] = response.items
-                                        allFlattened.addAll(response.items)
-                                    }
-                                } catch (_: Exception) { }
-                            }
-                        }
-
-                        // Wait for everything
+                        // Wait for categories
                         categoryTasks.awaitAll()
-                        genreTasks.awaitAll()
-                        countryTasks.awaitAll()
                     }
 
                     val heroItems = allMovies[categories.first().second]?.take(5) ?: emptyList()

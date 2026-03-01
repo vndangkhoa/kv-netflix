@@ -61,11 +61,13 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		fmt.Printf("GetProxiedImage fetch error: %v\n", err)
 		return nil, "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		fmt.Printf("GetProxiedImage status error: %d for url: %s\n", resp.StatusCode, url)
 		return nil, "", fmt.Errorf("image fetch failed: %d", resp.StatusCode)
 	}
 
@@ -84,6 +86,7 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 	}
 
 	if err != nil {
+		fmt.Printf("GetProxiedImage decode error: %v for content-type: %s and url: %s\n", err, contentType, url)
 		return nil, "", fmt.Errorf("decode error: %v", err)
 	}
 

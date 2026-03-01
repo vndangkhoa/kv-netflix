@@ -75,6 +75,7 @@ func (h *Handler) GetHomeVideos(w http.ResponseWriter, r *http.Request) {
 		return p.GetMoviesByCategory(category, page)
 	})
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(movies)
 }
 
@@ -94,6 +95,7 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 		return p.Search(query, page)
 	})
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(movies)
 }
 
@@ -211,6 +213,7 @@ func (h *Handler) ExtractVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(info)
 }
 
@@ -306,6 +309,7 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		primaryMovie.Episodes = uniqueEps
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(primaryMovie)
 }
 
@@ -316,6 +320,7 @@ func (h *Handler) GetGenres(w http.ResponseWriter, r *http.Request) {
 		}); ok {
 			genres, err := gp.GetGenres()
 			if err == nil {
+				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(genres)
 				return
 			}
@@ -331,6 +336,7 @@ func (h *Handler) GetCountries(w http.ResponseWriter, r *http.Request) {
 		}); ok {
 			countries, err := cp.GetCountries()
 			if err == nil {
+				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(countries)
 				return
 			}
