@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play } from 'lucide-react';
+import { Play, Image as ImageIcon } from 'lucide-react';
 import type { Movie } from '../types';
 
 interface MovieCardProps {
@@ -9,9 +10,16 @@ interface MovieCardProps {
 }
 
 export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCardProps) => {
+    const [imgError, setImgError] = useState(false);
+
     const getImageUrl = (url: string, width: number) => {
         if (!url) return '';
-        const cleanUrl = url.replace('img.ophim1.com', 'ssl:img.ophim1.com');
+        let cleanUrl = url;
+        if (url.includes('img.ophim1.com')) {
+            cleanUrl = url.replace('img.ophim1.com', 'ssl:img.ophim1.com');
+        } else if (url.startsWith('//')) {
+            cleanUrl = `https:${url}`;
+        }
         return `https://wsrv.nl/?url=${encodeURIComponent(cleanUrl.replace(/^https?:\/\//, ''))}&w=${width}&output=webp`;
     };
 
@@ -24,13 +32,21 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
                     }`}
                 draggable={false}
             >
-                <img
-                    src={getImageUrl(movie.thumbnail, 400)}
-                    alt={movie.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
-                    loading="lazy"
-                    draggable={false}
-                />
+                {!imgError ? (
+                    <img
+                        src={getImageUrl(movie.thumbnail, 250)}
+                        alt={movie.title}
+                        onError={() => setImgError(true)}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
+                        loading="lazy"
+                        draggable={false}
+                    />
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#222] text-gray-500 p-4 text-center">
+                        <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                        <span className="text-xs font-medium leading-tight">{movie.title}</span>
+                    </div>
+                )}
 
                 {/* Hover Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-all duration-500 flex items-center justify-center">

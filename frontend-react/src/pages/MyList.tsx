@@ -1,22 +1,10 @@
-import { useTheme } from '../context/ThemeContext';
-import { netflixTheme } from '../themes/netflix';
-import { appleTheme } from '../themes/apple';
 import { useMyList } from '../hooks/useMyList';
-import { SettingsPanel } from '../components/SettingsPanel';
 
 import { defaultTheme } from '../themes/default';
 
-const themes = {
-    netflix: netflixTheme,
-    apple: appleTheme,
-    default: defaultTheme,
-};
-
 const MyList = () => {
-    const { currentTheme } = useTheme();
     const { savedMovies, watchHistory } = useMyList();
-    const ActiveTheme = themes[currentTheme];
-    const { Layout, MovieGrid } = ActiveTheme.components;
+    const { Layout, MovieGrid } = defaultTheme.components;
 
     return (
         <Layout>
@@ -38,7 +26,6 @@ const MyList = () => {
                     </div>
                 )}
             </div>
-            <SettingsPanel />
         </Layout>
     );
 };

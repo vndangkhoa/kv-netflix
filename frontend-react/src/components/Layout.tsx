@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { NAV_ITEMS } from '../../constants';
+import { NAV_ITEMS } from '../constants';
 
 export const Layout = ({ children }: { children: ReactNode }) => {
     const location = useLocation();

@@ -1,4 +1,4 @@
-import type { Movie } from '../../types';
+import type { Movie } from '../types';
 import { Card } from './Card';
 
 export const MovieGrid = ({ movies, loading, title }: { movies: Movie[], loading?: boolean, title?: string }) => {

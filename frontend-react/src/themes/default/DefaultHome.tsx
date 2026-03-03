@@ -1,6 +1,5 @@
 import Navbar from '../../components/Navbar';
 import { HomeContent } from '../../components/HomeContent';
-import { SettingsPanel } from '../../components/SettingsPanel';
 
 export const DefaultHome = () => {
     return (
@@ -9,7 +8,6 @@ export const DefaultHome = () => {
             <div className="pt-16">
                 <HomeContent topPadding="pt-8 md:pt-12" />
             </div>
-            <SettingsPanel />
         </div>
     );
 };

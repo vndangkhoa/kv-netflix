@@ -53,9 +53,36 @@ func (p *Phim30Scraper) Search(query string, page int) ([]models.RophimMovie, er
 }
 
 func (p *Phim30Scraper) GetMoviesByCategory(category string, page int) ([]models.RophimMovie, error) {
-	// e.g. https://phim30.me/the-loai/hanh-dong?page=1
-	catURL := fmt.Sprintf("%s/the-loai/%s?page=%d", Phim30BaseURL, category, page)
+	if category == "" || category == "home" {
+		homeURL := fmt.Sprintf("%s/?page=%d", Phim30BaseURL, page)
+		return p.scrapeMovieList(homeURL)
+	}
+
+	var path string
+	switch category {
+	case "phim-le", "phim-bo", "phim-sap-chieu":
+		path = fmt.Sprintf("danh-sach/%s", category)
+	default:
+		// Assume everything else is a Genre (e.g., hanh-dong, hoat-hinh, tv-shows)
+		path = fmt.Sprintf("the-loai/%s", category)
+	}
+
+	catURL := fmt.Sprintf("%s/%s?page=%d", Phim30BaseURL, path, page)
 	return p.scrapeMovieList(catURL)
+}
+
+func cleanImageUrl(rawURL string) string {
+	if strings.Contains(rawURL, "cdn-image-tf.phim30.me") {
+		// Example: https://cdn-image-tf.phim30.me/unsafe/360x0/filters:quality(90)/https%3A%2F%2Fphimimg.com%2Fupload%2Fvod%2F...
+		parts := strings.SplitN(rawURL, "/https", 2)
+		if len(parts) == 2 {
+			decoded, err := url.QueryUnescape("https" + parts[1])
+			if err == nil {
+				return decoded
+			}
+		}
+	}
+	return rawURL
 }
 
 func (p *Phim30Scraper) scrapeMovieList(targetURL string) ([]models.RophimMovie, error) {
@@ -86,6 +113,10 @@ func (p *Phim30Scraper) scrapeMovieList(targetURL string) ([]models.RophimMovie,
 		href, _ := s.Attr("href")
 		title, _ := s.Attr("title")
 
+		if title == "" {
+			title = strings.TrimSpace(s.Text())
+		}
+
 		// Remove the base url to get the slug
 		slug := strings.TrimPrefix(href, "https://phim30.me/phim/")
 
@@ -104,13 +135,15 @@ func (p *Phim30Scraper) scrapeMovieList(targetURL string) ([]models.RophimMovie,
 			}
 		})
 
-		if title != "" && slug != "" {
+		if title != "" && slug != "" && !strings.Contains(slug, "the-loai") && !strings.Contains(slug, "quoc-gia") && !strings.Contains(slug, "nam-phat-hanh") {
 			movies = append(movies, models.RophimMovie{
 				ID:            slug,
 				Slug:          slug,
 				Title:         title,
 				OriginalTitle: title,
-				Thumbnail:     thumb,
+				Thumbnail:     cleanImageUrl(thumb),
+				Backdrop:      cleanImageUrl(thumb),
+				Provider:      "Phim30.me",
 			})
 		}
 	})
@@ -164,6 +197,19 @@ func (p *Phim30Scraper) GetMovieDetail(slug string) (*models.RophimMovie, error)
 	}
 	movie.Title = title
 	movie.OriginalTitle = title
+
+	thumb := ""
+	doc.Find("div.movie-l-img img").Each(func(i int, img *goquery.Selection) {
+		if src, ok := img.Attr("src"); ok {
+			thumb = src
+		}
+	})
+	if thumb != "" {
+		movie.Thumbnail = cleanImageUrl(thumb)
+		movie.Backdrop = cleanImageUrl(thumb)
+	}
+
+	movie.Provider = "Phim30.me"
 
 	var eps []models.Episode
 	doc.Find("a[href*='/xem-phim/']").Each(func(i int, s *goquery.Selection) {

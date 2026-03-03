@@ -1,4 +1,4 @@
-# StreamFlow V3.9.2
+# kv-netflix V4
 
 A high-performance video streaming web application with a pure Go backend and modern React + Tailwind frontend.
 
@@ -31,7 +31,7 @@ version: '3.8'
 
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v3.9.2
+    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v4
     container_name: streamflow
     platform: linux/amd64
     ports:
@@ -119,7 +119,11 @@ Streamflow/
 
 ## Changelog
 
-### v3.9.2 (Current)
+### v4 (Current)
+- Deployed v4 to Forgejo and Docker Registry
+- Refactored frontend and cleaned up repository
+
+### v3.9.2
 - Fixed Android TV local IP issue by replacing it with production backend URL
 - Rebuilt Android TV APK and updated the frontend static bundle
 

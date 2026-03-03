@@ -299,10 +299,11 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 
 	if len(primaryMovie.Episodes) > 0 {
 		uniqueEps := make([]models.Episode, 0)
-		seenEpNums := make(map[int]bool)
+		seenEpNums := make(map[string]bool)
 		for _, ep := range primaryMovie.Episodes {
-			if !seenEpNums[ep.Number] {
-				seenEpNums[ep.Number] = true
+			key := fmt.Sprintf("%d-%s", ep.Number, ep.ServerName)
+			if !seenEpNums[key] {
+				seenEpNums[key] = true
 				uniqueEps = append(uniqueEps, ep)
 			}
 		}
@@ -431,21 +432,23 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 		existing.Quality = new.Quality
 	}
 
-	epMap := make(map[int]int)
-	for i := range existing.Episodes {
-		epMap[existing.Episodes[i].Number] = i
+	epMap := make(map[string]int)
+	for i, ep := range existing.Episodes {
+		key := fmt.Sprintf("%d-%s", ep.Number, ep.ServerName)
+		epMap[key] = i
 	}
 
 	for i := range new.Episodes {
 		newEp := &new.Episodes[i]
-		if idx, exists := epMap[newEp.Number]; exists {
+		key := fmt.Sprintf("%d-%s", newEp.Number, newEp.ServerName)
+		if idx, exists := epMap[key]; exists {
 			if existing.Episodes[idx].URL == "" && newEp.URL != "" {
 				existing.Episodes[idx].URL = newEp.URL
 				existing.Episodes[idx].Title = newEp.Title
 				existing.Episodes[idx].ServerName = newEp.ServerName
 			}
 		} else {
-			epMap[newEp.Number] = len(existing.Episodes)
+			epMap[key] = len(existing.Episodes)
 			existing.Episodes = append(existing.Episodes, *newEp)
 		}
 	}

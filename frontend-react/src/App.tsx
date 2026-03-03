@@ -1,7 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
-import { ThemeProvider } from './context/ThemeContext';
 
 const Home = lazy(() => import('./pages/Home'));
 const Watch = lazy(() => import('./pages/Watch'));
@@ -17,20 +16,18 @@ function LoadingSpinner() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <ErrorBoundary>
-        <Router>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/my-list" element={<MyList />} />
-              <Route path="/watch/:slug/:episode" element={<Watch />} />
-              <Route path="/watch/:slug" element={<Watch />} />
-            </Routes>
-          </Suspense>
-        </Router>
-      </ErrorBoundary>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <Router>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/my-list" element={<MyList />} />
+            <Route path="/watch/:slug/:episode" element={<Watch />} />
+            <Route path="/watch/:slug" element={<Watch />} />
+          </Routes>
+        </Suspense>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type VideoInfo struct {
@@ -33,8 +36,36 @@ func (e *VideoExtractor) Extract(url string, quality string) (*VideoInfo, error)
 
 	// Check for custom extractors
 	if strings.Contains(url, "phim30.me") {
-		// Currently returning the URL as-is, letting yt-dlp attempt extraction
-		// or allowing the frontend iframe to handle it directly if it's embeddable
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create phim30 request: %v", err)
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch phim30 page: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("phim30 returned status: %d", resp.StatusCode)
+		}
+
+		doc, err := goquery.NewDocumentFromReader(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse phim30 page: %v", err)
+		}
+
+		streamURL, _ := doc.Find("[data-movie-player-src-value]").Attr("data-movie-player-src-value")
+		if streamURL != "" {
+			return &VideoInfo{
+				StreamURL:  streamURL,
+				Resolution: "unknown",
+			}, nil
+		}
+		return nil, fmt.Errorf("could not find stream URL on phim30 page")
 	}
 
 	// Build format selector
