@@ -7,6 +7,7 @@ import { CATEGORIES } from '../constants';
 
 import { useMyList } from '../hooks/useMyList';
 import { useSmartRecommendations } from '../hooks/useSmartRecommendations';
+import { useWatchProgress } from '../hooks/useWatchProgress';
 
 interface HomeContentProps {
     topPadding?: string;
@@ -20,6 +21,8 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
     const [hasMore, setHasMore] = useState(true);
 
     const { watchHistory, savedMovies } = useMyList(); // Access History and MyList
+    const { getContinueWatchingMovies } = useWatchProgress();
+    const continueWatching = getContinueWatchingMovies();
     const [searchParams] = useSearchParams();
     const query = searchParams.get('q');
     const category = searchParams.get('category');
@@ -124,8 +127,8 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
             {showRows && (
                 <div className="space-y-4 relative z-10 mb-12">
                     {/* Continue Watching Row */}
-                    {watchHistory.length > 0 && (
-                        <MovieRow title="Tiếp tục xem" movies={watchHistory} />
+                    {continueWatching.length > 0 && (
+                        <MovieRow title="Tiếp tục xem" movies={continueWatching} />
                     )}
 
                     {/* My List Row */}

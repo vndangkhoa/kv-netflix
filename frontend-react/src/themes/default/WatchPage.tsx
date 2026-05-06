@@ -22,8 +22,13 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     // Helper for URL safety (same as Hero)
     const getImageUrl = (url: string | undefined, width: number) => {
         if (!url) return '';
-        const cleanUrl = url.replace('img.ophim1.com', 'ssl:img.ophim1.com');
-        return `https://wsrv.nl/?url=${encodeURIComponent(cleanUrl)}&w=${width}&output=webp`;
+        let cleanUrl = url;
+        if (url.startsWith('//')) {
+            cleanUrl = `https:${url}`;
+        } else if (!url.startsWith('http')) {
+            cleanUrl = `https://${url}`;
+        }
+        return cleanUrl;
     };
     const episodesByServer = movie?.episodes?.reduce((acc, ep) => {
         const server = ep.server_name || 'Default';

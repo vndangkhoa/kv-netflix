@@ -12,15 +12,20 @@ interface MovieCardProps {
 export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCardProps) => {
     const [imgError, setImgError] = useState(false);
 
+    // Calculate progress percentage
+    const progressPercent = movie.watchedTimestamp && movie.duration
+        ? (movie.watchedTimestamp / movie.duration) * 100
+        : 0;
+
     const getImageUrl = (url: string, width: number) => {
         if (!url) return '';
         let cleanUrl = url;
-        if (url.includes('img.ophim1.com')) {
-            cleanUrl = url.replace('img.ophim1.com', 'ssl:img.ophim1.com');
-        } else if (url.startsWith('//')) {
+        if (url.startsWith('//')) {
             cleanUrl = `https:${url}`;
+        } else if (!url.startsWith('http')) {
+            cleanUrl = `https://${url}`;
         }
-        return `https://wsrv.nl/?url=${encodeURIComponent(cleanUrl.replace(/^https?:\/\//, ''))}&w=${width}&output=webp`;
+        return cleanUrl;
     };
 
     return (
@@ -64,6 +69,15 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
                     </div>
                 )}
 
+                {/* Episode Badge for Continue Watching */}
+                {movie.currentEpisode && (
+                    <div className="absolute top-2 left-2 mt-7">
+                        <div className="bg-cyan-500/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-bold text-black border border-cyan-400/20">
+                            Tập {movie.currentEpisode}
+                        </div>
+                    </div>
+                )}
+
                 {/* Top-Right Tags (Quality & Lang) */}
                 <div className="absolute top-2 right-2 flex flex-col gap-1.5 items-end">
                     {movie.quality && (
@@ -85,6 +99,16 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
                             {movie.time}
                         </div>
+                    </div>
+                )}
+
+                {/* Progress Bar for Continue Watching */}
+                {progressPercent > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600/50">
+                        <div
+                            className="h-full bg-cyan-500 transition-all duration-300"
+                            style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                        />
                     </div>
                 )}
             </Link>

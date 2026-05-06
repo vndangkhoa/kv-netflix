@@ -34,8 +34,13 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
     // Helper to generate robust image URLs
     const getImageUrl = (url: string | undefined, width: number, blur: number = 0) => {
         if (!url) return '';
-        // Unified logic: Simple encoding like Card.tsx, relying on wsrv.nl's robust handling
-        return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=${width}&output=webp${blur ? `&blur=${blur}` : ''}&fit=cover`;
+        let cleanUrl = url;
+        if (url.startsWith('//')) {
+            cleanUrl = `https:${url}`;
+        } else if (!url.startsWith('http')) {
+            cleanUrl = `https://${url}`;
+        }
+        return cleanUrl;
     };
 
     // --- Variant-Specific Styles ---

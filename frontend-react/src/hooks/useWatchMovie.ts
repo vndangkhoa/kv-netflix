@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
 import type { MovieDetail, VideoSource } from '../types';
+import { useWatchProgress } from './useWatchProgress';
 
 export const useWatchMovie = (slug: string | undefined, episode: string | undefined) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -8,6 +9,40 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     const [source, setSource] = useState<VideoSource | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentEpisode, setCurrentEpisode] = useState(parseInt(episode || '1'));
+    const { getProgress, saveProgress, clearProgress } = useWatchProgress();
+    const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Refs to avoid effect re-running when these functions change
+    const getProgressRef = useRef(getProgress);
+    const saveProgressRef = useRef(saveProgress);
+    const clearProgressRef = useRef(clearProgress);
+    const movieRef = useRef(movie);
+
+    // Update refs when values change
+    useEffect(() => {
+        getProgressRef.current = getProgress;
+    }, [getProgress]);
+
+    useEffect(() => {
+        saveProgressRef.current = saveProgress;
+    }, [saveProgress]);
+
+    useEffect(() => {
+        clearProgressRef.current = clearProgress;
+    }, [clearProgress]);
+
+    useEffect(() => {
+        movieRef.current = movie;
+    }, [movie]);
+
+    // Load saved progress on mount
+    useEffect(() => {
+        if (!slug) return;
+        const progress = getProgress(slug);
+        if (progress) {
+            setCurrentEpisode(progress.episode);
+        }
+    }, [slug, getProgress]);
 
     useEffect(() => {
         if (!slug) return;
@@ -23,6 +58,16 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         };
         fetchDetails();
     }, [slug]);
+
+    // Save progress when episode changes
+    useEffect(() => {
+        if (!slug) return;
+        const progress = getProgress(slug);
+        if (progress && progress.episode !== currentEpisode) {
+            // Clear old progress when switching episodes
+            clearProgress(slug);
+        }
+    }, [currentEpisode, slug, getProgress, clearProgress]);
 
     useEffect(() => {
         if (!movie) return;
@@ -56,7 +101,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                 const res = await fetch(`/api/extract`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: targetUrl }) // Changed to JSON payload
+                    body: JSON.stringify({ url: targetUrl })
                 });
 
                 if (!res.ok) throw new Error('Failed to extract');
@@ -77,29 +122,81 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         fetchStream();
     }, [movie, currentEpisode, slug]);
 
+    // Save progress periodically and seek to saved position
     useEffect(() => {
-        if (source && videoRef.current) {
-            console.log("Initializing player with source:", source);
-            const isHls = source.stream_url.includes('.m3u8') || source.format_id === 'hls';
-            console.log("Is HLS:", isHls, "Stream URL:", source.stream_url);
+        if (!source || !videoRef.current || !slug) return;
 
-            if (isHls && Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(source.stream_url);
-                hls.attachMedia(videoRef.current);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoRef.current?.play().catch(() => { });
-                });
-                return () => {
-                    hls.destroy();
-                };
-            } else {
-                // MP4 or Native HLS (Safari)
-                videoRef.current.src = source.stream_url;
-                videoRef.current.play().catch(() => { });
+        const video = videoRef.current;
+        let hls: Hls | null = null;
+
+        const saveCurrentProgress = () => {
+            if (video && slug && movieRef.current) {
+                const currentTime = video.currentTime;
+                const duration = video.duration;
+                if (duration > 0) {
+                    saveProgressRef.current(slug, currentEpisode, currentTime, duration, {
+                        title: movieRef.current.title,
+                        thumbnail: movieRef.current.thumbnail,
+                        backdrop: movieRef.current.backdrop,
+                        year: movieRef.current.year,
+                        category: movieRef.current.category,
+                    });
+                }
             }
+        };
+
+        const onLoadedMetadata = () => {
+            // Seek to saved position (minus 20s) if available
+            const progress = getProgressRef.current(slug);
+            if (progress && progress.episode === currentEpisode && progress.timestamp > 0) {
+                // Rewind 20 seconds so user doesn't miss the exact moment
+                video.currentTime = Math.max(0, progress.timestamp - 20);
+            }
+        };
+
+        const onPause = () => {
+            saveCurrentProgress();
+        };
+
+        const onEnded = () => {
+            // Clear progress when video ends
+            clearProgressRef.current(slug);
+        };
+
+        const isHls = source.stream_url.includes('.m3u8') || source.format_id === 'hls';
+
+        if (isHls && Hls.isSupported()) {
+            hls = new Hls();
+            hls.loadSource(source.stream_url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(() => { });
+            });
+        } else {
+            video.src = source.stream_url;
+            video.play().catch(() => { });
         }
-    }, [source]);
+
+        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('pause', onPause);
+        video.addEventListener('ended', onEnded);
+
+        // Save progress every 5 seconds
+        saveIntervalRef.current = setInterval(saveCurrentProgress, 5000);
+
+        return () => {
+            if (hls) hls.destroy();
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('pause', onPause);
+            video.removeEventListener('ended', onEnded);
+            if (saveIntervalRef.current) {
+                clearInterval(saveIntervalRef.current);
+                saveIntervalRef.current = null;
+            }
+            // Save final progress on unmount
+            saveCurrentProgress();
+        };
+    }, [source, slug, currentEpisode]);
 
     // Wake Lock Logic (Prevent Screen Sleep)
     useEffect(() => {

@@ -13,6 +13,10 @@ export interface Movie {
     provider?: string;
     director?: string;
     cast?: string[];
+    // Progress tracking
+    currentEpisode?: number;
+    watchedTimestamp?: number;
+    duration?: number;
 }
 
 export interface MovieDetail extends Movie {

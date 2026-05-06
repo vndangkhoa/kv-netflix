@@ -220,12 +220,12 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 		thumb := item.ThumbURL
 		if !strings.HasPrefix(thumb, "http") {
 			// Search API might return relative paths too
-			thumb = "https://img.ophim1.com/uploads/movies/" + thumb
+			thumb = "https://img.ophim.live/uploads/movies/" + thumb
 		}
 
 		backdrop := item.PosterURL
 		if !strings.HasPrefix(backdrop, "http") {
-			backdrop = "https://img.ophim1.com/uploads/movies/" + backdrop
+			backdrop = "https://img.ophim.live/uploads/movies/" + backdrop
 		}
 
 		movies = append(movies, models.RophimMovie{
@@ -273,12 +273,12 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 
 	thumb := movie.ThumbURL
 	if !strings.HasPrefix(thumb, "http") {
-		thumb = "https://img.ophim1.com/uploads/movies/" + thumb
+		thumb = "https://img.ophim.live/uploads/movies/" + thumb
 	}
 
 	backdrop := movie.PosterURL
 	if !strings.HasPrefix(backdrop, "http") {
-		backdrop = "https://img.ophim1.com/uploads/movies/" + backdrop
+		backdrop = "https://img.ophim.live/uploads/movies/" + backdrop
 	}
 
 	var episodes []models.Episode
