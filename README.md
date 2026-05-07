@@ -1,4 +1,4 @@
-# kv-netflix V4
+# kv-netflix V6
 
 A high-performance video streaming web application with a pure Go backend and modern React + Tailwind frontend.
 
@@ -10,6 +10,7 @@ A high-performance video streaming web application with a pure Go backend and mo
 - **HLS Streaming** - Native HLS playback with proxy support
 - **Android TV** - Native TV app with D-pad controls and 10s skip
 - **PWA Support** - Install as a progressive web app
+- **Episode Progress Tracking** - Auto-save progress, continue watching with seek
 - **Docker Ready** - Multi-stage build for Synology NAS (linux/amd64)
 
 ## Tech Stack
@@ -23,21 +24,45 @@ A high-performance video streaming web application with a pure Go backend and mo
 
 ## Quick Start
 
-### Docker (Recommended)
+### Docker (Recommended for Synology NAS)
 
+**Prerequisites:**
+- Synology NAS with Container Manager (Docker) installed
+- SSH access enabled (optional, for CLI) or use Container Manager GUI
+
+**Option 1: Container Manager GUI (Recommended for Synology)**
+
+1. Open **Container Manager** on your Synology NAS
+2. Go to **Registry** tab and add your Forgejo registry:
+   - Registry URL: `git.khoavo.myds.me`
+   - Username: `vndangkhoa`
+   - Password: `Thieugia19`
+3. Search for `vndangkhoa/kv-netflix` and download `v6` tag
+4. Create a new container:
+   - **Image**: `git.khoavo.myds.me/vndangkhoa/kv-netflix:v6`
+   - **Container name**: `streamflow`
+   - **Network**: Bridge mode, map port `3478` (local) → `8000` (container)
+   - **Environment**: Add `TZ=Asia/Ho_Chi_Minh`
+   - **Volume**: Create folder `docker/streamflow/data` on NAS, map to `/app/data`
+   - **Restart policy**: `Unless stopped`
+5. Start the container
+
+**Option 2: Docker Compose (SSH/CLI)**
+
+Create `docker-compose.yml` on your NAS:
 ```yaml
-# docker-compose.yml
 version: '3.8'
 
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v4
+    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v6
     container_name: streamflow
     platform: linux/amd64
     ports:
       - "3478:8000"
     environment:
       - DATABASE_URL=/app/data/streamflow.db
+      - PORT=8000
       - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data
@@ -51,7 +76,14 @@ services:
 ```
 
 ```bash
+# Login to registry first
+docker login git.khoavo.myds.me -u vndangkhoa -p Thieugia19
+
+# Start container
 docker-compose up -d
+
+# Check logs
+docker-compose logs -f
 ```
 
 Access at: `http://YOUR_NAS_IP:3478`
@@ -119,7 +151,17 @@ Streamflow/
 
 ## Changelog
 
-### v4 (Current)
+### v6 (Current)
+- Episode progress tracking with auto-save (every 5s + on pause)
+- Continue Watching section with progress bars
+- Seek to saved position minus 20 seconds on return
+- Fixed ophim image URLs (migrated to img.ophim.live)
+- Removed broken wsrv.nl proxy dependency
+- Episode badge and progress bar in MovieCard
+- Pushed to Forgejo: `git.khoavo.myds.me/vndangkhoa/kv-netflix:v6`
+- Docker multi-stage build optimized for Synology NAS (linux/amd64)
+
+### v4
 - Deployed v4 to Forgejo and Docker Registry
 - Refactored frontend and cleaned up repository
 

@@ -20,7 +20,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     );
 
     // Helper for URL safety (same as Hero)
-    const getImageUrl = (url: string | undefined, width: number) => {
+    const getImageUrl = (url: string | undefined) => {
         if (!url) return '';
         let cleanUrl = url;
         if (url.startsWith('//')) {
@@ -82,7 +82,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                 </div>
                                 <div
                                     className="absolute inset-0 -z-10 opacity-30 bg-cover bg-center blur-2xl grayscale"
-                                    style={{ backgroundImage: `url(${getImageUrl(movie.backdrop || movie.thumbnail, 400)})` }}
+                                    style={{ backgroundImage: `url(${getImageUrl(movie.backdrop || movie.thumbnail)})` }}
                                 />
                             </div>
                         );
@@ -94,7 +94,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                             ref={videoRef}
                             controls
                             className="w-full h-full max-h-screen object-contain"
-                            poster={getImageUrl(movie.backdrop || movie.thumbnail, 1280)}
+                            poster={getImageUrl(movie.backdrop || movie.thumbnail)}
                         />
                     );
                 })()}

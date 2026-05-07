@@ -17,7 +17,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
         ? (movie.watchedTimestamp / movie.duration) * 100
         : 0;
 
-    const getImageUrl = (url: string, width: number) => {
+    const getImageUrl = (url: string) => {
         if (!url) return '';
         let cleanUrl = url;
         if (url.startsWith('//')) {
@@ -39,7 +39,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
             >
                 {!imgError ? (
                     <img
-                        src={getImageUrl(movie.thumbnail, 250)}
+                        src={getImageUrl(movie.thumbnail)}
                         alt={movie.title}
                         onError={() => setImgError(true)}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"

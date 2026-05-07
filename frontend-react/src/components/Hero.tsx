@@ -32,7 +32,7 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
     };
 
     // Helper to generate robust image URLs
-    const getImageUrl = (url: string | undefined, width: number, blur: number = 0) => {
+    const getImageUrl = (url: string | undefined) => {
         if (!url) return '';
         let cleanUrl = url;
         if (url.startsWith('//')) {
@@ -52,12 +52,12 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
                 <div className="absolute inset-0 scale-105 transition-transform duration-[10000ms] ease-linear">
                     <img
                         key={movie.id}
-                        src={getImageUrl(movie.backdrop || movie.thumbnail, 1600)}
+                        src={getImageUrl(movie.backdrop || movie.thumbnail)}
                         alt={movie.title}
                         className="w-full h-full object-cover animate-fade-in"
                         onError={(e) => {
-                            if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail, 1600)) {
-                                e.currentTarget.src = getImageUrl(movie.thumbnail, 1600);
+                            if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail)) {
+                                e.currentTarget.src = getImageUrl(movie.thumbnail);
                             }
                         }}
                     />
@@ -119,12 +119,12 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
                 <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
                     <img
                         key={movie.id}
-                        src={getImageUrl(movie.backdrop || movie.thumbnail, 1600)}
+                        src={getImageUrl(movie.backdrop || movie.thumbnail)}
                         alt={movie.title}
                         className="w-full h-full object-cover mask-image-gradient animate-fade-in"
                         onError={(e) => {
-                            if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail, 1600)) {
-                                e.currentTarget.src = getImageUrl(movie.thumbnail, 1600);
+                            if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail)) {
+                                e.currentTarget.src = getImageUrl(movie.thumbnail);
                             }
                         }}
                     />
@@ -188,12 +188,12 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
                 <img
                     key={`bg-${movie.id}`}
                     // Use thumbnail as safe default since we blur it anyway
-                    src={getImageUrl(movie.thumbnail || movie.backdrop, 1000)}
+                    src={getImageUrl(movie.thumbnail || movie.backdrop)}
                     alt="Background"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                        if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail, 1000)) {
-                            e.currentTarget.src = getImageUrl(movie.thumbnail, 1000);
+                        if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail)) {
+                            e.currentTarget.src = getImageUrl(movie.thumbnail);
                         }
                     }}
                     className="w-full h-full object-cover opacity-50 scale-110 blur-xl" // CSS Blur instead of API blur
@@ -262,7 +262,7 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
 
                             <img
                                 key={`poster-${movie.id}`}
-                                src={getImageUrl(movie.thumbnail || movie.backdrop, 600)}
+                                src={getImageUrl(movie.thumbnail || movie.backdrop)}
                                 alt={movie.title}
                                 className="relative w-[280px] lg:w-[350px] aspect-[2/3] object-cover rounded-xl shadow-2xl shadow-black/50 ring-1 ring-white/10 transform transition-all duration-500 group-hover/poster:scale-[1.02] group-hover/poster:-rotate-1"
                             />

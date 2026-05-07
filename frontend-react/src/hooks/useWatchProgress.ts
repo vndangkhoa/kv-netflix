@@ -8,6 +8,11 @@ interface ProgressData {
     timestamp: number;
     duration: number;
     updatedAt: string;
+    movieTitle?: string;
+    movieThumbnail?: string;
+    movieBackdrop?: string;
+    movieYear?: number;
+    movieCategory?: string;
 }
 
 interface StoredProgress {
@@ -77,7 +82,7 @@ export const useWatchProgress = () => {
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     }, [progressMap]);
 
-    const getContinueWatchingMovies = useCallback((): Movie[] => {
+    const getContinueWatchingMovies = useCallback(() => {
         return Object.entries(progressMap)
             .map(([slug, data]) => ({
                 id: slug,

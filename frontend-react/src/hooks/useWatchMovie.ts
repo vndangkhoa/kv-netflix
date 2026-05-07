@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import type { MovieDetail, VideoSource } from '../types';
 import { useWatchProgress } from './useWatchProgress';

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v4
+    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v6
     container_name: streamflow
     platform: linux/amd64
     ports:
@@ -12,10 +12,11 @@ services:
       - PORT=8000
       - TZ=Asia/Ho_Chi_Minh
     volumes:
+      # Synology: Use relative path for data persistence
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8000/api/health" ]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
