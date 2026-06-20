@@ -25,7 +25,7 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 
 	// Protected routes (require auth)
 	r.Group(func(r chi.Router) {
-		r.Use(AuthMiddleware)
+		r.Use(h.AuthMiddleware)
 
 		r.Get("/auth/me", h.GetMe)
 		r.Post("/auth/device/pair", h.PairDevice)

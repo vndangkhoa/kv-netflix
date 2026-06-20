@@ -8,6 +8,7 @@ services:
     environment:
       - DATABASE_URL=/app/data/streamflow.db
       - PORT=8000
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data

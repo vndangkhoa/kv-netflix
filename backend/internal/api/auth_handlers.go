@@ -14,15 +14,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte("streamflow-secret-key-change-in-production")
-
 type Claims struct {
 	UserID uint   `json:"user_id"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
-func generateToken(user *models.User) (string, error) {
+func (h *Handler) generateToken(user *models.User) (string, error) {
 	claims := &Claims{
 		UserID: user.ID,
 		Email:  user.Email,
@@ -32,7 +30,7 @@ func generateToken(user *models.User) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(h.JWTSecret)
 }
 
 func generateDeviceCode() string {
@@ -88,7 +86,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := generateToken(user)
+	token, err := h.generateToken(user)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -126,7 +124,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := generateToken(&user)
+	token, err := h.generateToken(&user)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -216,7 +214,7 @@ func (h *Handler) PairDevice(w http.ResponseWriter, r *http.Request) {
 	database.DB.Save(&device)
 
 	// Generate token for the paired device
-	token, err := generateToken(&models.User{ID: userID})
+	token, err := h.generateToken(&models.User{ID: userID})
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -259,7 +257,7 @@ func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Device was paired — generate token
-	token, err := generateToken(&models.User{ID: device.UserID})
+	token, err := h.generateToken(&models.User{ID: device.UserID})
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -335,7 +333,7 @@ func (h *Handler) LoginWithCode(w http.ResponseWriter, r *http.Request) {
 	device.IsPaired = true
 	database.DB.Save(&device)
 
-	token, err := generateToken(&models.User{ID: device.UserID})
+	token, err := h.generateToken(&models.User{ID: device.UserID})
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return

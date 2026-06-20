@@ -4,7 +4,7 @@
 
 ### Modern Movie Streaming Platform
 
-A full-stack video streaming application with Go backend, React frontend, and Android TV support.
+A self-hosted movie streaming application with Go backend, React frontend, and Android TV support.
 
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
@@ -14,7 +14,7 @@ A full-stack video streaming application with Go backend, React frontend, and An
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](#license)
 
-[Deploy](#deployment) | [Features](#features) | [API](#api-reference) | [Development](#local-development) | [Docker](#docker-deployment)
+[Deploy](#deployment) · [Features](#features) · [API](#api-reference) · [Development](#local-development)
 
 </div>
 
@@ -22,19 +22,20 @@ A full-stack video streaming application with Go backend, React frontend, and An
 
 ## Overview
 
-KV-NETFLIX is a self-hosted movie streaming platform designed for Synology NAS and personal servers. It scrapes Vietnamese movie content from multiple providers, serves HLS streams, and provides a Netflix-like UI with user accounts, device sync, and cross-platform support.
+KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and personal servers. It scrapes Vietnamese movie content from multiple providers, serves HLS streams via a Go backend proxy, and delivers a Netflix-like experience with user accounts, cross-device sync, and a responsive UI.
 
 **Key Highlights:**
 
-- Scrape movies from Ophim and PhimMoiChill providers
-- HLS streaming with backend proxy (bypasses CORS)
+- Multi-provider movie scraping (Ophim, PhimMoiChill)
+- HLS streaming with backend proxy to bypass CORS
 - User accounts with JWT authentication
-- Device pairing: PC generates code, TV enters code to login
-- Saved movies & watch history synced across devices
+- Device pairing: PC shows 6-digit code, other devices enter to login
+- Saved movies & watch history synced across devices via API
 - Vietnamese & English language support
-- Dark & light theme with system detection
-- Movie recommendations based on watch history
-- Android TV app with D-pad navigation
+- Dark & light theme with automatic system detection
+- Personalized movie recommendations based on watch history
+- Android TV app with D-pad navigation and 10s skip
+- Docker multi-stage build optimized for Synology NAS (linux/amd64)
 
 ---
 
@@ -46,8 +47,8 @@ KV-NETFLIX is a self-hosted movie streaming platform designed for Synology NAS a
 |---------|-------------|
 | HLS Streaming | Native HLS.js playback with backend proxy |
 | Multi-Server | Multiple CDN sources per episode |
-| Episode Progress | Auto-save every 5s + on pause, seek to last position |
-| Continue Watching | Resume from where you left off (minus 20s buffer) |
+| Episode Progress | Auto-save every 5s + on pause, resume from last position |
+| Continue Watching | Resume from where you left off (20s buffer) |
 | Auto-Play Next | 10s countdown overlay with next/prev thumbnails |
 | Keyboard Shortcuts | Space (play/pause), arrows (seek/volume), F (fullscreen) |
 
@@ -57,17 +58,17 @@ KV-NETFLIX is a self-hosted movie streaming platform designed for Synology NAS a
 |---------|-------------|
 | Registration | Email + password account creation |
 | Login | Email/password or 6-digit code entry |
-| Device Pairing | Logged-in PC shows code, other devices enter to login |
+| Device Pairing | Logged-in device shows code, other devices enter to login |
 | Account Recovery | Recovery key-based password reset |
 | Device Management | View and remove connected devices |
-| Cross-Device Sync | Saved movies & history synced via API |
+| Cross-Device Sync | Saved movies & history synced to server |
 
 ### UI/UX
 
 | Feature | Description |
 |---------|-------------|
 | Dark/Light Theme | Auto-detection based on system preference |
-| i18n | Vietnamese & English toggle in navbar |
+| i18n | Vietnamese & English language toggle |
 | Responsive | Mobile-first design, collapsible navbar |
 | Blur-Up Images | Lazy loading with low-res placeholder blur |
 | Scroll Fade | Smooth gradient arrows on movie rows |
@@ -109,16 +110,15 @@ The easiest way to run KV-NETFLIX is with Docker on a Synology NAS or any Docker
 #### Option 1: Container Manager GUI (Synology)
 
 1. Open **Container Manager** on your Synology NAS
-2. Go to **Registry** and add the Forgejo registry:
+2. Go to **Registry** and add the container registry:
    - Registry: `git.khoavo.myds.me`
-   - Username: `vndangkhoa`
-   - Password: `Thieugia19`
-3. Search `vndangkhoa/kv-netflix` and pull the `v7` tag
+   - Authenticate with your credentials when prompted
+3. Search `vndangkhoa/kv-netflix` and pull the `latest` tag
 4. Create a container:
-   - **Image**: `git.khoavo.myds.me/vndangkhoa/kv-netflix:v7`
+   - **Image**: `git.khoavo.myds.me/vndangkhoa/kv-netflix:latest`
    - **Name**: `streamflow`
    - **Ports**: `3478` (local) → `8000` (container)
-   - **Environment**: `TZ=Asia/Ho_Chi_Minh`
+   - **Environment**: `TZ=Asia/Ho_Chi_Minh`, `JWT_SECRET=your-secret-key-here`
    - **Volume**: Create `docker/streamflow/data` on NAS → map to `/app/data`
    - **Restart**: Unless stopped
 5. Start the container
@@ -127,7 +127,7 @@ The easiest way to run KV-NETFLIX is with Docker on a Synology NAS or any Docker
 
 ```bash
 # Login to registry
-docker login git.khoavo.myds.me -u vndangkhoa -p Thieugia19
+docker login git.khoavo.myds.me
 
 # Pull and start
 docker compose up -d
@@ -142,7 +142,7 @@ docker compose logs -f
 ```yaml
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v7
+    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:latest
     container_name: streamflow
     platform: linux/amd64
     ports:
@@ -150,6 +150,7 @@ services:
     environment:
       - DATABASE_URL=/app/data/streamflow.db
       - PORT=8000
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data
@@ -160,6 +161,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+```
+
+Create a `.env` file next to `docker-compose.yml` with your secret:
+
+```bash
+echo "JWT_SECRET=your-secret-key-here" > .env
 ```
 
 </details>
@@ -174,11 +181,12 @@ cd kv-netflix
 # Build Docker image
 docker build --platform linux/amd64 -t kv-netflix:latest .
 
-# Run
+# Run (set JWT_SECRET to a secure random string)
 docker run -d \
   --name streamflow \
   -p 3478:8000 \
   -v ./data:/app/data \
+  -e JWT_SECRET=your-secret-key-here \
   -e TZ=Asia/Ho_Chi_Minh \
   kv-netflix:latest
 ```
@@ -209,6 +217,70 @@ The frontend dev server proxies `/api` requests to the backend on port 8000.
 
 ---
 
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8000` | Server port |
+| `DATABASE_URL` | `./streamflow.db` | SQLite database path |
+| `JWT_SECRET` | `change-me-in-production` | Secret key for JWT token signing |
+| `TZ` | `UTC` | Timezone |
+
+---
+
+## API Reference
+
+### Public Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/videos/home` | Home page movies by category |
+| `GET` | `/api/videos/search?q=` | Search movies by title |
+| `GET` | `/api/videos/{slug}` | Movie detail + episodes |
+| `POST` | `/api/extract` | Extract video stream URL |
+| `GET` | `/api/stream?url=` | Proxy video stream (bypass CORS) |
+| `GET` | `/api/images/proxy?url=` | Proxy & resize images |
+| `GET` | `/api/categories/genres` | Genre list |
+| `GET` | `/api/categories/countries` | Country list |
+
+### Authentication
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/auth/register` | No | Create account |
+| `POST` | `/api/auth/login` | No | Login with email/password |
+| `POST` | `/api/auth/device/code` | No | Generate pairing code (for TV) |
+| `GET` | `/api/auth/device/status?code=` | No | Poll pairing status (for TV) |
+| `POST` | `/api/auth/device/link-login` | No | Login with 6-digit code |
+| `POST` | `/api/auth/reset-password` | No | Reset password with recovery key |
+| `GET` | `/api/auth/me` | Yes | Get current user |
+| `POST` | `/api/auth/device/pair` | Yes | Pair device with code |
+| `POST` | `/api/auth/device/link-code` | Yes | Generate code for other devices |
+
+### Account Management (Protected)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/account/devices` | List connected devices |
+| `DELETE` | `/api/account/devices` | Remove a device |
+| `POST` | `/api/account/change-password` | Change password |
+| `POST` | `/api/account/recovery-key` | Generate recovery key |
+
+### Data Sync (Protected)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/sync/saved-movies` | Get saved movies |
+| `POST` | `/api/sync/saved-movies` | Save a movie |
+| `DELETE` | `/api/sync/saved-movies?movie_id=` | Remove saved movie |
+| `GET` | `/api/sync/watch-history` | Get watch history |
+| `POST` | `/api/sync/watch-history` | Update watch progress |
+| `POST` | `/api/sync/bulk` | Bulk sync movies + history |
+| `GET` | `/api/videos/explore` | Get recommendations |
+
+---
+
 ## Project Structure
 
 ```
@@ -224,6 +296,7 @@ kv-netflix/
 │       │   ├── sync_handlers.go        # Saved movies & watch history
 │       │   ├── explore_handler.go      # Genre-based recommendations
 │       │   └── middleware.go           # JWT auth middleware
+│       ├── config/config.go            # Env-based configuration
 │       ├── database/database.go        # SQLite + GORM setup
 │       ├── models/models.go            # User, Device, WatchHistory, etc.
 │       ├── scraper/                    # Ophim, PhimMoiChill providers
@@ -265,59 +338,6 @@ kv-netflix/
 
 ---
 
-## API Reference
-
-### Public Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/health` | Health check |
-| `GET` | `/api/videos/home` | Home page movies by category |
-| `GET` | `/api/videos/search?q=` | Search movies by title |
-| `GET` | `/api/videos/{slug}` | Movie detail + episodes |
-| `POST` | `/api/extract` | Extract video stream URL |
-| `GET` | `/api/stream?url=` | Proxy video stream (bypass CORS) |
-| `GET` | `/api/images/proxy?url=` | Proxy & resize images |
-| `GET` | `/api/categories/genres` | Genre list |
-| `GET` | `/api/categories/countries` | Country list |
-
-### Authentication
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/auth/register` | No | Create account |
-| `POST` | `/api/auth/login` | No | Login with email/password |
-| `POST` | `/api/auth/device/code` | No | Generate pairing code (for TV) |
-| `GET` | `/api/auth/device/status?code=` | No | Poll pairing status (for TV) |
-| `POST` | `/api/auth/device/link-login` | No | Login with 6-digit code |
-| `POST` | `/api/auth/reset-password` | No | Reset password with recovery key |
-| `GET` | `/api/auth/me` | Yes | Get current user |
-| `POST` | `/api/auth/device/pair` | Yes | Pair device with code |
-| `POST` | `/api/auth/device/link-code` | Yes | Generate code for other devices |
-
-### Account Management
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/account/devices` | List connected devices |
-| `DELETE` | `/api/account/devices` | Remove a device |
-| `POST` | `/api/account/change-password` | Change password |
-| `POST` | `/api/account/recovery-key` | Generate recovery key |
-
-### Data Sync
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/sync/saved-movies` | Get saved movies |
-| `POST` | `/api/sync/saved-movies` | Save a movie |
-| `DELETE` | `/api/sync/saved-movies?movie_id=` | Remove saved movie |
-| `GET` | `/api/sync/watch-history` | Get watch history |
-| `POST` | `/api/sync/watch-history` | Update watch progress |
-| `POST` | `/api/sync/bulk` | Bulk sync movies + history |
-| `GET` | `/api/videos/explore` | Get recommendations |
-
----
-
 ## Device Pairing Flow
 
 ```
@@ -326,7 +346,7 @@ kv-netflix/
 │    In)       │         │   Logged In) │
 └──────┬───────┘         └──────┬───────┘
        │                        │
-       │  1. Click "Ghép nối"   │
+       │  1. Click "Ghep noi"   │
        │  ─────────────────>    │
        │                        │
        │  2. PC shows code      │
@@ -391,16 +411,6 @@ kv-netflix/
 - **v3.3** — Rebranded to kv-netflix, PWA support
 
 </details>
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8000` | Server port |
-| `DATABASE_URL` | `./streamflow.db` | SQLite database path |
-| `TZ` | `UTC` | Timezone |
 
 ---
 

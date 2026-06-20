@@ -39,7 +39,7 @@ func main() {
 
 	providers := []scraper.MovieProvider{ophimService, phim30Service}
 
-	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService)
+	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService, cfg.JWTSecret)
 
 	r := chi.NewRouter()
 

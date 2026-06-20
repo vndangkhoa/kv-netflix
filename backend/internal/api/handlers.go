@@ -46,6 +46,7 @@ type Handler struct {
 	TMDB      *service.TMDBService
 	Extractor *service.VideoExtractor
 	Image     *service.ImageService
+	JWTSecret []byte
 }
 
 func NewHandler(
@@ -54,6 +55,7 @@ func NewHandler(
 	tmdb *service.TMDBService,
 	extractor *service.VideoExtractor,
 	image *service.ImageService,
+	jwtSecret string,
 ) *Handler {
 	return &Handler{
 		Repo:      repo,
@@ -61,6 +63,7 @@ func NewHandler(
 		TMDB:      tmdb,
 		Extractor: extractor,
 		Image:     image,
+		JWTSecret: []byte(jwtSecret),
 	}
 }
 
