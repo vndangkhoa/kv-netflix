@@ -1,32 +1,38 @@
-# Ignore for Docker build
+# Git and IDE
 .git
 .github
 .vscode
 .agent
 .gemini
-*.log
-*.db
+.idea
+.DS_Store
+@eaDir/
 
-# Android TV build artifacts
+# Android TV
 android-tv/
 release/
 
-# Cache directories causing Synology Drive sync issues
+# Backend caches and binaries
 backend/cache/
-cache/
+backend/*.exe
+backend/*.exe~
+backend/streamflow.db
+backend/server
+
+# Frontend
+frontend-react/node_modules/
+frontend-react/dist/
+
+# Node
+node_modules/
+
+# Misc
+*.log
 *.pyc
+*.sh
+*.bat
+*.apk
+*.zip
 __pycache__/
 .venv/
 venv/
-node_modules/
-
-# Build scripts and misc
-*.sh
-*.bat
-*.json
-!backend/requirements.txt
-!frontend/package.json
-
-# Synology Drive
-@eaDir/
-.DS_Store

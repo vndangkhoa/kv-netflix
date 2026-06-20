@@ -3,10 +3,12 @@ import type { ReactNode } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { NAV_ITEMS } from '../constants';
+import { useLang } from '../context/LanguageContext';
 
 export const Layout = ({ children }: { children: ReactNode }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { t } = useLang();
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -54,7 +56,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
 
                     {NAV_ITEMS.map((item) => (
                         <Link
-                            key={item.name}
+                            key={item.nameKey}
                             to={item.path}
                             className={`flex items-center gap-4 px-4 py-3 rounded-md transition-colors ${isActive(item.path)
                                 ? 'text-[var(--text-primary)] font-bold bg-[var(--bg-elevated)]'
@@ -62,7 +64,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
                                 }`}
                         >
                             <item.icon className="w-6 h-6" />
-                            <span className="hidden lg:block text-sm">{item.name}</span>
+                            <span className="hidden lg:block text-sm">{t[item.nameKey as keyof typeof t]}</span>
                         </Link>
                     ))}
                 </nav>
@@ -76,9 +78,9 @@ export const Layout = ({ children }: { children: ReactNode }) => {
 
             <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[var(--bg-secondary)] border-t border-[var(--border-subtle)] z-50 flex justify-around p-3 items-center">
                 {NAV_ITEMS.slice(0, 4).map((item) => (
-                    <Link key={item.name} to={item.path} className={`flex flex-col items-center gap-1 ${isActive(item.path) ? 'text-[var(--text-primary)]' : 'text-[var(--text-dim)]'}`}>
+                    <Link key={item.nameKey} to={item.path} className={`flex flex-col items-center gap-1 ${isActive(item.path) ? 'text-[var(--text-primary)]' : 'text-[var(--text-dim)]'}`}>
                         <item.icon className="w-5 h-5" />
-                        <span className="text-[10px]">{item.name}</span>
+                        <span className="text-[10px]">{t[item.nameKey as keyof typeof t]}</span>
                     </Link>
                 ))}
             </div>

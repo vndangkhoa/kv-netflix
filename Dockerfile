@@ -7,7 +7,7 @@ COPY frontend-react/ .
 RUN npm run build
 
 # Stage 2: Build Backend for linux/amd64
-FROM --platform=linux/amd64 golang:1.24-alpine AS backend-builder
+FROM --platform=linux/amd64 golang:1.25-alpine AS backend-builder
 WORKDIR /app/backend
 
 COPY backend/go.mod backend/go.sum ./

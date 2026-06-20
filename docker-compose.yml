@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v6
+    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:v7
     container_name: streamflow
     platform: linux/amd64
     ports:

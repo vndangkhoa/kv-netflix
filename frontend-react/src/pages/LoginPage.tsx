@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { useLang } from '../context/LanguageContext';
@@ -19,7 +18,6 @@ export default function LoginPage({ onClose, onSwitchToRegister, onSwitchToReset
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login, loginWithToken } = useAuth();
-    const navigate = useNavigate();
     const { t } = useLang();
 
     const handlePasswordLogin = async (e: React.FormEvent) => {

@@ -50,7 +50,7 @@ export const useSmartRecommendations = (history: Movie[]): Recommendation[] => {
 
         // 4. Map to Recommendation Objects
         const recommendations: Recommendation[] = topCategories.map(catSlug => {
-            const catName = CATEGORIES.find(c => c.id === catSlug)?.name || 'Phim';
+            const catName = CATEGORIES.find(c => c.id === catSlug)?.nameKey || 'movies';
             return {
                 id: `rec-${catSlug}`,
                 title: `Gợi ý từ ${catName}`,
