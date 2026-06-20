@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Play, Plus, Check } from 'lucide-react';
 import type { Movie } from '../types';
 import { useMyList } from '../hooks/useMyList';
@@ -12,7 +12,6 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
     const [index, setIndex] = useState(0);
     const { addToList, removeFromList, isSaved } = useMyList();
 
-    // Auto-rotate carousel
     useEffect(() => {
         if (movies.length <= 1) return;
         const interval = setInterval(() => {
@@ -20,16 +19,6 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
         }, 8000);
         return () => clearInterval(interval);
     }, [movies]);
-
-    if (!movies || movies.length === 0) return null;
-
-    const movie = movies[index];
-    const saved = isSaved(movie.id);
-
-    const toggleList = () => {
-        if (saved) removeFromList(movie.id);
-        else addToList(movie);
-    };
 
     // Helper to generate robust image URLs
     const getImageUrl = (url: string | undefined) => {
@@ -43,6 +32,38 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
         return cleanUrl;
     };
 
+    const getProxyUrl = (url: string | undefined, width: number) => {
+        const raw = getImageUrl(url);
+        if (!raw) return '';
+        return `/api/images/proxy?url=${encodeURIComponent(raw)}&width=${width}`;
+    };
+
+    // Preload next 2 images
+    const preloadImages = useMemo(() => {
+        if (!movies || movies.length === 0) return [];
+        return movies.slice(index + 1, index + 3).map(m => getImageUrl(m.backdrop || m.thumbnail));
+    }, [movies, index]);
+
+    useEffect(() => {
+        preloadImages.forEach(src => {
+            if (!src) return;
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = src;
+            document.head.appendChild(link);
+        });
+    }, [preloadImages]);
+
+    if (!movies || movies.length === 0) return null;
+
+    const movie = movies[index];
+    const saved = isSaved(movie.id);
+
+    const toggleList = () => {
+        if (saved) removeFromList(movie.id);
+        else addToList(movie);
+    };
+
     // --- Variant-Specific Styles ---
 
     // 1. Apple Variant (Glassmorphism, Bottom-Aligned)
@@ -52,17 +73,17 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
                 <div className="absolute inset-0 scale-105 transition-transform duration-[10000ms] ease-linear">
                     <img
                         key={movie.id}
-                        src={getImageUrl(movie.backdrop || movie.thumbnail)}
+                        src={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
                         alt={movie.title}
                         className="w-full h-full object-cover animate-fade-in"
                         onError={(e) => {
-                            if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail)) {
-                                e.currentTarget.src = getImageUrl(movie.thumbnail);
+                            if (movie.thumbnail && e.currentTarget.src !== getProxyUrl(movie.thumbnail, 1280)) {
+                                e.currentTarget.src = getProxyUrl(movie.thumbnail, 1280);
                             }
                         }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]/30" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-primary)]/60 via-transparent to-transparent" />
                 </div>
 
                 <div className="absolute bottom-0 left-0 w-full p-8 md:p-16 lg:p-24 pb-20 z-10">
@@ -119,17 +140,17 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
                 <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
                     <img
                         key={movie.id}
-                        src={getImageUrl(movie.backdrop || movie.thumbnail)}
+                        src={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
                         alt={movie.title}
                         className="w-full h-full object-cover mask-image-gradient animate-fade-in"
                         onError={(e) => {
-                            if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail)) {
-                                e.currentTarget.src = getImageUrl(movie.thumbnail);
+                            if (movie.thumbnail && e.currentTarget.src !== getProxyUrl(movie.thumbnail, 1280)) {
+                                e.currentTarget.src = getProxyUrl(movie.thumbnail, 1280);
                             }
                         }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/40 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-transparent to-transparent" />
                 </div>
 
                 <div className="absolute inset-0 flex items-center px-4 md:px-12 z-10">
@@ -183,23 +204,22 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
     // 3. Default (StreamFlow) Variant - Split Poster Design (Solves Quality & Sizing)
     return (
         <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[75vh] min-h-[500px] overflow-hidden group">
-            {/* 1. Ambient Background (Blurred) */}
+            {/* 1. Ambient Background (Blurred) - always dark since it overlays an image */}
             <div className="absolute inset-0 bg-[#0a0a0a]">
                 <img
                     key={`bg-${movie.id}`}
-                    // Use thumbnail as safe default since we blur it anyway
-                    src={getImageUrl(movie.thumbnail || movie.backdrop)}
+                    src={getProxyUrl(movie.thumbnail || movie.backdrop, 640)}
                     alt="Background"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                        if (movie.thumbnail && e.currentTarget.src !== getImageUrl(movie.thumbnail)) {
-                            e.currentTarget.src = getImageUrl(movie.thumbnail);
+                        if (movie.thumbnail && e.currentTarget.src !== getProxyUrl(movie.thumbnail, 640)) {
+                            e.currentTarget.src = getProxyUrl(movie.thumbnail, 640);
                         }
                     }}
-                    className="w-full h-full object-cover opacity-50 scale-110 blur-xl" // CSS Blur instead of API blur
+                    className="w-full h-full object-cover opacity-50 scale-110 blur-xl"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/60 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/80 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-primary)] via-[var(--bg-primary)]/80 to-transparent" />
             </div>
 
             {/* 2. Main Content Layout */}
@@ -262,7 +282,7 @@ export const Hero = ({ movies, variant = 'default' }: HeroProps) => {
 
                             <img
                                 key={`poster-${movie.id}`}
-                                src={getImageUrl(movie.thumbnail || movie.backdrop)}
+                                src={getProxyUrl(movie.thumbnail || movie.backdrop, 400)}
                                 alt={movie.title}
                                 className="relative w-[280px] lg:w-[350px] aspect-[2/3] object-cover rounded-xl shadow-2xl shadow-black/50 ring-1 ring-white/10 transform transition-all duration-500 group-hover/poster:scale-[1.02] group-hover/poster:-rotate-1"
                             />

@@ -24,7 +24,7 @@ func InitDB(dsn string) {
 	log.Println("Database connection established")
 
 	// Auto-migrate schema
-	err = DB.AutoMigrate(&models.Video{})
+	err = DB.AutoMigrate(&models.Video{}, &models.User{}, &models.Device{}, &models.SavedMovie{}, &models.WatchHistory{}, &models.RecoveryKey{})
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

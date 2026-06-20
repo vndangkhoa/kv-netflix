@@ -34,10 +34,10 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-[#141414] flex items-center justify-center">
+        <div className="min-h-screen bg-[var(--bg-secondary)] flex items-center justify-center">
           <div className="text-center p-8">
-            <h1 className="text-2xl font-bold text-white mb-4">Something went wrong</h1>
-            <p className="text-gray-400 mb-6">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Something went wrong</h1>
+            <p className="text-[var(--text-muted)] mb-6">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <button

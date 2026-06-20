@@ -3,12 +3,14 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>kv-netflix</title>
   <meta name="theme-color" content="#141414" />
   <meta name="description" content="Modern Movie Streaming Service" />
-  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <script>
     // IMMEDIATE CLEANUP: Unregister all service workers and clear caches in development
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -25,7 +27,9 @@
       if (window.caches) {
         caches.keys().then(names => {
           Promise.all(names.map(name => caches.delete(name))).then(() => {
-            if (names.length > 0) console.log('Cleared Caches');
+            if (names.length > 0) {
+              console.log('Cleared Caches');
+            }
           });
         });
       }

@@ -238,7 +238,8 @@ func (h *Handler) ProxyImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Cache-Control", "public, max-age=259200, stale-while-revalidate=86400")
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.Write(data)
 }
 

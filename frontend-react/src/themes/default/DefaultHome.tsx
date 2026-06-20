@@ -1,13 +1,16 @@
 import Navbar from '../../components/Navbar';
 import { HomeContent } from '../../components/HomeContent';
+import { useSync } from '../../hooks/useSync';
 
 export const DefaultHome = () => {
+    useSync();
+
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-red-600 selection:text-white">
+        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans selection:bg-red-600 selection:text-white transition-colors duration-300">
             <Navbar />
-            <div className="pt-16">
-                <HomeContent topPadding="pt-8 md:pt-12" />
-            </div>
+            <main className="pt-14">
+                <HomeContent />
+            </main>
         </div>
     );
 };

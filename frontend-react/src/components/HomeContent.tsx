@@ -4,41 +4,31 @@ import type { Movie } from '../types';
 import MovieRow from './MovieRow';
 import { MovieCard } from './MovieCard';
 import { CATEGORIES } from '../constants';
+import { useLang } from '../context/LanguageContext';
 
 import { useMyList } from '../hooks/useMyList';
 import { useSmartRecommendations } from '../hooks/useSmartRecommendations';
 import { useWatchProgress } from '../hooks/useWatchProgress';
 
-interface HomeContentProps {
-    topPadding?: string;
-}
-
-export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
+export const HomeContent = () => {
     const [movies, setMovies] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(true);
     const [fetchingMore, setFetchingMore] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
-    const { watchHistory, savedMovies } = useMyList(); // Access History and MyList
+    const { watchHistory, savedMovies } = useMyList();
     const { getContinueWatchingMovies } = useWatchProgress();
     const continueWatching = getContinueWatchingMovies();
     const [searchParams] = useSearchParams();
     const query = searchParams.get('q');
     const category = searchParams.get('category');
+    const { t } = useLang();
 
-    // Filtered view if search or specific category is selected
     const isFiltered = !!(query || (category && category !== 'home'));
-
-    // On main home page, we show rows AND infinite grid at bottom
-    // If filtered, we ONLY show the grid
-    const showRows = !isFiltered;
 
     const observer = useRef<IntersectionObserver | null>(null);
 
-    // ... (rest of useEffects same as before) ...
-
-    // Reset grid when query/category changes
     useEffect(() => {
         setMovies([]);
         setPage(1);
@@ -46,7 +36,6 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
         setLoading(true);
     }, [query, category]);
 
-    // Fetch movies for the Infinite Grid
     useEffect(() => {
         const fetchMovies = async () => {
             if (page === 1) setLoading(true);
@@ -63,9 +52,7 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
                 }
 
                 const res = await fetch(endpoint);
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const data = await res.json();
 
                 if (!data || data.length === 0) {
@@ -73,10 +60,8 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
                 } else {
                     setMovies(prev => {
                         if (page === 1) return data;
-                        // Deduplicate arrays when appending to prevent React StrictMode or fast-scroll double fetches
                         const existingIds = new Set(prev.map(m => m.id));
-                        const newUniqueMovies = data.filter((m: Movie) => !existingIds.has(m.id));
-                        return [...prev, ...newUniqueMovies];
+                        return [...prev, ...data.filter((m: Movie) => !existingIds.has(m.id))];
                     });
                 }
             } catch {
@@ -90,7 +75,6 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
         fetchMovies();
     }, [page, query, category]);
 
-    // Sentinel observer for infinite scroll
     const lastElementRef = useCallback((node: HTMLDivElement) => {
         if (loading || fetchingMore) return;
         if (observer.current) observer.current.disconnect();
@@ -106,115 +90,119 @@ export const HomeContent = ({ topPadding = "pt-24" }: HomeContentProps) => {
 
     const getTitle = () => {
         if (query) return `Kết quả cho "${query}"`;
-        if (category === 'phim-le') return 'Phim Lẻ';
-        if (category === 'phim-bo') return 'Phim Bộ';
-        if (category === 'hoat-hinh') return 'Hoạt Hình';
-        if (category === 'tv-shows') return 'TV Shows';
-        if (category === 'phim-sap-chieu') return 'Phim Sắp Chiếu';
-        if (category === 'phim-hay') return 'Phim Hay';
-        if (category) return 'Danh Sách Phim';
-        return 'Tất Cả Phim';
+        if (category === 'phim-le') return t.movies;
+        if (category === 'phim-bo') return t.series;
+        if (category === 'hoat-hinh') return t.animation;
+        if (category === 'tv-shows') return t.tvShows;
+        if (category === 'phim-sap-chieu') return t.upcoming;
+        if (category === 'phim-hay') return t.movies;
+        if (category) return t.movies;
+        return t.home;
     };
 
-    // Calculate Smart Suggestions based on last watched item
     const lastWatched = watchHistory.length > 0 ? watchHistory[0] : null;
-
-    // Get Category-based recommendations
     const recommendations = useSmartRecommendations(watchHistory);
 
-    return (
-        <div className={`w-full px-4 sm:px-6 lg:px-12 pb-12 ${topPadding}`}>
-            {showRows && (
-                <div className="space-y-4 relative z-10 mb-12">
-                    {/* Continue Watching Row */}
-                    {continueWatching.length > 0 && (
-                        <MovieRow title="Tiếp tục xem" movies={continueWatching} />
-                    )}
-
-                    {/* My List Row */}
-                    {savedMovies.length > 0 && (
-                        <MovieRow title="Danh sách của tôi" movies={savedMovies} />
-                    )}
-
-                    {/* Smart Category Recommendations */}
-                    {recommendations.map(rec => (
-                        <MovieRow
-                            key={rec.id}
-                            title={rec.title}
-                            category={rec.category}
-                        />
-                    ))}
-
-                    {/* Smart Suggestions using SEARCH API */}
-                    {lastWatched && (
-                        <>
-                            {lastWatched.director && (
-                                <MovieRow
-                                    title={`Đạo diễn ${lastWatched.director.replace(/,$/, '').trim()}`}
-                                    searchQuery={lastWatched.director.replace(/,$/, '').trim()}
-                                    key={`dir-${lastWatched.id}`}
-                                />
-                            )}
-                            {lastWatched.cast && lastWatched.cast.length > 0 && (
-                                <MovieRow
-                                    title={`Diễn viên ${lastWatched.cast[0].replace(/,$/, '').trim()}`}
-                                    searchQuery={lastWatched.cast[0].replace(/,$/, '').trim()}
-                                    key={`act-${lastWatched.id}`}
-                                />
-                            )}
-                        </>
-                    )}
-
-                    {/* Phim Mới Horizontal Carousel */}
-                    <MovieRow title="Phim Mới Cập Nhật" category="home" />
-
-                    {/* Top 10 Grids for each Category */}
-                    {CATEGORIES.filter(c => c.id !== 'my-list').map((cat) => (
-                        <MovieRow
-                            key={cat.id}
-                            title={`Top 10 ${cat.name}`}
-                            category={cat.id}
-                            limit={10}
-                        // layout="row" is default
-                        />
-                    ))}
-
-                    {/* Other Curated Sections */}
-                    <MovieRow title="Hành Động & Phiêu Lưu" category="hanh-dong" />
-                    <MovieRow title="Tâm Lý & Tình Cảm" category="tinh-cam" />
-                </div>
-            )}
-
-            {/* Infinite Scroll Grid */}
-            <div>
-                <h2 className="text-2xl font-bold mb-8 flex items-center gap-3 text-white">
-                    <span className="w-1.5 h-8 bg-cyan-500 rounded-full"></span>
+    // ── Filtered View (search / category) ────────────────────────────
+    if (isFiltered) {
+        return (
+            <div className="px-4 sm:px-6 lg:px-12 pt-6 pb-12">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-[var(--text-primary)]">
+                    <span className="w-1 h-6 bg-cyan-500 rounded-full" />
                     {getTitle()}
                 </h2>
 
-                <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
+                <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                     {movies.map((movie, index) => (
                         <MovieCard key={`${movie.id}-${index}`} movie={movie} />
                     ))}
                 </div>
 
-                {/* Sentinel element for infinite scroll */}
                 <div ref={lastElementRef} className="h-10 w-full" />
 
                 {loading && (
-                    <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4 mt-4">
+                    <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4 mt-4">
                         {[...Array(12)].map((_, i) => (
-                            <div key={i} className="aspect-[2/3] bg-white/5 rounded-lg animate-pulse" />
+                            <div key={i} className="aspect-[2/3] bg-[var(--bg-elevated)] rounded-lg animate-pulse" />
                         ))}
                     </div>
                 )}
 
                 {!loading && movies.length === 0 && (
-                    <div className="text-center py-12 text-gray-400">
-                        Không tìm thấy phim nào.
+                    <div className="text-center py-16 text-[var(--text-muted)]">
+                        {t.exploreEmpty}
                     </div>
                 )}
             </div>
+        );
+    }
+
+    // ── Home View (curated rows) ─────────────────────────────────────
+    return (
+        <div className="px-4 sm:px-6 lg:px-12 pt-6 pb-12 space-y-10">
+            {/* Personal Section */}
+            {(continueWatching.length > 0 || savedMovies.length > 0) && (
+                <section>
+                    {continueWatching.length > 0 && (
+                        <MovieRow title={t.continueWatching} movies={continueWatching} />
+                    )}
+                    {savedMovies.length > 0 && (
+                        <MovieRow title={t.myList} movies={savedMovies} />
+                    )}
+                </section>
+            )}
+
+            {/* Smart Recommendations */}
+            {recommendations.length > 0 && (
+                <section>
+                    {recommendations.map(rec => (
+                        <MovieRow key={rec.id} title={rec.title} category={rec.category} />
+                    ))}
+                </section>
+            )}
+
+            {/* Director / Cast Suggestions */}
+            {lastWatched && (lastWatched.director || (lastWatched.cast && lastWatched.cast.length > 0)) && (
+                <section>
+                    {lastWatched.director && (
+                        <MovieRow
+                            title={`${t.director} ${lastWatched.director.replace(/,$/, '').trim()}`}
+                            searchQuery={lastWatched.director.replace(/,$/, '').trim()}
+                            key={`dir-${lastWatched.id}`}
+                        />
+                    )}
+                    {lastWatched.cast && lastWatched.cast.length > 0 && (
+                        <MovieRow
+                            title={`${t.castMember} ${lastWatched.cast[0].replace(/,$/, '').trim()}`}
+                            searchQuery={lastWatched.cast[0].replace(/,$/, '').trim()}
+                            key={`act-${lastWatched.id}`}
+                        />
+                    )}
+                </section>
+            )}
+
+            {/* New Updates */}
+            <section>
+                <MovieRow title={t.latestUpdates} category="home" />
+            </section>
+
+            {/* Top 10 by Category */}
+            <section>
+                {CATEGORIES.filter(c => c.id !== 'my-list').map(cat => (
+                    <MovieRow
+                        key={cat.id}
+                        title={`Top 10 ${t[cat.nameKey as keyof typeof t]}`}
+                        category={cat.id}
+                        limit={10}
+                    />
+                ))}
+            </section>
+
+            {/* Genre Rows */}
+            <section>
+                <MovieRow title="Hành Động & Phiêu Lưu" category="hanh-dong" />
+                <MovieRow title="Tâm Lý & Tình Cảm" category="tinh-cam" />
+            </section>
         </div>
     );
 };

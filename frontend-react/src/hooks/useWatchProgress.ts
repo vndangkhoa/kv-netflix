@@ -13,6 +13,8 @@ interface ProgressData {
     movieBackdrop?: string;
     movieYear?: number;
     movieCategory?: string;
+    movieGenre?: string;
+    movieCountry?: string;
 }
 
 interface StoredProgress {
@@ -26,6 +28,8 @@ export interface WatchProgress extends ProgressData {
     movieBackdrop?: string;
     movieYear?: number;
     movieCategory?: string;
+    movieGenre?: string;
+    movieCountry?: string;
 }
 
 export const useWatchProgress = () => {
@@ -56,6 +60,8 @@ export const useWatchProgress = () => {
         backdrop?: string;
         year?: number;
         category?: string;
+        genre?: string;
+        country?: string;
     }) => {
         setProgressMap(prev => ({
             ...prev,
@@ -69,6 +75,8 @@ export const useWatchProgress = () => {
                 movieBackdrop: movieInfo?.backdrop,
                 movieYear: movieInfo?.year,
                 movieCategory: movieInfo?.category,
+                movieGenre: movieInfo?.genre,
+                movieCountry: movieInfo?.country,
             }
         }));
     }, []);
@@ -92,6 +100,8 @@ export const useWatchProgress = () => {
                 backdrop: data.movieBackdrop || undefined,
                 year: data.movieYear || undefined,
                 category: data.movieCategory || 'movies',
+                genre: data.movieGenre,
+                country: data.movieCountry,
                 // Add progress info for display
                 currentEpisode: data.episode,
                 watchedTimestamp: data.timestamp,

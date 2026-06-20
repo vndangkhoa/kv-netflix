@@ -13,6 +13,8 @@ export interface Movie {
     provider?: string;
     director?: string;
     cast?: string[];
+    genre?: string;
+    country?: string;
     // Progress tracking
     currentEpisode?: number;
     watchedTimestamp?: number;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
 import type { MovieDetail, VideoSource } from '../types';
 import { useWatchProgress } from './useWatchProgress';
@@ -9,6 +9,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     const [source, setSource] = useState<VideoSource | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentEpisode, setCurrentEpisode] = useState(parseInt(episode || '1'));
+    const [episodeEnded, setEpisodeEnded] = useState(false);
     const { getProgress, saveProgress, clearProgress } = useWatchProgress();
     const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -61,13 +62,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
     // Save progress when episode changes
     useEffect(() => {
-        if (!slug) return;
-        const progress = getProgress(slug);
-        if (progress && progress.episode !== currentEpisode) {
-            // Clear old progress when switching episodes
-            clearProgress(slug);
-        }
-    }, [currentEpisode, slug, getProgress, clearProgress]);
+        // Don't clear progress here - it's handled by onEnded or manual episode switch
+    }, [currentEpisode]);
 
     useEffect(() => {
         if (!movie) return;
@@ -128,6 +124,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
         const video = videoRef.current;
         let hls: Hls | null = null;
+        let hasSeeked = false;
 
         const saveCurrentProgress = () => {
             if (video && slug && movieRef.current) {
@@ -140,18 +137,24 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                         backdrop: movieRef.current.backdrop,
                         year: movieRef.current.year,
                         category: movieRef.current.category,
+                        genre: movieRef.current.genre,
+                        country: movieRef.current.country,
                     });
                 }
             }
         };
 
-        const onLoadedMetadata = () => {
-            // Seek to saved position (minus 20s) if available
+        const seekToSavedPosition = () => {
+            if (hasSeeked) return;
             const progress = getProgressRef.current(slug);
-            if (progress && progress.episode === currentEpisode && progress.timestamp > 0) {
-                // Rewind 20 seconds so user doesn't miss the exact moment
-                video.currentTime = Math.max(0, progress.timestamp - 20);
+            if (progress && progress.episode === currentEpisode && progress.timestamp > 10) {
+                hasSeeked = true;
+                video.currentTime = Math.max(0, progress.timestamp - 10);
             }
+        };
+
+        const onCanPlay = () => {
+            seekToSavedPosition();
         };
 
         const onPause = () => {
@@ -159,8 +162,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         };
 
         const onEnded = () => {
-            // Clear progress when video ends
             clearProgressRef.current(slug);
+            setEpisodeEnded(true);
         };
 
         const isHls = source.stream_url.includes('.m3u8') || source.format_id === 'hls';
@@ -170,14 +173,18 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             hls.loadSource(source.stream_url);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                seekToSavedPosition();
                 video.play().catch(() => { });
+            });
+            hls.on(Hls.Events.FRAG_LOADED, () => {
+                seekToSavedPosition();
             });
         } else {
             video.src = source.stream_url;
             video.play().catch(() => { });
         }
 
-        video.addEventListener('loadedmetadata', onLoadedMetadata);
+        video.addEventListener('canplay', onCanPlay);
         video.addEventListener('pause', onPause);
         video.addEventListener('ended', onEnded);
 
@@ -186,7 +193,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
         return () => {
             if (hls) hls.destroy();
-            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('canplay', onCanPlay);
             video.removeEventListener('pause', onPause);
             video.removeEventListener('ended', onEnded);
             if (saveIntervalRef.current) {
@@ -260,12 +267,55 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         }
     }, [source]);
 
+    const episodes = movie?.episodes || [];
+    const currentServerName = episodes.find(e => e.number === currentEpisode)?.server_name || '';
+    const sameServerEpisodes = episodes.filter(e => e.server_name === currentServerName);
+    const maxEpisode = sameServerEpisodes.length > 0
+        ? Math.max(...sameServerEpisodes.map(e => e.number))
+        : 0;
+    const minEpisode = sameServerEpisodes.length > 0
+        ? Math.min(...sameServerEpisodes.map(e => e.number))
+        : 0;
+
+    const hasNextEpisode = currentEpisode < maxEpisode;
+    const hasPrevEpisode = currentEpisode > minEpisode;
+
+    const playNextEpisode = useCallback(() => {
+        if (hasNextEpisode) {
+            setEpisodeEnded(false);
+            setCurrentEpisode(currentEpisode + 1);
+        }
+    }, [currentEpisode, hasNextEpisode]);
+
+    const playPrevEpisode = useCallback(() => {
+        if (hasPrevEpisode) {
+            setEpisodeEnded(false);
+            setCurrentEpisode(currentEpisode - 1);
+        }
+    }, [currentEpisode, hasPrevEpisode]);
+
+    const dismissEndScreen = useCallback(() => {
+        setEpisodeEnded(false);
+    }, []);
+
+    // Reset episodeEnded when episode changes
+    useEffect(() => {
+        setEpisodeEnded(false);
+    }, [currentEpisode]);
+
     return {
         movie,
         source,
         loading,
         currentEpisode,
         setCurrentEpisode,
-        videoRef
+        videoRef,
+        episodeEnded,
+        hasNextEpisode,
+        hasPrevEpisode,
+        playNextEpisode,
+        playPrevEpisode,
+        dismissEndScreen,
+        maxEpisode,
     };
 };

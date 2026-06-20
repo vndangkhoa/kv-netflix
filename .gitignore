@@ -15,6 +15,7 @@ yarn-error.log
 # Frontend build
 frontend/dist/
 frontend/.cache/
+frontend-react/dist/
 
 # Debug files and temp outputs
 *.png
@@ -31,13 +32,17 @@ backend/*.txt
 backend/*.js
 backend/*.json
 !backend/go.json
+backend/cache/
 
 # Binaries and executables
 *.exe
+*.exe~
 *.dll
 *.so
 *.dylib
 backend/server
+backend/streamflow-backend
+backend/streamflow-backend.exe
 
 # Database files
 *.db
