@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark } from 'lucide-react';
 import { useWatchMovie } from '../../hooks/useWatchMovie';
 import MovieRow from '../../components/MovieRow';
 import { useLang } from '../../context/LanguageContext';
+import { useMyList } from '../../hooks/useMyList';
+import { useAuth } from '../../context/AuthContext';
+import { syncAPI } from '../../api/client';
 
 function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
     const [count, setCount] = useState(10);
@@ -36,13 +39,13 @@ function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
                 <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
                 <circle
                     cx="18" cy="18" r="16" fill="none"
-                    stroke="rgb(6,182,212)" strokeWidth="2"
+                    stroke="var(--accent)" strokeWidth="2"
                     strokeDasharray={`${(count / 10) * 100.53} 100.53`}
                     strokeLinecap="round"
                     className="transition-all duration-1000"
                 />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-cyan-400">
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-accent">
                 {count}
             </span>
         </div>
@@ -53,12 +56,76 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     const navigate = useNavigate();
     const {
         movie, loading, currentEpisode, setCurrentEpisode, videoRef,
-        episodeEnded, hasNextEpisode, hasPrevEpisode,
+        episodeEnded, videoActuallyEnded, hasNextEpisode, hasPrevEpisode,
         playNextEpisode, dismissEndScreen,
     } = useWatchMovie(slug, episode);
     const [selectedServer, setSelectedServer] = useState<string>('');
     const [expanded, setExpanded] = useState(false);
+    const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+    const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const { t } = useLang();
+    const { isSaved, addToList, removeFromList } = useMyList();
+    const { isAuthenticated } = useAuth();
+
+    const movieId = movie?.id || slug;
+    const isMovieSaved = isSaved(movieId);
+
+    const showToast = (message: string) => {
+        setToast({ message, visible: true });
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => {
+            setToast({ message: '', visible: false });
+        }, 3500);
+    };
+
+    const handleToggleSave = useCallback(() => {
+        if (!movie) return;
+
+        if (isMovieSaved) {
+            removeFromList(movieId);
+            if (isAuthenticated) {
+                syncAPI.removeSavedMovie(movieId).catch(() => {});
+            }
+            return;
+        }
+
+        const movieData = {
+            id: movie.slug,
+            title: movie.title,
+            original_title: movie.original_title,
+            slug: movie.slug,
+            thumbnail: movie.thumbnail,
+            backdrop: movie.backdrop,
+            year: movie.year,
+            category: movie.category || 'movies',
+            quality: movie.quality,
+            director: movie.director,
+            cast: movie.cast,
+            genre: movie.genre,
+            country: movie.country,
+        };
+        addToList(movieData);
+        showToast(t.savedToMyList as string);
+
+        if (isAuthenticated) {
+            syncAPI.addSavedMovie({
+                movie_id: movie.slug,
+                title: movie.title,
+                slug: movie.slug,
+                thumbnail: movie.thumbnail,
+                backdrop: movie.backdrop,
+                year: movie.year || 0,
+                category: movie.category || '',
+                quality: movie.quality || '',
+                director: movie.director || '',
+                cast: Array.isArray(movie.cast) ? movie.cast.join(',') : (movie.cast || ''),
+            }).catch(() => {});
+        } else {
+            setTimeout(() => {
+                showToast(t.saveToSync as string);
+            }, 1200);
+        }
+    }, [movie, isMovieSaved, movieId, isAuthenticated, addToList, removeFromList, t]);
 
     const getImageUrl = (url: string | undefined) => {
         if (!url) return '';
@@ -89,14 +156,14 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     if (!movie) return (
         <div className="h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
             <div className="flex flex-col items-center gap-4">
-                <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
                 <p className="text-[var(--text-muted)] animate-pulse">{t.loadingStream}</p>
             </div>
         </div>
     );
 
     const episodesByServer = movie?.episodes?.reduce((acc, ep) => {
-        const server = ep.server_name || 'Default';
+        const server = ep.serverName || ep.server_name || 'Default';
         if (!acc[server]) acc[server] = [];
         acc[server].push(ep);
         return acc;
@@ -120,7 +187,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         : null;
 
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans selection:bg-cyan-500/30 pb-20 transition-colors duration-300">
+        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans selection:bg-accent/30 pb-20 transition-colors duration-300">
             {/* Back Navigation */}
             <div className="fixed top-0 left-0 right-0 z-50 p-4 bg-gradient-to-b from-[var(--bg-primary)]/80 to-transparent pointer-events-none">
                 <button
@@ -136,7 +203,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             <div className="w-full h-[50vh] md:h-[80vh] bg-black relative shadow-2xl z-40">
                 {loading && (
                     <div className="absolute inset-0 flex items-center justify-center z-20">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500 border-t-transparent shadow-[0_0_20px_rgba(6,182,212,0.5)]"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent border-t-transparent shadow-[0_0_20px_rgba(229,9,20,0.4)]"></div>
                     </div>
                 )}
                 {(() => {
@@ -164,6 +231,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                 key={activeEpisode.url}
                                 ref={videoRef}
                                 controls
+                                playsInline
                                 className="w-full h-full max-h-screen object-contain"
                                 poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
                             />
@@ -206,7 +274,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                             {nextEp && (
                                                 <button
                                                     onClick={playNextEpisode}
-                                                    className="group relative flex-shrink-0 w-[160px] sm:w-[220px] md:w-[300px] rounded-xl overflow-hidden border-2 border-cyan-500/50 hover:border-cyan-400 transition-all shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+                                                    className="group relative flex-shrink-0 w-[160px] sm:w-[220px] md:w-[300px] rounded-xl overflow-hidden border-2 border-accent/50 hover:border-accent transition-all shadow-[0_0_30px_rgba(229,9,20,0.2)]"
                                                 >
                                                     <div className="aspect-video bg-[#1a1a1a] relative">
                                                         <img
@@ -215,18 +283,20 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                         />
                                                         <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="bg-cyan-500/90 rounded-full p-3 group-hover:scale-110 transition-transform">
-                                                                <SkipForward className="w-6 h-6 text-black" />
+                                                            <div className="bg-accent/90 rounded-full p-3 group-hover:scale-110 transition-transform">
+                                                                <SkipForward className="w-6 h-6 text-white fill-current" />
                                                             </div>
                                                         </div>
                                                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                                                             <p className="text-sm text-white font-bold">{t.episode} {nextEp.number}</p>
                                                         </div>
                                                     </div>
-                                                    <AutoPlayCountdown
-                                                        key={`countdown-${currentEpisode}`}
-                                                        onComplete={playNextEpisode}
-                                                    />
+                                                    {videoActuallyEnded && (
+                                                        <AutoPlayCountdown
+                                                            key={`countdown-${currentEpisode}`}
+                                                            onComplete={playNextEpisode}
+                                                        />
+                                                    )}
                                                 </button>
                                             )}
 
@@ -261,13 +331,28 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     <h1 className="text-xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4 tracking-tight">{movie.title}</h1>
 
                     {/* Meta Tags */}
-                    <div className="flex items-center gap-4 text-sm md:text-base mb-6">
-                        <span className="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-3 text-sm md:text-base mb-4 flex-wrap">
+                        <span className="bg-accent-bg text-accent border border-accent/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">
                             {movie.quality || 'HD'}
                         </span>
                         <span className="text-[var(--text-muted)]">{movie.year || '2024'}</span>
                         <span className="text-green-500 dark:text-green-400 font-medium">98% Match</span>
                         <span className="text-[var(--text-muted)]">{movie.original_title}</span>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex items-center gap-3 mb-5">
+                        <button
+                            onClick={handleToggleSave}
+                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all border ${
+                                isMovieSaved
+                                    ? 'bg-accent-bg text-accent border-accent/30'
+                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] border-[var(--border-subtle)]'
+                            }`}
+                        >
+                            <Heart size={16} className={isMovieSaved ? 'fill-accent text-accent' : ''} />
+                            {isMovieSaved ? (t.savedMovie as string) : (t.saveMovie as string)}
+                        </button>
                     </div>
 
                     <div
@@ -281,7 +366,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     <div className="space-y-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex flex-wrap items-center gap-6">
-                                <h3 className="text-2xl font-bold border-l-4 border-cyan-500 pl-4 whitespace-nowrap">Episodes</h3>
+                                <h3 className="text-2xl font-bold border-l-4 border-accent pl-4 whitespace-nowrap">Episodes</h3>
 
                                 {serverNames.length > 1 && (
                                     <div className="flex flex-wrap gap-2">
@@ -290,7 +375,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                                 key={server}
                                                 onClick={() => setSelectedServer(server)}
                                                 className={`px-3 py-1 text-xs font-bold rounded-full transition-all border ${selectedServer === server
-                                                    ? 'bg-cyan-500 text-black border-cyan-500'
+                                                    ? 'bg-accent text-white border-accent'
                                                     : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]'
                                                     }`}
                                             >
@@ -303,24 +388,24 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                             <div className="text-[var(--text-muted)] text-sm font-medium bg-[var(--bg-elevated)] px-3 py-1 rounded-full w-fit">{currentServerEpisodes.length} Items</div>
                         </div>
 
-                        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-1 sm:gap-2">
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-1.5 sm:gap-2">
                             {visibleEpisodes.map((ep) => (
                                 <button
                                     key={`${ep.number}-${selectedServer}`}
                                     onClick={() => handleEpisodeClick(ep.number)}
                                     className={`group relative py-2 rounded-lg border transition-all duration-300 ${currentEpisode === ep.number
-                                        ? 'border-cyan-500 bg-cyan-100 dark:bg-cyan-950/30'
+                                        ? 'border-accent bg-accent-bg'
                                         : 'border-transparent bg-[var(--bg-tertiary)] hover:bg-[var(--bg-elevated)] hover:border-[var(--border-primary)]'
                                         }`}
                                 >
                                     <div className="flex items-center justify-center">
-                                        <span className={`font-bold text-sm ${currentEpisode === ep.number ? 'text-cyan-600 dark:text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-[var(--text-primary)]'
+                                        <span className={`font-bold text-sm ${currentEpisode === ep.number ? 'text-accent' : 'text-[var(--text-muted)] group-hover:text-[var(--text-primary)]'
                                             }`}>
                                             {ep.number}
                                         </span>
                                     </div>
                                     {currentEpisode === ep.number && (
-                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(229,9,20,0.8)]" />
                                     )}
                                 </button>
                             ))}
@@ -349,6 +434,16 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     <MovieRow title="Top Phim Bộ" category="phim-bo" limit={10} key="top-series" />
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            {toast.visible && (
+                <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                    <div className="flex items-center gap-2.5 px-5 py-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-2xl shadow-2xl backdrop-blur-xl">
+                        <Bookmark size={16} className="text-accent flex-shrink-0" />
+                        <p className="text-sm text-[var(--text-primary)] font-medium">{toast.message}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -122,6 +122,31 @@ export const useWatchProgress = () => {
         setProgressMap({});
     }, []);
 
+    const importFromServer = (entries: WatchProgress[]) => {
+        setProgressMap(prev => {
+            const merged = { ...prev };
+            for (const entry of entries) {
+                const existing = merged[entry.slug];
+                if (!existing || new Date(entry.updatedAt) > new Date(existing.updatedAt)) {
+                    merged[entry.slug] = {
+                        episode: entry.episode,
+                        timestamp: entry.timestamp,
+                        duration: entry.duration,
+                        updatedAt: entry.updatedAt,
+                        movieTitle: entry.movieTitle,
+                        movieThumbnail: entry.movieThumbnail,
+                        movieBackdrop: entry.movieBackdrop,
+                        movieYear: entry.movieYear,
+                        movieCategory: entry.movieCategory,
+                        movieGenre: entry.movieGenre,
+                        movieCountry: entry.movieCountry,
+                    };
+                }
+            }
+            return merged;
+        });
+    };
+
     return {
         getProgress,
         saveProgress,
@@ -129,5 +154,6 @@ export const useWatchProgress = () => {
         getContinueWatchingMovies,
         clearProgress,
         clearAllProgress,
+        importFromServer,
     };
 };

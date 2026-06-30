@@ -56,7 +56,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
         <div ref={cardRef} className={`group/card relative flex flex-col h-full ${className}`}>
             <Link
                 to={`/watch/${movie.slug}`}
-                className={`block relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-tertiary)] shadow-lg dark:shadow-lg shadow-black/10 border border-black/5 dark:border-white/5 transition-all duration-500 hover:shadow-cyan-500/10 ${isDragging ? 'pointer-events-none' : ''}`}
+                className={`block relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-accent/15 border border-black/5 dark:border-white/5 transition-all duration-500 ${isDragging ? 'pointer-events-none' : ''}`}
                 draggable={false}
             >
                 {isVisible && !imgError ? (
@@ -80,82 +80,58 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
                     </div>
                 )}
 
-                {/* Hover Overlay */}
+                {/* Hover Play Button Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-all duration-500 flex items-center justify-center">
-                    <div className="bg-white/20 backdrop-blur-md p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 transition-all duration-500 shadow-xl border border-white/10">
-                        <Play className="w-6 h-6 text-white fill-current" />
+                    <div className="bg-accent/90 text-white p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 hover:scale-115 transition-all duration-500 shadow-2xl shadow-accent/20 border border-accent/25">
+                        <Play className="w-5 h-5 text-white fill-current" />
                     </div>
                 </div>
 
-                {/* Top-Left Tag (Provider) */}
-                {movie.provider && (
-                    <div className="absolute top-2 left-2">
-                        <div className="bg-[var(--bg-badge)] backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-bold border border-white/10 text-[var(--text-on-image-dim)] uppercase tracking-tighter">
-                            {movie.provider}
-                        </div>
-                    </div>
-                )}
-
-                {/* Episode Badge for Continue Watching */}
-                {movie.currentEpisode && (
-                    <div className="absolute top-2 left-2 mt-7">
-                        <div className="bg-cyan-500/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-bold text-black border border-cyan-400/20">
+                {/* Status Badges Group */}
+                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
+                    {/* Episode Badge for Series */}
+                    {movie.currentEpisode && (
+                        <div className="bg-accent/90 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-white border border-accent/20 shadow-md">
                             Tập {movie.currentEpisode}
                         </div>
-                    </div>
-                )}
-
-                {/* Remaining Time for Continue Watching */}
-                {movie.watchedTimestamp && movie.duration && remainingTime > 0 && (
-                    <div className="absolute top-2 left-2 mt-14">
-                        <div className="bg-[var(--bg-badge)] backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-medium text-[var(--text-on-image-dim)] border border-white/10">
-                            {formatTime(remainingTime)} left
-                        </div>
-                    </div>
-                )}
-
-                {/* Top-Right Tags (Quality & Lang) */}
-                <div className="absolute top-2 right-2 flex flex-col gap-1.5 items-end">
-                    {movie.quality && (
-                        <div className="bg-cyan-500/90 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold text-black uppercase tracking-wider shadow-lg border border-cyan-400/20">
-                            {movie.quality}
-                        </div>
                     )}
-                    {movie.lang && (
-                        <div className="bg-[var(--bg-badge)] backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-bold border border-white/10 text-[var(--text-on-image)]">
-                            {movie.lang}
+
+                    {/* Remaining Time Badge */}
+                    {movie.watchedTimestamp && movie.duration && remainingTime > 0 && (
+                        <div className="bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-[var(--text-on-image-dim)] border border-white/10 shadow-md">
+                            {formatTime(remainingTime)} left
                         </div>
                     )}
                 </div>
 
-                {/* Bottom Status (Time / Episode Info) */}
+                {/* Live Indicator / Top Right Time Badge */}
                 {movie.time && (
-                    <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
-                        <div className="bg-[var(--bg-badge)] backdrop-blur-xl px-2 py-1 rounded-md text-[10px] font-semibold border border-white/10 text-[var(--text-on-image)] flex items-center gap-1.5 shadow-2xl">
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-2 pointer-events-none">
+                        <div className="bg-[var(--bg-badge)] backdrop-blur-xl px-2 py-1 rounded-lg text-[9px] font-bold border border-white/10 text-[var(--text-on-image)] flex items-center gap-1.5 shadow-2xl">
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
                             {movie.time}
                         </div>
                     </div>
                 )}
 
-                {/* Progress Bar for Continue Watching */}
+                {/* Video Playback Progress Bar */}
                 {progressPercent > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--bg-elevated)]">
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
                         <div
-                            className="h-full bg-cyan-500 transition-all duration-300"
+                            className="h-full bg-accent transition-all duration-300"
                             style={{ width: `${Math.min(progressPercent, 100)}%` }}
                         />
                     </div>
                 )}
             </Link>
 
-            {/* Info Section */}
-            <div className="mt-3 px-1">
-                <h3 className="font-semibold text-[var(--text-primary)] text-sm leading-snug line-clamp-2 group-hover/card:text-cyan-500 dark:group-hover/card:text-cyan-400 transition-colors duration-300">
+            {/* Movie Title & Info */}
+            <div className="mt-3 px-0.5">
+                <h3 className="font-semibold text-[var(--text-primary)] text-xs md:text-sm leading-snug line-clamp-2 group-hover/card:text-accent transition-colors duration-300">
                     {movie.title}
                 </h3>
                 {movie.year && (
-                    <p className="text-[11px] text-[var(--text-dim)] mt-1 font-medium tracking-wide translate-y-0 opacity-100 transition-all">
+                    <p className="text-[10px] md:text-[11px] text-[var(--text-dim)] mt-1 font-medium tracking-wide">
                         {movie.year} • 98% Match
                     </p>
                 )}

@@ -2,6 +2,7 @@ export interface Movie {
     id: string;
     title: string;
     original_title?: string;
+    description?: string;
     slug: string;
     thumbnail: string;
     backdrop?: string;
@@ -37,6 +38,7 @@ export interface Episode {
     title: string;
     url: string;
     server_name?: string;
+    serverName?: string;
 }
 
 export interface VideoSource {

@@ -20,7 +20,7 @@ export function Modal({ children, onClose }: ModalProps) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
             {/* Content */}
             <div className="relative w-full max-w-sm bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-2xl shadow-2xl p-6 transition-all duration-200 scale-100 opacity-100">

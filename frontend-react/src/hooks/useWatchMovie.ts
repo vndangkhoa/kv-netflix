@@ -12,6 +12,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     const [episodeEnded, setEpisodeEnded] = useState(false);
     const { getProgress, saveProgress, clearProgress } = useWatchProgress();
     const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const hasTriggeredNearEnd = useRef(false);
+    const [videoActuallyEnded, setVideoActuallyEnded] = useState(false);
 
     // Refs to avoid effect re-running when these functions change
     const getProgressRef = useRef(getProgress);
@@ -125,6 +127,14 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         const video = videoRef.current;
         let hls: Hls | null = null;
         let hasSeeked = false;
+        hasTriggeredNearEnd.current = false;
+
+        const getNearEndThreshold = (duration: number): number => {
+            if (duration <= 0) return 0;
+            if (duration > 1800) return 300;
+            if (duration > 600) return 120;
+            return 30;
+        };
 
         const saveCurrentProgress = () => {
             if (video && slug && movieRef.current) {
@@ -163,7 +173,19 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
         const onEnded = () => {
             clearProgressRef.current(slug);
+            setVideoActuallyEnded(true);
             setEpisodeEnded(true);
+        };
+
+        const onTimeUpdate = () => {
+            if (!hasTriggeredNearEnd.current && video.duration > 0) {
+                const remaining = video.duration - video.currentTime;
+                const threshold = getNearEndThreshold(video.duration);
+                if (threshold > 0 && remaining <= threshold && remaining > 0) {
+                    hasTriggeredNearEnd.current = true;
+                    setEpisodeEnded(true);
+                }
+            }
         };
 
         const isHls = source.stream_url.includes('.m3u8') || source.format_id === 'hls';
@@ -187,6 +209,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         video.addEventListener('canplay', onCanPlay);
         video.addEventListener('pause', onPause);
         video.addEventListener('ended', onEnded);
+        video.addEventListener('timeupdate', onTimeUpdate);
 
         // Save progress every 5 seconds
         saveIntervalRef.current = setInterval(saveCurrentProgress, 5000);
@@ -196,6 +219,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             video.removeEventListener('canplay', onCanPlay);
             video.removeEventListener('pause', onPause);
             video.removeEventListener('ended', onEnded);
+            video.removeEventListener('timeupdate', onTimeUpdate);
             if (saveIntervalRef.current) {
                 clearInterval(saveIntervalRef.current);
                 saveIntervalRef.current = null;
@@ -268,8 +292,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     }, [source]);
 
     const episodes = movie?.episodes || [];
-    const currentServerName = episodes.find(e => e.number === currentEpisode)?.server_name || '';
-    const sameServerEpisodes = episodes.filter(e => e.server_name === currentServerName);
+    const currentServerName = episodes.find(e => e.number === currentEpisode)?.serverName || episodes.find(e => e.number === currentEpisode)?.server_name || '';
+    const sameServerEpisodes = episodes.filter(e => (e.serverName || e.server_name) === currentServerName);
     const maxEpisode = sameServerEpisodes.length > 0
         ? Math.max(...sameServerEpisodes.map(e => e.number))
         : 0;
@@ -301,6 +325,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     // Reset episodeEnded when episode changes
     useEffect(() => {
         setEpisodeEnded(false);
+        setVideoActuallyEnded(false);
     }, [currentEpisode]);
 
     return {
@@ -311,6 +336,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         setCurrentEpisode,
         videoRef,
         episodeEnded,
+        videoActuallyEnded,
         hasNextEpisode,
         hasPrevEpisode,
         playNextEpisode,

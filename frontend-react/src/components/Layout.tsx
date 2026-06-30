@@ -1,93 +1,62 @@
-import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
-import { NAV_ITEMS } from '../constants';
+import { useLocation, Link } from 'react-router-dom';
+import { Home, Film, Tv, Heart } from 'lucide-react';
 import { useLang } from '../context/LanguageContext';
+import Navbar from './Navbar';
+
+const BOTTOM_TABS = [
+    { nameKey: 'home' as const, path: '/', icon: Home },
+    { nameKey: 'movies' as const, path: '/?category=phim-le', icon: Film },
+    { nameKey: 'series' as const, path: '/?category=phim-bo', icon: Tv },
+    { nameKey: 'myList' as const, path: '/my-list', icon: Heart },
+];
 
 export const Layout = ({ children }: { children: ReactNode }) => {
     const location = useLocation();
-    const navigate = useNavigate();
     const { t } = useLang();
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
 
     const isActive = (path: string) => {
         if (path === '/') return location.pathname === '/' && !location.search;
         return location.pathname + location.search === path;
     };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            navigate(`/?q=${encodeURIComponent(searchQuery)}`);
-        }
-    };
-
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex transition-colors duration-300">
-            <aside className="hidden md:flex flex-col w-24 lg:w-64 fixed h-full z-50 bg-[var(--bg-secondary)] border-r border-[var(--border-subtle)] pt-8 transition-all duration-300">
-                <div className="px-6 mb-10">
-                    <span className="text-red-600 text-3xl font-bold tracking-tighter">NETFLIX</span>
-                </div>
+        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col transition-colors duration-300">
+            {/* Top Shared Header */}
+            <Navbar />
 
-                <nav className="flex-1 space-y-2 px-4">
-                    <div className={`flex items-center gap-4 px-4 py-3 rounded-md transition-colors cursor-pointer ${isSearchOpen ? 'bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'}`}
-                        onClick={() => !isSearchOpen && setIsSearchOpen(true)}
-                    >
-                        <Search className={`w-6 h-6 ${isSearchOpen ? 'text-[var(--text-primary)]' : ''}`} />
-                        {isSearchOpen ? (
-                            <form onSubmit={handleSearch} className="flex-1">
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[var(--text-primary)] text-sm placeholder:text-[var(--text-dim)]"
-                                    autoFocus
-                                    onBlur={() => !searchQuery && setIsSearchOpen(false)}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                            </form>
-                        ) : (
-                            <span className="hidden lg:block text-sm">Search</span>
-                        )}
-                    </div>
-
-                    {NAV_ITEMS.map((item) => (
-                        <Link
-                            key={item.nameKey}
-                            to={item.path}
-                            className={`flex items-center gap-4 px-4 py-3 rounded-md transition-colors ${isActive(item.path)
-                                ? 'text-[var(--text-primary)] font-bold bg-[var(--bg-elevated)]'
-                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
-                                }`}
-                        >
-                            <item.icon className="w-6 h-6" />
-                            <span className="hidden lg:block text-sm">{t[item.nameKey as keyof typeof t]}</span>
-                        </Link>
-                    ))}
-                </nav>
-
-                <div className="p-4 mt-auto space-y-4">
-                    <div className="text-xs text-[var(--text-dim)] text-center lg:text-left pt-2 border-t border-[var(--border-subtle)] font-medium">
-                        &copy; 2026 StreamFlow
-                    </div>
-                </div>
-            </aside>
-
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[var(--bg-secondary)] border-t border-[var(--border-subtle)] z-50 flex justify-around p-3 items-center">
-                {NAV_ITEMS.slice(0, 4).map((item) => (
-                    <Link key={item.nameKey} to={item.path} className={`flex flex-col items-center gap-1 ${isActive(item.path) ? 'text-[var(--text-primary)]' : 'text-[var(--text-dim)]'}`}>
-                        <item.icon className="w-5 h-5" />
-                        <span className="text-[10px]">{t[item.nameKey as keyof typeof t]}</span>
-                    </Link>
-                ))}
-            </div>
-
-            <main className="flex-1 md:ml-24 lg:ml-64 w-full pb-16 md:pb-0">
+            {/* Main Content Area */}
+            <main className="flex-1 pt-14 pb-16 lg:pb-0 min-h-[calc(100vh-3.5rem)]">
                 {children}
             </main>
+
+            {/* Bottom Tab Bar - Mobile & Tablet only (lg:hidden) */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--bg-secondary)]/95 backdrop-blur-lg border-t border-[var(--border-subtle)] safe-area-bottom">
+                <div className="flex items-center justify-around h-14 px-2">
+                    {BOTTOM_TABS.map((item) => {
+                        const active = isActive(item.path);
+                        return (
+                            <Link
+                                key={item.nameKey}
+                                to={item.path}
+                                className={`flex flex-col items-center justify-center gap-0.5 w-16 py-1 rounded-xl transition-all duration-200 ${
+                                    active ? 'text-accent' : 'text-[var(--text-dim)] active:scale-95'
+                                }`}
+                            >
+                                <div className="relative flex flex-col items-center">
+                                    <item.icon size={20} strokeWidth={active ? 2.5 : 1.8} className="transition-transform duration-200 group-hover:scale-105" />
+                                    {active && (
+                                        <span className="absolute -bottom-1 w-3 h-0.5 bg-accent rounded-full animate-fade-in" />
+                                    )}
+                                </div>
+                                <span className="text-[9px] font-medium leading-none mt-1">
+                                    {t[item.nameKey === 'myList' ? 'myList' : item.nameKey]}
+                                </span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
         </div>
     );
 };

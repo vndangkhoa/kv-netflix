@@ -50,12 +50,41 @@ export const useMyList = () => {
 
     const isSaved = (movieId: string) => list.saved.some(m => m.id === movieId);
 
+    const importFromServer = (saved: Movie[], history: Movie[]) => {
+        setList(prev => {
+            const mergedSaved = [...saved];
+            for (const m of prev.saved) {
+                if (!mergedSaved.some(s => s.id === m.id)) {
+                    mergedSaved.push(m);
+                }
+            }
+            const mergedHistory = [...history];
+            for (const m of prev.history) {
+                if (!mergedHistory.some(s => s.id === m.id)) {
+                    mergedHistory.push(m);
+                }
+            }
+            return { saved: mergedSaved, history: mergedHistory.slice(0, 50) };
+        });
+    };
+
+    const setSavedMovies = (movies: Movie[]) => {
+        setList(prev => ({ ...prev, saved: movies }));
+    };
+
+    const setWatchHistory = (movies: Movie[]) => {
+        setList(prev => ({ ...prev, history: movies.slice(0, 50) }));
+    };
+
     return {
         savedMovies: list.saved,
         watchHistory: list.history,
         addToList,
         removeFromList,
         addToHistory,
-        isSaved
+        isSaved,
+        importFromServer,
+        setSavedMovies,
+        setWatchHistory,
     };
 };

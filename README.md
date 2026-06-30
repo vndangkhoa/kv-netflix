@@ -372,7 +372,20 @@ kv-netflix/
 ## Changelog
 
 <details>
-<summary>v7 (Current) — Auth, Sync, i18n, Theme</summary>
+<summary>v8 (Current) — Responsive Redesign & Crimson Red Brand Makeover</summary>
+
+- **Unified Cinematic Theme** — Overhauled branding accents and controls to Crimson Red (`#e50914`) for a premium streaming experience.
+- **Responsive Layout Shell** — Rebuilt page navigation headers to dynamically transition on scroll and added a sticky bottom tab bar for mobile/tablet devices.
+- **Cinematic Hero Carousel** — Revamped the home carousel with full-bleed high-res backdrops and dark gradient masks under transparent menus.
+- **Horizontal Movie Rows** — Scaled row cards responsively from 115px (mobile) to 215px (desktop) and integrated Netflix-style chevron buttons with hover backdrops.
+- **Centered Account Controls** — Centered settings forms, profile cards, and device tables on the screen for optimized desktop viewports.
+- **Redesigned Brand Logos** — Updated favicon, app icon, and mask SVG files to use Crimson Red gradients instead of the legacy cyan.
+- **TypeScript & Player Improvements** — Resolved type safety issues, cleaned up unused imports, and fixed native video attributes for cleaner console logs.
+
+</details>
+
+<details>
+<summary>v7 — Auth, Sync, i18n, Theme</summary>
 
 - **Auth System** — User registration, login, JWT tokens (30-day expiry)
 - **Device Pairing** — Logged-in PC shows 6-digit code, other devices enter to login

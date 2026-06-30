@@ -28,6 +28,7 @@ export interface Translations {
     // My List / Account
     explore: string;
     history: string;
+    savedMovies: string;
     account: string;
     noSavedMovies: string;
     noWatchHistory: string;
@@ -120,6 +121,10 @@ export interface Translations {
     prevEpisode: string;
     autoPlayNext: string;
     playNextIn: string;
+    saveMovie: string;
+    savedMovie: string;
+    savedToMyList: string;
+    saveToSync: string;
 
     // Explore
     exploreTitle: string;
@@ -141,7 +146,7 @@ const vi: Translations = {
     searchPlaceholder: 'Tìm kiếm phim...',
     login: 'Đăng nhập',
     register: 'Đăng ký',
-    myAccount: 'Tài khoản của tôi',
+    myAccount: 'Của tôi',
     logout: 'Đăng xuất',
     pairDevice: 'Ghép nối',
 
@@ -154,7 +159,7 @@ const vi: Translations = {
     nowShowing: 'Đang chiếu',
     continueWatching: 'Tiếp tục xem',
     viewAll: 'Xem tất cả',
-    myList: 'Danh sách của tôi',
+    myList: 'Của tôi',
     director: 'Đạo diễn',
     castMember: 'Diễn viên',
     latestUpdates: 'Phim Mới Cập Nhật',
@@ -162,6 +167,7 @@ const vi: Translations = {
 
     explore: 'Khám phá',
     history: 'Lịch sử',
+    savedMovies: 'Đã lưu',
     account: 'Tài khoản',
     noSavedMovies: 'Chưa lưu phim nào',
     noWatchHistory: 'Chưa có lịch sử xem',
@@ -249,6 +255,10 @@ const vi: Translations = {
     prevEpisode: 'Tập trước',
     autoPlayNext: 'Tự động phát tập tiếp',
     playNextIn: 'Phát tiếp trong',
+    saveMovie: 'Lưu vào danh sách',
+    savedMovie: 'Đã lưu',
+    savedToMyList: 'Đã lưu vào danh sách của bạn',
+    saveToSync: 'Đăng nhập để đồng bộ danh sách phim đã lưu trên mọi thiết bị',
 
     exploreTitle: 'Phim liên quan đến sở thích của bạn',
     exploreEmpty: 'Xem phim để nhận đề xuất',
@@ -289,6 +299,7 @@ const en: Translations = {
 
     explore: 'Explore',
     history: 'History',
+    savedMovies: 'Saved',
     account: 'Account',
     noSavedMovies: 'No saved movies yet',
     noWatchHistory: 'No watch history yet',
@@ -376,6 +387,10 @@ const en: Translations = {
     prevEpisode: 'Previous Episode',
     autoPlayNext: 'Auto-play next episode',
     playNextIn: 'Playing next in',
+    saveMovie: 'Save to My List',
+    savedMovie: 'Saved',
+    savedToMyList: 'Saved to your list',
+    saveToSync: 'Sign in to sync saved movies across devices',
 
     exploreTitle: 'Movies related to your taste',
     exploreEmpty: 'Watch movies to get recommendations',

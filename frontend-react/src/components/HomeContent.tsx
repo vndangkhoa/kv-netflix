@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import type { Movie } from '../types';
 import MovieRow from './MovieRow';
 import { MovieCard } from './MovieCard';
-import { CATEGORIES } from '../constants';
+import { Hero } from './Hero';
+import { CATEGORIES, GENRES } from '../constants';
 import { useLang } from '../context/LanguageContext';
 
 import { useMyList } from '../hooks/useMyList';
@@ -23,7 +24,7 @@ export const HomeContent = () => {
     const [searchParams] = useSearchParams();
     const query = searchParams.get('q');
     const category = searchParams.get('category');
-    const { t } = useLang();
+    const { t, lang } = useLang();
 
     const isFiltered = !!(query || (category && category !== 'home'));
 
@@ -108,7 +109,7 @@ export const HomeContent = () => {
         return (
             <div className="px-4 sm:px-6 lg:px-12 pt-6 pb-12">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-[var(--text-primary)]">
-                    <span className="w-1 h-6 bg-cyan-500 rounded-full" />
+                    <span className="w-1 h-6 bg-accent rounded-full" />
                     {getTitle()}
                 </h2>
 
@@ -139,70 +140,80 @@ export const HomeContent = () => {
 
     // ── Home View (curated rows) ─────────────────────────────────────
     return (
-        <div className="px-4 sm:px-6 lg:px-12 pt-6 pb-12 space-y-10">
-            {/* Personal Section */}
-            {(continueWatching.length > 0 || savedMovies.length > 0) && (
-                <section>
-                    {continueWatching.length > 0 && (
-                        <MovieRow title={t.continueWatching} movies={continueWatching} />
-                    )}
-                    {savedMovies.length > 0 && (
-                        <MovieRow title={t.myList} movies={savedMovies} />
-                    )}
-                </section>
+        <div className="space-y-10 pb-12">
+            {/* Hero Carousel Banner at the very top */}
+            {movies.length > 0 && (
+                <div className="-mt-14 relative z-10">
+                    <Hero movies={movies.slice(0, 5)} />
+                </div>
             )}
 
-            {/* Smart Recommendations */}
-            {recommendations.length > 0 && (
+            <div className="px-4 sm:px-6 lg:px-12 space-y-10">
+                {/* Personal Section */}
+                {(continueWatching.length > 0 || savedMovies.length > 0) && (
+                    <section>
+                        {continueWatching.length > 0 && (
+                            <MovieRow title={t.continueWatching} movies={continueWatching} />
+                        )}
+                        {savedMovies.length > 0 && (
+                            <MovieRow title={t.myList} movies={savedMovies} />
+                        )}
+                    </section>
+                )}
+
+                {/* Smart Recommendations */}
+                {recommendations.length > 0 && (
+                    <section>
+                        {recommendations.map(rec => (
+                            <MovieRow key={rec.id} title={rec.title} category={rec.category} />
+                        ))}
+                    </section>
+                )}
+
+                {/* Director / Cast Suggestions */}
+                {lastWatched && (lastWatched.director || (lastWatched.cast && lastWatched.cast.length > 0)) && (
+                    <section>
+                        {lastWatched.director && (
+                            <MovieRow
+                                title={`${t.director} ${lastWatched.director.replace(/,$/, '').trim()}`}
+                                searchQuery={lastWatched.director.replace(/,$/, '').trim()}
+                                key={`dir-${lastWatched.id}`}
+                            />
+                        )}
+                        {lastWatched.cast && lastWatched.cast.length > 0 && (
+                            <MovieRow
+                                title={`${t.castMember} ${lastWatched.cast[0].replace(/,$/, '').trim()}`}
+                                searchQuery={lastWatched.cast[0].replace(/,$/, '').trim()}
+                                key={`act-${lastWatched.id}`}
+                            />
+                        )}
+                    </section>
+                )}
+
+                {/* New Updates */}
                 <section>
-                    {recommendations.map(rec => (
-                        <MovieRow key={rec.id} title={rec.title} category={rec.category} />
+                    <MovieRow title={t.latestUpdates} category="home" />
+                </section>
+
+                {/* Top 10 by Category */}
+                <section>
+                    {CATEGORIES.filter(c => c.id !== 'my-list').map(cat => (
+                        <MovieRow
+                            key={cat.id}
+                            title={`Top 10 ${t[cat.nameKey as keyof typeof t]}`}
+                            category={cat.id}
+                            limit={10}
+                        />
                     ))}
                 </section>
-            )}
 
-            {/* Director / Cast Suggestions */}
-            {lastWatched && (lastWatched.director || (lastWatched.cast && lastWatched.cast.length > 0)) && (
+                {/* Genre Rows */}
                 <section>
-                    {lastWatched.director && (
-                        <MovieRow
-                            title={`${t.director} ${lastWatched.director.replace(/,$/, '').trim()}`}
-                            searchQuery={lastWatched.director.replace(/,$/, '').trim()}
-                            key={`dir-${lastWatched.id}`}
-                        />
-                    )}
-                    {lastWatched.cast && lastWatched.cast.length > 0 && (
-                        <MovieRow
-                            title={`${t.castMember} ${lastWatched.cast[0].replace(/,$/, '').trim()}`}
-                            searchQuery={lastWatched.cast[0].replace(/,$/, '').trim()}
-                            key={`act-${lastWatched.id}`}
-                        />
-                    )}
+                    {GENRES.slice(0, 8).map(g => (
+                        <MovieRow key={g.id} title={lang === 'vi' ? g.vi : g.en} category={g.id} />
+                    ))}
                 </section>
-            )}
-
-            {/* New Updates */}
-            <section>
-                <MovieRow title={t.latestUpdates} category="home" />
-            </section>
-
-            {/* Top 10 by Category */}
-            <section>
-                {CATEGORIES.filter(c => c.id !== 'my-list').map(cat => (
-                    <MovieRow
-                        key={cat.id}
-                        title={`Top 10 ${t[cat.nameKey as keyof typeof t]}`}
-                        category={cat.id}
-                        limit={10}
-                    />
-                ))}
-            </section>
-
-            {/* Genre Rows */}
-            <section>
-                <MovieRow title="Hành Động & Phiêu Lưu" category="hanh-dong" />
-                <MovieRow title="Tâm Lý & Tình Cảm" category="tinh-cam" />
-            </section>
+            </div>
         </div>
     );
 };

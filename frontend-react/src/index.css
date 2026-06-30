@@ -17,6 +17,10 @@
   --color-text-on-image-dim: var(--text-on-image-dim);
   --color-border-primary: var(--border-primary);
   --color-border-subtle: var(--border-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-bg: var(--accent-bg);
+  --color-accent-bg-hover: var(--accent-bg-hover);
 }
 
 :root {
@@ -49,6 +53,10 @@
   --border-primary: rgba(255, 255, 255, 0.1);
   --border-subtle: rgba(255, 255, 255, 0.05);
   --gradient-mask: #141414;
+  --accent: #e50914;
+  --accent-hover: #f40b17;
+  --accent-bg: rgba(229, 9, 20, 0.1);
+  --accent-bg-hover: rgba(229, 9, 20, 0.25);
 }
 
 /* Light theme */
@@ -70,6 +78,10 @@
   --border-primary: rgba(0, 0, 0, 0.1);
   --border-subtle: rgba(0, 0, 0, 0.05);
   --gradient-mask: #ffffff;
+  --accent: #e50914;
+  --accent-hover: #b80710;
+  --accent-bg: rgba(229, 9, 20, 0.08);
+  --accent-bg-hover: rgba(229, 9, 20, 0.18);
 }
 
 body {
@@ -79,6 +91,16 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 @layer utilities {
@@ -121,4 +143,53 @@ body {
 .animate-slide-up {
   animation: slide-up 0.6s ease-out forwards;
   opacity: 0;
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s ease-out forwards;
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fade-in-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in-backdrop {
+  animation: fade-in-backdrop 0.3s ease-out forwards;
+}
+
+.drawer-shift-content {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(calc(-100% + 15rem));
+}
+
+.drawer-shift-content-none {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(0);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
