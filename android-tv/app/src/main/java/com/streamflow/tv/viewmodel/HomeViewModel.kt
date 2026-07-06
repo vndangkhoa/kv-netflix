@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 data class HomeUiState(
     val heroMovies: List<Movie> = emptyList(),
     val watchedMovies: List<Movie> = emptyList(),
+    val myListMovies: List<Movie> = emptyList(),
     val recommendedMovies: List<Movie> = emptyList(),
     val categoryMovies: Map<String, List<Movie>> = emptyMap(),
     val isLoading: Boolean = true,
@@ -40,27 +41,37 @@ class HomeViewModel : ViewModel() {
         loadHome()
     }
 
+    private fun observeUserData(userRepo: com.streamflow.tv.data.repository.UserDataRepository) {
+        viewModelScope.launch {
+            userRepo.watchHistory.collect { history ->
+                _uiState.value = _uiState.value.copy(watchedMovies = history)
+            }
+        }
+        viewModelScope.launch {
+            userRepo.myList.collect { list ->
+                _uiState.value = _uiState.value.copy(myListMovies = list)
+            }
+        }
+    }
+
     fun loadHome(
         category: String? = null,
         userRepo: com.streamflow.tv.data.repository.UserDataRepository? = null
     ) {
-        if (userRepo != null) {
+        if (userRepo != null && this.userDataRepository == null) {
             this.userDataRepository = userRepo
+            observeUserData(userRepo)
         }
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, currentCategory = category)
             try {
-                // Load history if repository is available
-                val history = userRepo?.watchHistory?.first() ?: emptyList()
-
                 if (category != null) {
                     // Load single category
                     val response = repository.getHomeVideos(category)
                     _uiState.value = _uiState.value.copy(
                         heroMovies = response.items.take(5),
-                        watchedMovies = history,
-                        recommendedMovies = response.items.filter { m -> history.none { it.slug == m.slug } }.shuffled().take(10),
+                        recommendedMovies = response.items.take(10).shuffled(),
                         categoryMovies = mapOf(
                             categories.find { it.first == category }?.second.orEmpty() to response.items
                         ),
@@ -92,9 +103,7 @@ class HomeViewModel : ViewModel() {
 
                     _uiState.value = _uiState.value.copy(
                         heroMovies = heroItems,
-                        watchedMovies = history,
-                        recommendedMovies = allFlattened.filter { m -> history.none { it.slug == m.slug } }
-                            .distinctBy { it.slug }.shuffled().take(15),
+                        recommendedMovies = allFlattened.distinctBy { it.slug }.shuffled().take(15),
                         categoryMovies = allMovies.toMap(),
                         isLoading = false
                     )

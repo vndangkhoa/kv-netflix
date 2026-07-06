@@ -25,21 +25,36 @@ object ApiClient {
             }
         }
 
+    private var _authToken: String? = null
+    var authToken: String?
+        get() = _authToken
+        set(value) {
+            _authToken = value
+            synchronized(this) {
+                _api = null // Rebuild to include/exclude token
+            }
+        }
+
     private val moshi: Moshi = Moshi.Builder()
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
-    private val userAgentInterceptor = Interceptor { chain ->
-        val request = chain.request().newBuilder()
+    private val authInterceptor = Interceptor { chain ->
+        val original = chain.request()
+        val requestBuilder = original.newBuilder()
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            .build()
-        chain.proceed(request)
+        
+        _authToken?.let {
+            requestBuilder.header("Authorization", "Bearer $it")
+        }
+        
+        chain.proceed(requestBuilder.build())
     }
 
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
-        .addInterceptor(userAgentInterceptor)
+        .addInterceptor(authInterceptor)
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.HEADERS

@@ -1,11 +1,11 @@
 package com.streamflow.tv.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.tv.foundation.lazy.list.TvLazyRow
-import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.data.model.Movie
@@ -28,11 +28,11 @@ fun MovieRow(
         )
 
         // Horizontal scrolling row of cards
-        TvLazyRow(
+        LazyRow(
             contentPadding = PaddingValues(horizontal = 48.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(movies) { movie ->
+            items(movies, key = { it.slug }) { movie ->
                 MovieCard(
                     movie = movie,
                     onClick = { onMovieClick(movie) }

@@ -111,3 +111,65 @@ data class MovieDetailResponse(
     val episodes: List<Episode>? = null
 )
 
+@JsonClass(generateAdapter = false)
+data class AuthResponse(
+    val token: String,
+    val user: UserProfile
+)
+
+@JsonClass(generateAdapter = false)
+data class UserProfile(
+    val id: Int,
+    val name: String,
+    val email: String
+)
+
+@JsonClass(generateAdapter = false)
+data class RemoteSavedMovie(
+    @Json(name = "movie_id") val movieId: String,
+    val title: String,
+    val slug: String,
+    val thumbnail: String,
+    val backdrop: String?,
+    val year: Int,
+    val category: String,
+    val quality: String?
+) {
+    fun toMovie(): Movie = Movie(
+        id = movieId,
+        title = title,
+        slug = slug,
+        thumbnail = thumbnail,
+        backdrop = backdrop,
+        year = year,
+        category = category,
+        quality = quality
+    )
+}
+
+@JsonClass(generateAdapter = false)
+data class RemoteWatchHistory(
+    @Json(name = "movie_id") val movieId: String,
+    val title: String,
+    val slug: String,
+    val thumbnail: String,
+    val backdrop: String?,
+    val year: Int,
+    val category: String,
+    val quality: String?,
+    @Json(name = "current_episode") val currentEpisode: Int,
+    @Json(name = "watched_timestamp") val watchedTimestamp: Int,
+    val duration: Int,
+    val progress: Double
+) {
+    fun toMovie(): Movie = Movie(
+        id = movieId,
+        title = title,
+        slug = slug,
+        thumbnail = thumbnail,
+        backdrop = backdrop,
+        year = year,
+        category = category,
+        quality = quality
+    )
+}

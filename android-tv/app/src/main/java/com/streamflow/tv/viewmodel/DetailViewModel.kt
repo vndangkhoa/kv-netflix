@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.streamflow.tv.data.model.MovieDetail
 import com.streamflow.tv.data.repository.MovieRepository
+import com.streamflow.tv.data.repository.UserDataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -20,18 +21,26 @@ class DetailViewModel : ViewModel() {
     private val repository = MovieRepository()
     private val _uiState = MutableStateFlow(DetailUiState())
     val uiState: StateFlow<DetailUiState> = _uiState
+    
+    private var userDataRepository: UserDataRepository? = null
 
-    fun loadMovie(slug: String) {
-        android.util.Log.e("DetailVM", "loadMovie($slug) called")
+    fun loadMovie(slug: String, userRepo: UserDataRepository? = null) {
+        if (userRepo != null) {
+            this.userDataRepository = userRepo
+        }
+        
         viewModelScope.launch {
-            _uiState.value = DetailUiState(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val movie = repository.getMovieDetail(slug)
-                android.util.Log.e("DetailVM", "loadMovie success: ${movie.title}, episodes: ${movie.episodes?.size}")
-                _uiState.value = DetailUiState(movie = movie, isLoading = false)
+                val isInMyList = userDataRepository?.isInMyList(slug) ?: false
+                _uiState.value = _uiState.value.copy(
+                    movie = movie, 
+                    isLoading = false,
+                    isInMyList = isInMyList
+                )
             } catch (e: Exception) {
-                android.util.Log.e("DetailVM", "loadMovie failed", e)
-                _uiState.value = DetailUiState(
+                _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Failed to load movie details"
                 )
@@ -39,7 +48,17 @@ class DetailViewModel : ViewModel() {
         }
     }
 
-    fun toggleMyList(isInList: Boolean) {
-        _uiState.value = _uiState.value.copy(isInMyList = !isInList)
+    fun toggleMyList() {
+        val movie = _uiState.value.movie ?: return
+        val currentStatus = _uiState.value.isInMyList
+        
+        viewModelScope.launch {
+            if (currentStatus) {
+                userDataRepository?.removeFromMyList(movie.slug)
+            } else {
+                userDataRepository?.addToMyList(movie.toMovie())
+            }
+            _uiState.value = _uiState.value.copy(isInMyList = !currentStatus)
+        }
     }
 }

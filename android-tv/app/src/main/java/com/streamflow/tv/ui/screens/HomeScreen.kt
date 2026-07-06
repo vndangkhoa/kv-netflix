@@ -2,14 +2,13 @@ package com.streamflow.tv.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tv.foundation.lazy.list.TvLazyColumn
-import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.ui.components.HeroBanner
@@ -58,7 +57,7 @@ fun HomeScreen(
                 )
             }
         } else {
-            TvLazyColumn(
+            LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
@@ -78,6 +77,17 @@ fun HomeScreen(
                         MovieRow(
                             title = "Continue Watching",
                             movies = uiState.watchedMovies,
+                            onMovieClick = { movie -> onMovieClick(movie.slug) }
+                        )
+                    }
+                }
+
+                // My List (Liked)
+                if (uiState.myListMovies.isNotEmpty()) {
+                    item {
+                        MovieRow(
+                            title = "My List",
+                            movies = uiState.myListMovies,
                             onMovieClick = { movie -> onMovieClick(movie.slug) }
                         )
                     }

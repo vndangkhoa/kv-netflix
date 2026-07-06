@@ -33,13 +33,14 @@ fun DetailScreen(
     slug: String,
     onPlayClick: (String, Int) -> Unit,
     onBack: () -> Unit,
+    userDataRepository: com.streamflow.tv.data.repository.UserDataRepository? = null,
     viewModel: DetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val colors = StreamFlowTheme.colors
     
     LaunchedEffect(slug) {
-        viewModel.loadMovie(slug)
+        viewModel.loadMovie(slug, userDataRepository)
     }
 
     Log.d("DetailScreen", "Composing DetailScreen(slug=$slug, isLoading=${uiState.isLoading})")
@@ -126,21 +127,39 @@ fun DetailScreen(
                 
                 Spacer(Modifier.height(32.dp))
 
-                Surface(
-                    onClick = { onPlayClick(movie.slug, 1) },
-                    shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = colors.primary,
-                        focusedContainerColor = colors.accent
-                    ),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
-                    modifier = Modifier.focusRequester(focusRequester)
-                ) {
-                    Text(
-                        "▶  Play",
-                        style = StreamFlowTheme.typography.titleMedium.copy(color = Color.White),
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Surface(
+                        onClick = { onPlayClick(movie.slug, 1) },
+                        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = colors.primary,
+                            focusedContainerColor = colors.accent
+                        ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                        modifier = Modifier.focusRequester(focusRequester)
+                    ) {
+                        Text(
+                            "▶  Play",
+                            style = StreamFlowTheme.typography.titleMedium.copy(color = Color.White),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                        )
+                    }
+
+                    Surface(
+                        onClick = { viewModel.toggleMyList() },
+                        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = if (uiState.isInMyList) colors.accent.copy(alpha = 0.3f) else colors.surfaceVariant,
+                            focusedContainerColor = colors.accent
+                        ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+                    ) {
+                        Text(
+                            if (uiState.isInMyList) "✓ In My List" else "+ My List",
+                            style = StreamFlowTheme.typography.titleMedium.copy(color = Color.White),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                        )
+                    }
                 }
 
                 if (!movie.episodes.isNullOrEmpty()) {
