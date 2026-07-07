@@ -98,12 +98,12 @@ func (m *model) extractAndPlay(episodeURL string) tea.Cmd {
 	return func() tea.Msg {
 		info, err := m.client.Extract(episodeURL)
 		if err != nil {
-			// Fallback: use the raw episode URL if extract fails
-			m.playerStreamURL = m.proxyStreamURL(episodeURL)
+			// Fallback: pass the episode URL directly to mpv (it has built-in yt-dlp)
+			m.playerStreamURL = episodeURL
 			return extractDoneMsg{info: &models.VideoInfo{
 				Title:      episodeURL,
 				StreamURL:  episodeURL,
-				Resolution: "unknown",
+				Resolution: "direct",
 			}}
 		}
 		m.playerStreamURL = m.proxyStreamURL(info.StreamURL)

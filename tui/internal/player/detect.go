@@ -192,6 +192,7 @@ func (p *Player) BuildArgs(streamURL string, startPos float64) []string {
 			args = append(args, fmt.Sprintf("--vo=%s", string(p.vo)))
 		}
 		args = append(args,
+			"--ytdl=yes",
 			"--no-config",
 			"--no-resume-playback",
 			"--profile=fast",
