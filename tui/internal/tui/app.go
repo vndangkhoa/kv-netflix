@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -96,6 +98,9 @@ type model struct {
 	// Help
 	showHelp bool
 
+	// Dependency warnings
+	missingDeps []string
+
 	// Error overlay
 	showErrorOverlay bool
 	errorMessage     string
@@ -129,11 +134,24 @@ func (m *model) SetClientToken(token string) {
 }
 
 func (m *model) Init() tea.Cmd {
+	m.checkDeps()
 	return tea.Batch(
 		m.spinner.Tick,
 		m.loadHome(),
 		m.loadContinue(),
 	)
+}
+
+func (m *model) checkDeps() {
+	var missing []string
+	for _, name := range []string{"mpv", "yt-dlp"} {
+		if _, err := exec.LookPath(name); err != nil {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		m.missingDeps = missing
+	}
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -424,6 +442,19 @@ func (m *model) View() string {
 	footer := HelpFooter()
 	if m.err != nil {
 		footer = ErrorStyle.Render("✗ " + m.err.Error())
+	}
+	if len(m.missingDeps) > 0 && m.err == nil {
+		deps := strings.Join(m.missingDeps, ", ")
+		install := map[string]string{
+			"darwin":  "brew install " + strings.Join(m.missingDeps, " "),
+			"windows": "scoop install " + strings.Join(m.missingDeps, " ") + "  (or winget install)",
+			"linux":   "apt install " + strings.Join(m.missingDeps, " ") + "  (or your distro's equivalent)",
+		}
+		cmd := install[runtime.GOOS]
+		if cmd == "" {
+			cmd = "install " + deps + " for your OS"
+		}
+		footer = WarningStyle.Render("⚠ " + deps + " not found — " + cmd)
 	}
 
 	mainBody := AppStyle.Render(

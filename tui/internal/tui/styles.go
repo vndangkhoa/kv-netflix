@@ -82,6 +82,11 @@ var (
 		Bold(true).
 		Padding(0, 1)
 
+	WarningStyle = lipgloss.NewStyle().
+		Foreground(WarningColor).
+		Bold(true).
+		Padding(0, 1)
+
 	SuccessStyle = lipgloss.NewStyle().
 		Foreground(SuccessColor).
 		Bold(true).
