@@ -193,6 +193,68 @@ docker run -d \
 
 ---
 
+## Terminal UI (TUI)
+
+A keyboard-driven terminal client for browsing and watching movies directly in your terminal or in a separate GPU window.
+
+### Quick Install
+
+**Prerequisites:** Install [mpv](https://mpv.io) and [yt-dlp](https://github.com/yt-dlp/yt-dlp) first.
+
+```bash
+# Linux
+sudo apt install mpv yt-dlp
+
+# macOS
+brew install mpv yt-dlp
+
+# Windows
+scoop install mpv yt-dlp
+```
+
+**Option 1 — Download binary (requires Go 1.25+)**
+
+```bash
+git clone https://github.com/vndangkhoa/kv-netflix.git
+cd kv-netflix/tui
+go build -o kv-netflix-tui .
+sudo cp kv-netflix-tui /usr/local/bin/
+```
+
+**Option 2 — Cross-platform release build**
+
+```bash
+cd kv-netflix/tui
+make release    # builds for linux/darwin/windows × amd64/arm64
+ls release/
+```
+
+### Usage
+
+```bash
+# Connect to your server
+kv-netflix-tui --server https://nf.khoavo.myds.me
+
+# Or open a smooth GPU window instead of terminal VO
+kv-netflix-tui --server https://nf.khoavo.myds.me --vo=window
+```
+
+`--vo=window` is the default. Press `w` in the movie detail view to toggle.
+
+### Supported Platforms
+
+| OS      | Arch      | Terminal VO | Window VO |
+|---------|-----------|-------------|-----------|
+| Linux   | amd64     | kitty       | gpu-next  |
+| Linux   | arm64     | kitty       | gpu-next  |
+| macOS   | amd64     | kitty       | gpu-next  |
+| macOS   | arm64     | kitty       | gpu-next  |
+| Windows | amd64     | —           | gpu-next  |
+
+Press `?` inside the TUI for full keybinding help.
+
+---
+
 ## Local Development
 
 **Prerequisites:** Go 1.25+, Node.js 20+
