@@ -28,12 +28,13 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		ServerURL:  "http://localhost:3478",
-		PlayerMode: ModePassthrough,
-		PlayerCmd:  "mpv",
-		ShowPoster: false,
-		Language:   "en",
-		Insecure:   false,
+		ServerURL:   "http://localhost:3478",
+		PlayerMode:  ModePassthrough,
+		PlayerCmd:   "mpv",
+		PreferredVO: "window",
+		ShowPoster:  false,
+		Language:    "en",
+		Insecure:    false,
 	}
 }
 
