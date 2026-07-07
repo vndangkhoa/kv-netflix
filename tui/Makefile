@@ -8,7 +8,7 @@ build:
 install: build
 	cp $(BINARY) $(INSTALL_DIR)/$(BINARY)
 	@echo "Installed $(BINARY) to $(INSTALL_DIR)/$(BINARY)"
-	@echo "Run: $(BINARY) --server https://nf.khoavo.myds.me"
+	@echo "Run: $(BINARY) --server https://your-server.com"
 
 uninstall:
 	rm -f $(INSTALL_DIR)/$(BINARY)

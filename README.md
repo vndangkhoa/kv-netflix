@@ -233,10 +233,10 @@ ls release/
 
 ```bash
 # Connect to your server
-kv-netflix-tui --server https://nf.khoavo.myds.me
+tui --server https://your-server.com
 
 # Or open a smooth GPU window instead of terminal VO
-kv-netflix-tui --server https://nf.khoavo.myds.me --vo=window
+tui --server https://your-server.com --vo=window
 ```
 
 `--vo=window` is the default. Press `w` in the movie detail view to toggle.

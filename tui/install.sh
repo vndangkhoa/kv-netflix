@@ -74,5 +74,5 @@ else
   sudo mv "/tmp/$BINARY" "$INSTALL_DIR/$BINARY"
   echo "Installed $BINARY to $INSTALL_DIR/$BINARY"
   echo ""
-  echo "Run: $BINARY --server https://nf.khoavo.myds.me"
+  echo "Run: $BINARY --server https://your-server.com"
 fi
