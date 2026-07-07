@@ -32,7 +32,7 @@ FROM --platform=linux/amd64 alpine:latest
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache sqlite ca-certificates tzdata mpv
+RUN apk add --no-cache sqlite ca-certificates tzdata mpv yt-dlp
 
 # Copy backend binary
 COPY --from=backend-builder /app/backend/server .
