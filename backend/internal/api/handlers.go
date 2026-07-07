@@ -209,7 +209,7 @@ func (h *Handler) ExtractVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info, err := h.Extractor.Extract(req.URL, "1080p")
+	info, err := h.Extractor.Extract(req.URL, "")
 	if err != nil {
 		fmt.Printf("Extraction error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -387,7 +387,7 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if strings.HasSuffix(parsedURL.Path, ".m3u8") {
-		h.handleHLSManifest(w, resp)
+		h.handleHLSManifest(w, resp, videoURL)
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 }
 
-func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response) {
+func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response, baseURL string) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("Stream proxy read error: %v\n", err)
@@ -407,13 +407,35 @@ func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response) 
 		return
 	}
 
-	content := string(body)
-	re := regexp.MustCompile(`(https?://[^\s"']+)`)
-	proxyBase := "/api/stream?url="
+	baseParsed, err := url.Parse(baseURL)
+	if err != nil {
+		http.Error(w, "invalid base URL", http.StatusInternalServerError)
+		return
+	}
 
-	newContent := re.ReplaceAllStringFunc(content, func(match string) string {
-		return proxyBase + url.QueryEscape(match)
-	})
+	proxyBase := "/api/stream?url="
+	lines := strings.Split(string(body), "\n")
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		var resolved string
+		if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+			resolved = trimmed
+		} else {
+			rel, err := url.Parse(trimmed)
+			if err != nil {
+				continue
+			}
+			resolved = baseParsed.ResolveReference(rel).String()
+		}
+		lines[i] = proxyBase + url.QueryEscape(resolved)
+	}
+
+	newContent := strings.Join(lines, "\n")
 
 	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 	w.Header().Set("Access-Control-Allow-Origin", "*")

@@ -68,3 +68,5 @@ release/
 .vscode/
 .DS_Store
 .idea/
+tui/kv-netflix-tui
+tui/mpv-*.jpg
