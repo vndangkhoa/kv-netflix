@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"kv-netflix-tui/internal/models"
 )
@@ -28,7 +29,10 @@ func New(baseURL string, insecure bool) *Client {
 	}
 	return &Client{
 		baseURL: baseURL,
-		httpClient: &http.Client{Transport: tr},
+		httpClient: &http.Client{
+			Transport: tr,
+			Timeout:   60 * time.Second,
+		},
 	}
 }
 
