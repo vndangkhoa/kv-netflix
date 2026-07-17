@@ -1,12 +1,13 @@
 #!/bin/sh
 # kv-netflix-tui installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/vndangkhoa/kv-netflix/main/tui/install.sh | sh
+# Usage: curl -fsSL https://git.khoavo.myds.me/vndangkhoa/kv-netflix/raw/branch/main/tui/install.sh | sh
 
 set -eu
 
 BINARY=kv-netflix-tui
 VERSION=${1:-latest}
 REPO="vndangkhoa/kv-netflix"
+HOST="git.khoavo.myds.me"
 INSTALL_DIR=${INSTALL_DIR:-/usr/local/bin}
 
 # Detect OS/Arch
@@ -52,7 +53,7 @@ fi
 # Download binary
 EXT=""
 [ "$OS" = "windows" ] && EXT=".exe"
-URL="https://github.com/$REPO/releases/download/$VERSION/${BINARY}-${OS}-${ARCH}${EXT}"
+URL="https://$HOST/$REPO/releases/download/$VERSION/${BINARY}-${OS}-${ARCH}${EXT}"
 
 echo "Downloading $URL ..."
 if command -v curl >/dev/null 2>&1; then

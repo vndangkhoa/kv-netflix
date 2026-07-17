@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.0.0] - 2026-07-17
+### Added
+- Built a keyboard-driven Terminal User Interface (TUI) client in Go using Bubble Tea and Lip Gloss.
+  - Supports movie browsing, search, detail view, personal watch list, and user authentication/device pairing.
+  - Integrates direct video playback within kitty-compatible terminals (Terminal VO) or via external mpv GPU windows (Window VO).
+  - Includes local configuration storage for saving server URLs, preferred video output options, and authentication state.
+- Added cross-platform release build system (`tui/Makefile`) and automated installer (`tui/install.sh`) supporting Linux, macOS, and Windows on both AMD64 and ARM64 architectures.
+- Added startup dependency checker to verify that the required runtimes (`mpv` and `yt-dlp`) are installed.
+- Integrated `yt-dlp` into the project Dockerfile to support background stream extraction and playback capabilities.
+
+### Changed
+- Configured mpv playback to default to the standalone GPU window (`--vo=window`) for smoother hardware-accelerated rendering.
+- Bypassed broken backend CORS proxies in the TUI client by passing HLS stream URLs directly to mpv using the `--ytdl=yes` flag.
+- Set a default 60-second HTTP timeout in the TUI client to prevent application hangs during slow backend operations.
+
+### Fixed
+- Fixed HLS manifest parser in backend API handlers to resolve relative stream URLs correctly.
+
+---
+
 ## [v8.0.0] - 2026-06-30
 ### Added
 - Created a global responsive navigation and shell structure (`Layout.tsx`) for fluid screen resizing.

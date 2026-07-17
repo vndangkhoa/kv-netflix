@@ -212,16 +212,22 @@ brew install mpv yt-dlp
 scoop install mpv yt-dlp
 ```
 
-**Option 1 — Download binary (requires Go 1.25+)**
+**Option 1 — Automated Install Script (Linux/macOS)**
 
 ```bash
-git clone https://github.com/vndangkhoa/kv-netflix.git
+curl -fsSL https://git.khoavo.myds.me/vndangkhoa/kv-netflix/raw/branch/main/tui/install.sh | sh
+```
+
+**Option 2 — Build from Source (requires Go 1.25+)**
+
+```bash
+git clone https://git.khoavo.myds.me/vndangkhoa/kv-netflix.git
 cd kv-netflix/tui
 go build -o kv-netflix-tui .
 sudo cp kv-netflix-tui /usr/local/bin/
 ```
 
-**Option 2 — Cross-platform release build**
+**Option 3 — Cross-platform release build**
 
 ```bash
 cd kv-netflix/tui
@@ -434,7 +440,18 @@ kv-netflix/
 ## Changelog
 
 <details>
-<summary>v8 (Current) — Responsive Redesign & Crimson Red Brand Makeover</summary>
+<summary>v9 (Current) — Go Terminal UI (TUI) & Integration Improvements</summary>
+
+- **Go Terminal User Interface (TUI)** — Keyboard-driven client built using Bubble Tea and Lip Gloss for direct movie browsing, searching, listing, and playback.
+- **Embedded & Window VO Modes** — Playback within compatible terminals (kitty) or via a hardware-accelerated external `mpv` GPU window (default).
+- **CORS Bypass & Timeout Safety** — Directly extract streams to mpv with `--ytdl=yes` to bypass backend proxy errors, and set a 60s timeout to prevent TUI hangs.
+- **Automated Cross-platform Installer** — Single-command installation script for macOS/Linux and automated builds for multiple CPU/OS architectures.
+- **Docker & Manifest Improvements** — Added `yt-dlp` dependency to the project Dockerfile, and resolved relative URL paths in the HLS proxy manifest.
+
+</details>
+
+<details>
+<summary>v8 — Responsive Redesign & Crimson Red Brand Makeover</summary>
 
 - **Unified Cinematic Theme** — Overhauled branding accents and controls to Crimson Red (`#e50914`) for a premium streaming experience.
 - **Responsive Layout Shell** — Rebuilt page navigation headers to dynamically transition on scroll and added a sticky bottom tab bar for mobile/tablet devices.
