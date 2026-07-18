@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark } from 'lucide-react';
 import { useWatchMovie } from '../../hooks/useWatchMovie';
+import { usePiP } from '../../hooks/usePiP';
 import MovieRow from '../../components/MovieRow';
+import 'plyr/dist/plyr.css';
+import Plyr from 'plyr';
 import { useLang } from '../../context/LanguageContext';
 import { useMyList } from '../../hooks/useMyList';
 import { useAuth } from '../../context/AuthContext';
@@ -58,6 +61,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         movie, loading, currentEpisode, setCurrentEpisode, videoRef,
         episodeEnded, videoActuallyEnded, hasNextEpisode, hasPrevEpisode,
         playNextEpisode, dismissEndScreen,
+        source,
     } = useWatchMovie(slug, episode);
     const [selectedServer, setSelectedServer] = useState<string>('');
     const [expanded, setExpanded] = useState(false);
@@ -140,6 +144,61 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         if (!raw) return '';
         return `/api/images/proxy?url=${encodeURIComponent(raw)}&width=${width}`;
     };
+
+    const plyrRef = useRef<Plyr | null>(null);
+    const plyrInitRef = useRef(false);
+    const { togglePiP } = usePiP(videoRef);
+    const togglePiPRef = useRef(togglePiP);
+
+    useEffect(() => {
+        togglePiPRef.current = togglePiP;
+    }, [togglePiP]);
+
+    useEffect(() => {
+        if (!source || !videoRef.current || plyrInitRef.current) return;
+
+        const player = new Plyr(videoRef.current, {
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+            invertTime: false,
+            seekTime: 10,
+            keyboard: { focused: true, global: true },
+        });
+        plyrRef.current = player;
+        plyrInitRef.current = true;
+
+        const injectPiP = () => {
+            if (!document.pictureInPictureEnabled) return;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const ctrl = (player as any).elements?.controls as HTMLElement | undefined;
+            if (!ctrl || ctrl.querySelector('[data-plyr="pip"]')) return;
+
+            // Ensure the container has the pip-supported class so Plyr CSS shows the button
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (player as any).elements?.container?.classList?.add('plyr--pip-supported');
+
+            const pipBtn = document.createElement('button');
+            pipBtn.className = 'plyr__controls__item plyr__control';
+            pipBtn.setAttribute('data-plyr', 'pip');
+            pipBtn.setAttribute('type', 'button');
+            pipBtn.setAttribute('aria-label', 'Picture-in-Picture');
+            pipBtn.innerHTML = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18"><path d="M16 1H2a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-1 14H3V3h12v12z" fill="currentColor"/><path d="M10 7h5v5h-5V7z" fill="currentColor"/></svg>';
+            pipBtn.addEventListener('click', () => togglePiPRef.current());
+
+            const fsBtn = ctrl.querySelector('[data-plyr="fullscreen"]');
+            if (fsBtn) {
+                ctrl.insertBefore(pipBtn, fsBtn);
+            } else {
+                ctrl.appendChild(pipBtn);
+            }
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((player as any).elements?.controls) {
+            injectPiP();
+        } else {
+            player.on('ready', injectPiP);
+        }
+    }, [source]);
 
     // Navigate to next episode URL when episode changes
     useEffect(() => {
@@ -227,14 +286,15 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
                     return (
                         <>
-                            <video
-                                key={activeEpisode.url}
-                                ref={videoRef}
-                                controls
-                                playsInline
-                                className="w-full h-full max-h-screen object-contain"
-                                poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
-                            />
+                            <div className="absolute inset-0">
+                                <video
+                                    ref={videoRef}
+                                    controls
+                                    playsInline
+                                    className="w-full h-full"
+                                    poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
+                                />
+                            </div>
 
                             {/* Auto-Play End Screen Overlay */}
                             {episodeEnded && (

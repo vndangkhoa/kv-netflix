@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.1.0] - 2026-07-18
+### Added
+- Integrated **Plyr** (v3.8.4) as the video player library, replacing native `<video>` controls for a consistent playback UI.
+- Added **Picture-in-Picture (PiP)** support via `usePiP` hook, with a dedicated button in the Plyr controls toolbar and iOS WebKit fallback for mobile Safari.
+- Added CSS gradient overlay on Plyr controls and proper video aspect ratio containment.
+
+### Changed
+- Plyr instance now persists across episode changes; only HLS.js re-initializes, eliminating re-mount flicker.
+- Moved PiP toggle from an absolute-positioned overlay button into Plyr's native toolbar.
+
+### Fixed
+- Eliminated iOS native fullscreen button overlap with the back-to-menu button by using Plyr's custom controls DOM.
+
+---
+
 ## [v9.0.0] - 2026-07-17
 ### Added
 - Built a keyboard-driven Terminal User Interface (TUI) client in Go using Bubble Tea and Lip Gloss.

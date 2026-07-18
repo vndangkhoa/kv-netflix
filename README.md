@@ -50,6 +50,7 @@ KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and 
 | Episode Progress | Auto-save every 5s + on pause, resume from last position |
 | Continue Watching | Resume from where you left off (20s buffer) |
 | Auto-Play Next | 10s countdown overlay with next/prev thumbnails |
+| Picture-in-Picture | Toggle PiP mode via dedicated button in video controls toolbar |
 | Keyboard Shortcuts | Space (play/pause), arrows (seek/volume), F (fullscreen) |
 
 ### User System
@@ -83,7 +84,7 @@ KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and 
 ┌─────────────────────────────────────────────────────┐
 │                    FRONTEND                         │
 │  React 19 · TypeScript · Vite 7 · Tailwind CSS 4  │
-│  HLS.js · Lucide Icons · PWA (Workbox)             │
+│  HLS.js · Plyr · Lucide Icons · PWA (Workbox)     │
 ├─────────────────────────────────────────────────────┤
 │                    BACKEND                          │
 │  Go 1.25 · Chi Router · GORM · SQLite             │
@@ -383,8 +384,9 @@ kv-netflix/
 │       │   ├── ThemeContext.tsx          # Dark/light + system detect
 │       │   └── LanguageContext.tsx       # i18n (vi/en)
 │       ├── hooks/
-│       │   ├── useWatchMovie.ts         # HLS + auto-play + resume
-│       │   ├── useWatchProgress.ts      # localStorage progress
+│   │   ├── useWatchMovie.ts         # HLS + Plyr + auto-play + resume
+│   │   ├── useWatchProgress.ts      # localStorage progress
+│   │   ├── usePiP.ts               # Picture-in-Picture support detection & toggle
 │       │   └── useSync.ts              # Server sync
 │       ├── i18n/translations.ts         # All UI strings
 │       ├── pages/
@@ -440,7 +442,18 @@ kv-netflix/
 ## Changelog
 
 <details>
-<summary>v9 (Current) — Go Terminal UI (TUI) & Integration Improvements</summary>
+<summary>v9.1 (Current) — Picture-in-Picture & Plyr Integration</summary>
+
+- **Plyr Player Library** — Replaced native `<video>` controls with Plyr (v3.8.4) for a consistent playback UI across all browsers and devices.
+- **Picture-in-Picture (PiP)** — Added a dedicated PiP toggle button in the video controls toolbar, with iOS WebKit fallback for mobile Safari.
+- **Custom Controls** — Eliminated native iOS fullscreen button overlap with the back-to-menu button by using Plyr's custom controls DOM.
+- **Persistent Player Lifecycle** — Plyr instance persists across episode changes; only HLS.js re-initializes, eliminating flicker and re-mount delays.
+- **CSS Overhauls** — Gradient control overlays and proper video aspect ratio containment for Plyr.
+
+</details>
+
+<details>
+<summary>v9 — Go Terminal UI (TUI) & Integration Improvements</summary>
 
 - **Go Terminal User Interface (TUI)** — Keyboard-driven client built using Bubble Tea and Lip Gloss for direct movie browsing, searching, listing, and playback.
 - **Embedded & Window VO Modes** — Playback within compatible terminals (kitty) or via a hardware-accelerated external `mpv` GPU window (default).
