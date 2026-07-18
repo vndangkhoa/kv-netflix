@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.0] - 2026-07-18
+### Added
+- **Android Mobile App** (`android-app/`): native Jetpack Compose client for Android phones and tablets.
+  - Browse Home, Movies, Series, Animation, and TV Shows with a server-personalized Explore feed.
+  - Inline search with live suggestions and multi-server ExoPlayer playback with resume-from-progress.
+  - My List (saved movies), watch History, and server-side sync of saved movies & watch progress.
+  - Account tools: change password, account recovery key, device pairing, and connected-device management.
+  - Vietnamese / English language switcher and dark / light theming.
+
+---
+
 ## [v9.1.0] - 2026-07-18
 ### Added
 - Integrated **Plyr** (v3.8.4) as the video player library, replacing native `<video>` controls for a consistent playback UI.

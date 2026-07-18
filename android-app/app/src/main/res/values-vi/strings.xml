@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">kv-netflix</string>
+
+    <!-- Navbar -->
+    <string name="search_placeholder">Tìm kiếm phim...</string>
+    <string name="login">Đăng nhập</string>
+    <string name="register">Đăng ký</string>
+    <string name="my_account">Của tôi</string>
+    <string name="logout">Đăng xuất</string>
+    <string name="pair_device">Ghép nối</string>
+
+    <!-- Home -->
+    <string name="home">Trang chủ</string>
+    <string name="movies">Phim lẻ</string>
+    <string name="series">Phim bộ</string>
+    <string name="animation">Hoạt hình</string>
+    <string name="tv_shows">TV Shows</string>
+    <string name="continue_watching">Tiếp tục xem</string>
+    <string name="view_all">Xem tất cả</string>
+    <string name="my_list">Của tôi</string>
+    <string name="latest_updates">Phim Mới Cập Nhật</string>
+    <string name="no_results">Không tìm thấy phim nào.</string>
+
+    <!-- My List -->
+    <string name="explore">Khám phá</string>
+    <string name="history">Lịch sử</string>
+    <string name="saved_movies">Đã lưu</string>
+    <string name="account">Tài khoản</string>
+    <string name="no_saved_movies">Chưa lưu phim nào</string>
+    <string name="no_watch_history">Chưa có lịch sử xem</string>
+
+    <!-- Watch -->
+    <string name="loading_stream">Đang tải stream...</string>
+    <string name="episode">Tập</string>
+    <string name="server">Server</string>
+    <string name="next_episode">Tập tiếp</string>
+    <string name="save_movie">Lưu vào danh sách</string>
+    <string name="saved_movie">Đã lưu</string>
+
+    <!-- General -->
+    <string name="loading">Đang tải...</string>
+    <string name="retry">Thử lại</string>
+    <string name="close">Đóng</string>
+    <string name="cancel">Hủy</string>
+    <string name="back">Quay lại</string>
+</resources>

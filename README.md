@@ -262,6 +262,32 @@ Press `?` inside the TUI for full keybinding help.
 
 ---
 
+## Android Mobile App
+
+A native Android client built with Kotlin and Jetpack Compose (Material 3), delivering the full streaming experience on phones and tablets.
+
+### Features
+- Browse **Home**, **Movies**, **Series**, **Animation** and **TV Shows** with a server-personalized Explore feed.
+- Inline **Search** with live suggestions, multi-server playback via **ExoPlayer**, and resume-from-progress.
+- **My List** (saved movies), watch **History**, and server-side sync of saved movies & watch progress.
+- **Account** tools: change password, account recovery key, device pairing, and connected-device management.
+- Vietnamese / English language switcher and dark / light theming.
+
+### Build & Run
+**Prerequisites:** Android SDK (API 35) and JDK 17+.
+
+```bash
+git clone https://git.khoavo.myds.me/vndangkhoa/kv-netflix.git
+cd kv-netflix/android-app
+./gradlew assembleDebug
+# install on a connected device / emulator
+./gradlew installDebug
+```
+
+The app connects to the backend at `https://nf.khoavo.myds.me/` by default.
+
+---
+
 ## Local Development
 
 **Prerequisites:** Go 1.25+, Node.js 20+
@@ -401,6 +427,7 @@ kv-netflix/
 │           └── WatchPage.tsx             # Player + episodes
 │
 ├── android-tv/                          # Android TV app (Kotlin)
+├── android-app/                         # Android mobile app (Kotlin, Jetpack Compose)
 ├── Dockerfile                           # Multi-stage build
 ├── docker-compose.yml
 └── README.md
