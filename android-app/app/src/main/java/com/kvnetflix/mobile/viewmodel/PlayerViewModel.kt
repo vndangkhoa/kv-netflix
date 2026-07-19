@@ -14,6 +14,8 @@ data class PlayerUiState(
     val movie: MovieDetail? = null,
     val source: VideoSource? = null,
     val currentEpisode: Int = 1,
+    val selectedServer: String = "",
+    val servers: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,
@@ -42,13 +44,18 @@ class PlayerViewModel : ViewModel() {
                 }
                 val genres = try { repository.getGenres() } catch (e: Exception) { emptyList() }
 
+                val servers = movie.episodes?.map { it.serverName }?.distinct() ?: emptyList()
+                val selectedServer = servers.firstOrNull() ?: ""
+
                 _uiState.value = _uiState.value.copy(
                     movie = movie, 
                     isSaved = isSaved,
+                    servers = servers,
+                    selectedServer = selectedServer,
                     recommendations = recommendations,
                     genres = genres
                 )
-                loadStream(movie, episode)
+                loadStream(movie, episode, selectedServer)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -60,6 +67,7 @@ class PlayerViewModel : ViewModel() {
 
     fun changeEpisode(episode: Int) {
         val movie = _uiState.value.movie ?: return
+        val server = _uiState.value.selectedServer
         _uiState.value = _uiState.value.copy(
             currentEpisode = episode,
             isLoading = true,
@@ -67,7 +75,21 @@ class PlayerViewModel : ViewModel() {
             error = null
         )
         viewModelScope.launch {
-            loadStream(movie, episode)
+            loadStream(movie, episode, server)
+        }
+    }
+
+    fun changeServer(server: String) {
+        val movie = _uiState.value.movie ?: return
+        val episode = _uiState.value.currentEpisode
+        _uiState.value = _uiState.value.copy(
+            selectedServer = server,
+            isLoading = true,
+            source = null,
+            error = null
+        )
+        viewModelScope.launch {
+            loadStream(movie, episode, server)
         }
     }
 
@@ -91,9 +113,9 @@ class PlayerViewModel : ViewModel() {
         }
     }
 
-    private suspend fun loadStream(movie: MovieDetail, episode: Int) {
+    private suspend fun loadStream(movie: MovieDetail, episode: Int, serverName: String = "") {
         try {
-            val ep = movie.episodes?.find { it.number == episode }
+            val ep = movie.episodes?.find { it.number == episode && (serverName.isEmpty() || it.serverName == serverName) }
 
             if (ep != null && (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8"))) {
                 _uiState.value = _uiState.value.copy(

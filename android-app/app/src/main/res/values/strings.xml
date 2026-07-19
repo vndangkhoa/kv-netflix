@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">kv-netflix (android mobile)</string>
+    <string name="app_name">kv-netflix</string>
 
     <!-- Navbar -->
     <string name="search_placeholder">Search movies...</string>

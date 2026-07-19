@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private var isInPipMode = false
+    private var isInWatchMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +95,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val isFullScreen = currentRoute?.contains("watch/") == true
+
+                LaunchedEffect(currentRoute) {
+                    isInWatchMode = currentRoute?.contains("watch/") == true
+                }
 
                 LaunchedEffect(isFullScreen) {
                     val window = window
@@ -221,7 +226,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPipMode) {
+        if (isInWatchMode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPipMode) {
             try {
                 val params = PictureInPictureParams.Builder()
                     .setAspectRatio(Rational(16, 9))

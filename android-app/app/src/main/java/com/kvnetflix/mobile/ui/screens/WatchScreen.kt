@@ -1,5 +1,7 @@
 package com.kvnetflix.mobile.ui.screens
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -54,6 +56,13 @@ fun WatchScreen(
     val uiState by viewModel.uiState.collectAsState()
     val colors = KvTheme.colors
     var isFullscreen by remember { mutableStateOf(false) }
+    val activity = LocalContext.current as? Activity
+
+    DisposableEffect(Unit) {
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     LaunchedEffect(slug, episode) {
         viewModel.loadPlayer(slug, episode, userRepo)
@@ -92,14 +101,21 @@ fun WatchScreen(
                     }
 
                     LaunchedEffect(uiState.source, uiState.currentEpisode) {
-                        val source = uiState.source ?: return@LaunchedEffect
-                        val mediaItem = MediaItem.fromUri(source.streamUrl)
-                        player.setMediaItem(mediaItem)
-                        player.prepare()
-                        player.playWhenReady = true
-
-                        if (userRepo != null) {
-                            viewModel.saveToHistory(userRepo)
+                        try {
+                            val source = uiState.source ?: return@LaunchedEffect
+                            if (source.streamUrl.isNotEmpty()) {
+                                val mediaItem = MediaItem.fromUri(source.streamUrl)
+                                player.setMediaItem(mediaItem)
+                                player.prepare()
+                                player.playWhenReady = true
+                            }
+                            if (userRepo != null) {
+                                viewModel.saveToHistory(userRepo)
+                            }
+                        } catch (e: Exception) {
+                            viewModel.uiState.value.let {
+                                // Error handled silently — player will show nothing
+                            }
                         }
                     }
 
@@ -170,7 +186,14 @@ fun WatchScreen(
                                 }
 
                                 IconButton(
-                                    onClick = { isFullscreen = !isFullscreen },
+                                    onClick = {
+                                        isFullscreen = !isFullscreen
+                                        activity?.requestedOrientation = if (isFullscreen) {
+                                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                        } else {
+                                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                        }
+                                    },
                                     modifier = Modifier
                                         .size(40.dp)
                                         .background(
@@ -307,6 +330,11 @@ fun WatchScreen(
 
                         // Episodes
                         if (!movie.episodes.isNullOrEmpty()) {
+                            val filteredCount = if (uiState.selectedServer.isNotEmpty()) {
+                                movie.episodes.count { it.serverName == uiState.selectedServer }
+                            } else {
+                                movie.episodes.size
+                            }
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -319,7 +347,7 @@ fun WatchScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "${movie.episodes.size} total",
+                                    "$filteredCount total",
                                     color = colors.textDim,
                                     fontSize = 14.sp
                                 )
@@ -330,6 +358,11 @@ fun WatchScreen(
                                 currentEpisode = uiState.currentEpisode,
                                 onEpisodeClick = { ep ->
                                     viewModel.changeEpisode(ep.number)
+                                },
+                                servers = uiState.servers,
+                                selectedServer = uiState.selectedServer,
+                                onServerChange = { server ->
+                                    viewModel.changeServer(server)
                                 }
                             )
                         }

@@ -51,24 +51,6 @@ class HomeViewModel : ViewModel() {
         "tv-shows" to "TV Shows"
     )
 
-    private val genreCategories = listOf(
-        "hanh-dong" to "Hành Động",
-        "tinh-cam" to "Tình Cảm",
-        "hai-huoc" to "Hài Hước",
-        "vien-tuong" to "Viễn Tưởng",
-        "kinh-di" to "Kinh Dị",
-        "chinh-kich" to "Chính Kịch",
-        "phieu-luu" to "Phiêu Lưu",
-        "vo-thuat" to "Võ Thuật",
-        "tam-ly" to "Tâm Lý",
-        "hinh-su" to "Hình Sự",
-        "co-trang" to "Cổ Trang",
-        "the-thao" to "Thể Thao",
-        "gia-dinh" to "Gia Đình",
-        "hoc-duong" to "Học Đường",
-        "bi-an" to "Bí Ẩn"
-    )
-
     init {
         loadGenres()
     }
@@ -167,25 +149,6 @@ class HomeViewModel : ViewModel() {
                             }
                         }
                     }.awaitAll().toMap().toMutableMap()
-
-                    val genreResults = genreCategories.map { (slug, name) ->
-                        async {
-                            try {
-                                val response = repository.getHomeVideos(slug)
-                                Log.d("HomeViewModel", "Loaded genre $slug: ${response.items.size} items")
-                                name to response.items
-                            } catch (e: Exception) {
-                                Log.e("HomeViewModel", "Failed to load genre $slug", e)
-                                name to emptyList<Movie>()
-                            }
-                        }
-                    }.awaitAll().toMap()
-
-                    genreResults.forEach { (name, movies) ->
-                        if (movies.isNotEmpty()) {
-                            categoryResults[name] = movies
-                        }
-                    }
 
                     val allFlattened = categoryResults.values.flatten()
                     val heroItemsRaw = mainCategories.firstOrNull()?.let { (slug, name) ->

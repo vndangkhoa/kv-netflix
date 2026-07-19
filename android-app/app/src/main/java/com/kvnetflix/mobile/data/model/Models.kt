@@ -72,14 +72,15 @@ data class MovieDetail(
 data class Episode(
     val number: Int = 0,
     val title: String = "",
-    val url: String = ""
+    val url: String = "",
+    val serverName: String = ""
 )
 
 @JsonClass(generateAdapter = false)
 data class VideoSource(
-    val streamUrl: String = "",
+    @Json(name = "url") val streamUrl: String = "",
     val resolution: String = "",
-    val formatId: String = ""
+    @Json(name = "format_id") val formatId: String = ""
 )
 
 @JsonClass(generateAdapter = false)
