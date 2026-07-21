@@ -1,20 +1,17 @@
 services:
   streamflow:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: final
+    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:latest
     container_name: streamflow
     platform: linux/amd64
     ports:
       - "3478:8000"
     environment:
-      - DATABASE_URL=/app/data/streamflow.db
+      - DATABASE_URL=/volume2/docker/kv-netflix/data/streamflow.db
       - PORT=8000
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - TZ=Asia/Ho_Chi_Minh
     volumes:
-      - ./data:/app/data
+      - /volume2/docker/kv-netflix/data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/health"]
