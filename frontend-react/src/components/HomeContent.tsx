@@ -161,6 +161,12 @@ export const HomeContent = () => {
                     </section>
                 )}
 
+                {/* Korean & Chinese Dramas */}
+                <section>
+                    <MovieRow title="Korean Dramas" category="korean-drama" />
+                    <MovieRow title="Chinese Dramas" category="chinese-drama" />
+                </section>
+
                 {/* Smart Recommendations */}
                 {recommendations.length > 0 && (
                     <section>
@@ -200,7 +206,7 @@ export const HomeContent = () => {
                     {CATEGORIES.filter(c => c.id !== 'my-list').map(cat => (
                         <MovieRow
                             key={cat.id}
-                            title={`Top 10 ${t[cat.nameKey as keyof typeof t]}`}
+                            title={`Top 10 ${cat.id === 'han-quoc' ? 'K-drama' : cat.id === 'trung-quoc' ? 'C-drama' : t[cat.nameKey as keyof typeof t] || cat.nameKey}`}
                             category={cat.id}
                             limit={10}
                         />

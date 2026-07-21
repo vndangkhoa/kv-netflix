@@ -181,7 +181,7 @@ const Navbar = () => {
                                     }`}
                                 >
                                     <c.icon size={14} />
-                                    {t[c.nameKey as keyof typeof t] as string}
+                                    {c.showText && t[c.nameKey as keyof typeof t] as string}
                                 </Link>
                             ))}
 

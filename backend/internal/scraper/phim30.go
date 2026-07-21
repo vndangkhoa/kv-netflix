@@ -71,6 +71,12 @@ func (p *Phim30Scraper) GetMoviesByCategory(category string, page int) ([]models
 	return p.scrapeMovieList(catURL)
 }
 
+func (p *Phim30Scraper) GetMoviesByCountry(country string, page int) ([]models.RophimMovie, error) {
+	// Country endpoint uses /quoc-gia/{slug}
+	countryURL := fmt.Sprintf("%s/quoc-gia/%s?page=%d", Phim30BaseURL, country, page)
+	return p.scrapeMovieList(countryURL)
+}
+
 func cleanImageUrl(rawURL string) string {
 	if strings.Contains(rawURL, "cdn-image-tf.phim30.me") {
 		// Example: https://cdn-image-tf.phim30.me/unsafe/360x0/filters:quality(90)/https%3A%2F%2Fphimimg.com%2Fupload%2Fvod%2F...

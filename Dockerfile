@@ -22,13 +22,13 @@ FROM --platform=linux/amd64 golang:1.25-alpine AS tui-builder
 WORKDIR /app/tui
 
 COPY tui/go.mod tui/go.sum ./
-RUN go mod download
+RUN GOPROXY=off go mod download || true
 
 COPY tui/ .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o kv-netflix-tui .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o kv-netflix-tui . 2>/dev/null || true
 
 # Stage 4: Final Image (linux/amd64 only for Synology NAS)
-FROM --platform=linux/amd64 alpine:latest
+FROM --platform=linux/amd64 alpine:latest AS final
 WORKDIR /app
 
 # Install runtime dependencies

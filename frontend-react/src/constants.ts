@@ -1,10 +1,19 @@
 import { Home, Film, Tv, PlayCircle, Heart, Folder, Swords, HeartHandshake, Laugh, Castle, Brain, Siren, Bomb, Dumbbell, Target, Rocket, Compass, FlaskRound, Ghost, Music, VenetianMask, BookOpen, Trees, Landmark, Eye, GraduationCap, Star, Smartphone } from 'lucide-react';
 
-export const CATEGORIES = [
+export type Category = {
+    id: string;
+    nameKey: keyof typeof import('../i18n').en;
+    path: string;
+    icon: React.ComponentType<any>;
+    showText?: boolean; // If false, only show icon (no text)
+};
+
+export const CATEGORIES: Category[] = [
     { id: 'phim-le', nameKey: 'movies' as const, path: '/?category=phim-le', icon: Film },
     { id: 'phim-bo', nameKey: 'series' as const, path: '/?category=phim-bo', icon: Tv },
-    { id: 'hoat-hinh', nameKey: 'animation' as const, path: '/?category=hoat-hinh', icon: PlayCircle },
     { id: 'tv-shows', nameKey: 'tvShows' as const, path: '/?category=tv-shows', icon: Folder },
+    { id: 'han-quoc', nameKey: 'koreanDrama' as const, path: '/?category=han-quoc', icon: Film, showText: true },
+    { id: 'trung-quoc', nameKey: 'chineseDrama' as const, path: '/?category=trung-quoc', icon: Tv, showText: true },
     { id: 'my-list', nameKey: 'myAccount' as const, path: '/my-list', icon: Heart },
 ];
 

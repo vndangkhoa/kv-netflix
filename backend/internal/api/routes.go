@@ -39,6 +39,7 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 
 		// Explore
 		r.Get("/videos/explore", h.ExploreMovies)
+		r.Get("/videos/explore/category", h.ExploreCategory)
 
 		// Sync routes
 		r.Get("/sync/saved-movies", h.GetSavedMovies)

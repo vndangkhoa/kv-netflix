@@ -28,12 +28,10 @@ func NewOphimScraper() *OphimScraper {
 // Response structs for Ophim API
 
 type OphimResponse struct {
-	Items []OphimItem `json:"items"`
-	Data  struct {
-		Items    []OphimItem          `json:"items"`
-		Item     OphimMovie           `json:"item"`
-		Episodes []OphimEpisodeServer `json:"episodes,omitempty"` // Sometimes here?
-	} `json:"data"`
+	Status   string    `json:"status,omitempty"`
+	Message  string    `json:"message,omitempty"`
+	Data     ophimData `json:"data"`
+	Items    []OphimItem `json:"items"` // For homepage-style responses
 	Movie      OphimMovie           `json:"movie"`
 	Episodes   []OphimEpisodeServer `json:"episodes"`
 	Pagination struct {
@@ -42,6 +40,15 @@ type OphimResponse struct {
 		CurrentPage       int `json:"currentPage"`
 		TotalPages        int `json:"totalPages"`
 	} `json:"pagination"`
+}
+
+type ophimData struct {
+	SEOOnPage   map[string]interface{} `json:"seoOnPage,omitempty"`
+	BreadCrumb  []struct{ Name string `json:"name"`; Slug string `json:"slug"` } `json:"breadCrumb,omitempty"`
+	TitlePage   string                `json:"titlePage,omitempty"`
+	Items       []OphimItem           `json:"items"`
+	Item        OphimMovie            `json:"item"`
+	Episodes    []OphimEpisodeServer  `json:"episodes,omitempty"`
 }
 
 type OphimItem struct {
@@ -93,7 +100,7 @@ type OphimEpisodeData struct {
 }
 
 func (s *OphimScraper) GetMoviesByCategory(category string, page int) ([]models.RophimMovie, error) {
-	// Logic to distinguish between "Lists" (danh-sach) and "Genres" (the-loai)
+	// Logic to distinguish between "Lists" (danh-sach), "Genres" (the-loai), and "Countries" (quoc-gia)
 	// Known lists: phim-le, phim-bo, hoat-hinh, tv-shows, phim-sap-chieu, phim-dang-chieu
 	var path string
 	switch category {
@@ -101,22 +108,28 @@ func (s *OphimScraper) GetMoviesByCategory(category string, page int) ([]models.
 		path = "danh-sach/phim-moi-cap-nhat"
 	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu":
 		path = fmt.Sprintf("danh-sach/%s", category)
+	case "han-quoc", "trung-quoc", "nhat-ban", "thai-lan", "au-my", "dai-loan", "hong-kong", "an-do",
+	     "anh", "phap", "canada", "quoc-gia-khac", "duc", "tay-ban-nha", "tho-nhi-ky", "ha-lan",
+	     "indonesia", "nga", "mexico", "ba-lan", "uc", "thuy-dien", "malaysia", "brazil",
+	     "philippines", "bo-dao-nha", "y", "dan-mach", "uae", "na-uy", "thuy-si", "chau-phi",
+	     "nam-phi", "ukraina", "a-rap-xe-ut", "bi", "ireland", "colombia", "phan-lan", "viet-nam",
+	     "chile", "hy-lap", "nigeria", "argentina", "singapore":
+		// Country endpoint uses /quoc-gia/{slug}
+		path = fmt.Sprintf("quoc-gia/%s", category)
 	default:
 		// Assume everything else is a Genre (e.g., hanh-dong, tinh-cam, co-trang)
 		// Ophim uses "the-loai" for these.
 		path = fmt.Sprintf("the-loai/%s", category)
 	}
 
-	// Important: The upstream API endpoints are:
-	// - v1/api/danh-sach/{slug}
-	// - v1/api/the-loai/{slug}
-	// The getList function appends prefix if not present?
-	// s.getList adds "v1/api" prefix? No, currently getList takes full path suffix.
-	// Wait, loop at getList: url := fmt.Sprintf("%s/%s?page=%d", OphimBaseURL, path, page)
-	// So we need to include "v1/api/" in our path variable constructed above.
-
 	finalPath := fmt.Sprintf("v1/api/%s", path)
 	return s.getList(finalPath, page)
+}
+
+func (s *OphimScraper) GetMoviesByCountry(country string, page int) ([]models.RophimMovie, error) {
+	// Country endpoint uses /quoc-gia/{slug}
+	path := fmt.Sprintf("v1/api/quoc-gia/%s", country)
+	return s.getList(path, page)
 }
 
 func (s *OphimScraper) GetHomepageMovies(page int) ([]models.RophimMovie, error) {
@@ -207,13 +220,14 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 	// If Search returns "data" -> "items", I need a wrapper struct.
 
 	var movies []models.RophimMovie
-	items := result.Items
-
-	// If top level items is empty, try checking if there is a Data field with items
-	// I need to update OphimResponse struct first to include Data field.
-
-	if len(items) == 0 && len(result.Data.Items) > 0 {
+	
+	// Country endpoint returns items in data.items, not top-level
+	// Homepage returns items at top level (but also has data.items)
+	var items []OphimItem
+	if len(result.Data.Items) > 0 {
 		items = result.Data.Items
+	} else if len(result.Items) > 0 {
+		items = result.Items
 	}
 
 	for _, item := range items {
