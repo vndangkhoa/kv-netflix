@@ -48,7 +48,8 @@ const Watch = () => {
             }
         };
         fetchDetail();
-    }, [slug, episode, addToHistory, saveProgress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [slug, episode]);
 
     const { WatchPage } = defaultTheme.components;
 

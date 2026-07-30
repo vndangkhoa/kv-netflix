@@ -322,6 +322,16 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	primaryProviderName := primaryMovie.Provider
+	if primaryProviderName == "" {
+		primaryProviderName = "Server"
+	}
+	for i := range primaryMovie.Episodes {
+		if !strings.HasPrefix(primaryMovie.Episodes[i].ServerName, primaryProviderName) {
+			primaryMovie.Episodes[i].ServerName = fmt.Sprintf("%s - %s", primaryProviderName, primaryMovie.Episodes[i].ServerName)
+		}
+	}
+
 	for i, provider := range h.Providers {
 		if i == primaryProviderIdx {
 			continue
@@ -339,6 +349,15 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 					(primaryMovie.OriginalTitle != "" && normalizeKey(res.OriginalTitle) == normalizeKey(primaryMovie.OriginalTitle)) {
 					details, err := provider.GetMovieDetail(res.Slug)
 					if err == nil && details != nil {
+						providerName := details.Provider
+						if providerName == "" {
+							providerName = "Server"
+						}
+						for j := range details.Episodes {
+							if !strings.HasPrefix(details.Episodes[j].ServerName, providerName) {
+								details.Episodes[j].ServerName = fmt.Sprintf("%s - %s", providerName, details.Episodes[j].ServerName)
+							}
+						}
 						h.mergeMovieMetadata(primaryMovie, details)
 					}
 					break

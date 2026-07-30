@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import type { MovieDetail, VideoSource } from '../types';
 import { useWatchProgress } from './useWatchProgress';
 
-export const useWatchMovie = (slug: string | undefined, episode: string | undefined) => {
+export const useWatchMovie = (slug: string | undefined, episode: string | undefined, selectedServer?: string) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [movie, setMovie] = useState<MovieDetail | null>(null);
     const [source, setSource] = useState<VideoSource | null>(null);
@@ -69,11 +69,19 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
     useEffect(() => {
         if (!movie) return;
+        // Don't fetch stream until a server is selected by WatchPage
+        if (!selectedServer) {
+            setLoading(false);
+            return;
+        }
 
         const fetchStream = async () => {
             setLoading(true);
             try {
-                const ep = movie.episodes?.find(e => e.number === currentEpisode);
+                const ep = movie.episodes?.find(e =>
+                    e.number === currentEpisode &&
+                    (e.serverName || e.server_name) === selectedServer
+                );
 
                 // If no episode or no URL, don't try to extract — let WatchPage show "Coming Soon"
                 if (!ep?.url) {
@@ -82,14 +90,17 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
                 }
 
                 if (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8')) {
-                    const isPhimMoi = ep.url.includes('phimmoichill') || ep.url.includes('sotrim') || ep.url.includes('phmchill');
-                    setSource({
-                        stream_url: isPhimMoi
-                            ? `/api/stream?url=${encodeURIComponent(ep.url)}`
-                            : ep.url,
-                        resolution: 'HD',
-                        format_id: 'hls'
-                    });
+                    const proxyUrl = `/api/stream?url=${encodeURIComponent(ep.url)}`;
+                    // Validate the stream is actually alive before setting source
+                    const probe = await fetch(proxyUrl, { method: 'HEAD' }).catch(() => null);
+                    if (probe && probe.ok) {
+                        setSource({
+                            stream_url: proxyUrl,
+                            resolution: 'HD',
+                            format_id: 'hls'
+                        });
+                    }
+                    // If probe failed (404/dead), don't set source — overlay will show server switch
                     setLoading(false);
                     return;
                 }
@@ -104,11 +115,13 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
                 if (!res.ok) throw new Error('Failed to extract');
                 const data = await res.json();
+                const rawStreamUrl = data.url || data.stream_url || '';
+                const needsProxy = rawStreamUrl.includes('.m3u8') || rawStreamUrl.includes('phimmoichill') || rawStreamUrl.includes('sotrim') || rawStreamUrl.includes('phmchill') || rawStreamUrl.includes('opstream');
                 setSource({
                     ...data,
-                    stream_url: (data.url || data.stream_url).includes('phimmoichill') || (data.url || data.stream_url).includes('sotrim') || (data.url || data.stream_url).includes('phmchill')
-                        ? `/api/stream?url=${encodeURIComponent(data.url || data.stream_url)}`
-                        : (data.url || data.stream_url)
+                    stream_url: needsProxy
+                        ? `/api/stream?url=${encodeURIComponent(rawStreamUrl)}`
+                        : rawStreamUrl
                 });
             } catch {
                 console.error("Failed to extract stream");
@@ -118,7 +131,7 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         };
 
         fetchStream();
-    }, [movie, currentEpisode, slug]);
+    }, [movie, currentEpisode, slug, selectedServer]);
 
     // Save progress periodically and seek to saved position
     useEffect(() => {
@@ -229,70 +242,8 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         };
     }, [source, slug, currentEpisode]);
 
-    // Wake Lock Logic (Prevent Screen Sleep)
-    useEffect(() => {
-        const video = videoRef.current;
-        let wakeLock: any = null;
-
-        const requestWakeLock = async () => {
-            if (wakeLock !== null) return;
-            try {
-                if ('wakeLock' in navigator) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    wakeLock = await (navigator as any).wakeLock.request('screen');
-                    // console.log('Wake Lock active');
-                }
-            } catch {
-                console.warn('Wake Lock failed');
-            }
-        };
-
-        const releaseWakeLock = async () => {
-            if (wakeLock) {
-                try {
-                    await wakeLock.release();
-                    wakeLock = null;
-                    // console.log('Wake Lock released');
-                } catch {
-                    // console.warn('Wake Lock release failed');
-                }
-            }
-        };
-
-        if (video) {
-            const onPlay = () => requestWakeLock();
-            const onPause = () => releaseWakeLock();
-            const onEnded = () => releaseWakeLock();
-
-            video.addEventListener('play', onPlay);
-            video.addEventListener('pause', onPause);
-            video.addEventListener('ended', onEnded);
-
-            // If already playing (HLS might auto-start before this effect)
-            if (!video.paused) {
-                requestWakeLock();
-            }
-
-            // Re-acquire on visibility change if playing
-            const onVisibilityChange = () => {
-                if (document.visibilityState === 'visible' && !video.paused) {
-                    requestWakeLock();
-                }
-            };
-            document.addEventListener('visibilitychange', onVisibilityChange);
-
-            return () => {
-                video.removeEventListener('play', onPlay);
-                video.removeEventListener('pause', onPause);
-                video.removeEventListener('ended', onEnded);
-                document.removeEventListener('visibilitychange', onVisibilityChange);
-                releaseWakeLock();
-            };
-        }
-    }, [source]);
-
     const episodes = movie?.episodes || [];
-    const currentServerName = episodes.find(e => e.number === currentEpisode)?.serverName || episodes.find(e => e.number === currentEpisode)?.server_name || '';
+    const currentServerName = selectedServer || episodes.find(e => e.number === currentEpisode)?.serverName || episodes.find(e => e.number === currentEpisode)?.server_name || '';
     const sameServerEpisodes = episodes.filter(e => (e.serverName || e.server_name) === currentServerName);
     const maxEpisode = sameServerEpisodes.length > 0
         ? Math.max(...sameServerEpisodes.map(e => e.number))

@@ -238,15 +238,6 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         setCurrentEpisode(epNumber);
     }, [dismissEndScreen, setCurrentEpisode]);
 
-    if (!movie) return (
-        <div className="h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-[var(--text-muted)] animate-pulse">{t.loadingStream}</p>
-            </div>
-        </div>
-    );
-
     const episodesByServer = movie?.episodes?.reduce((acc, ep) => {
         const server = ep.serverName || ep.server_name || 'Default';
         if (!acc[server]) acc[server] = [];
@@ -256,12 +247,35 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
     const serverNames = Object.keys(episodesByServer);
 
-    if (serverNames.length > 0 && !selectedServer) {
-        const defaultServer = serverNames.find(s => s.toLowerCase().includes('vietsub #1')) || serverNames[0];
-        setSelectedServer(defaultServer);
-    }
+    // Prefer servers with embed URLs (more reliable) over raw m3u8 CDN links that can go stale
+    const epNum = parseInt(episode || '1');
+    const serversWithEpisode = serverNames.filter(server => {
+        const eps = episodesByServer[server] || [];
+        return eps.some(e => e.number === epNum && !!e.url);
+    });
+    const defaultServer = serversWithEpisode.find(server => {
+        const eps = episodesByServer[server] || [];
+        const ep = eps.find(e => e.number === epNum);
+        return ep?.url && (ep.url.includes('embed') || ep.url.includes('streamc'));
+    }) || serversWithEpisode[0] || serverNames[0] || '';
+    const activeServer = selectedServer && serverNames.includes(selectedServer) ? selectedServer : defaultServer;
 
-    const currentServerEpisodes = episodesByServer[selectedServer] || [];
+    useEffect(() => {
+        if (defaultServer && !selectedServer) {
+            setSelectedServer(defaultServer);
+        }
+    }, [defaultServer, selectedServer]);
+
+    if (!movie) return (
+        <div className="h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-[var(--text-muted)] animate-pulse">{t.loadingStream}</p>
+            </div>
+        </div>
+    );
+
+    const currentServerEpisodes = episodesByServer[activeServer] || [];
     const visibleEpisodes = expanded ? currentServerEpisodes : currentServerEpisodes.slice(0, 20);
 
     const nextEp = hasNextEpisode
@@ -274,10 +288,10 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     return (
         <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans selection:bg-accent/30 pb-20 transition-colors duration-300">
             {/* Back Navigation */}
-            <div className="fixed top-0 left-0 right-0 z-50 p-4 bg-gradient-to-b from-[var(--bg-primary)]/80 to-transparent pointer-events-none">
+            <div className="fixed top-0 left-0 right-0 z-50 p-4 bg-gradient-to-b from-[var(--bg-primary)]/80 to-transparent pointer-events-none flex items-center justify-between">
                 <button
                     onClick={() => navigate('/')}
-                    className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)]/80 hover:bg-[var(--bg-elevated)] backdrop-blur-md rounded-full transition-all group border border-[var(--border-primary)]"
+                    className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)]/80 hover:bg-[var(--bg-elevated)] backdrop-blur-md rounded-full transition-all group border border-[var(--border-primary)] shadow-lg"
                 >
                     <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)] group-hover:-translate-x-1 transition-transform" />
                     <span className="font-medium text-sm text-[var(--text-primary)]">{t.backToHome}</span>
@@ -295,12 +309,28 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     const activeEpisode = currentServerEpisodes?.find(e => e.number === currentEpisode);
                     if (!activeEpisode?.url) {
                         return (
-                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90">
-                                <div className="text-center px-6 max-w-lg">
-                                    <h2 className="text-3xl font-bold text-white mb-4">{t.comingSoon}</h2>
-                                    <p className="text-gray-400 text-lg mb-6">
-                                        We're busy uploading the best quality version of this movie.
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
+                                <div className="max-w-lg">
+                                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Tập {currentEpisode} không có trên server này</h2>
+                                    <p className="text-gray-400 text-sm md:text-base mb-6">
+                                        Vui lòng chọn server khác bên dưới để tiếp tục xem:
                                     </p>
+                                    {serverNames.length > 1 && (
+                                        <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+                                            {serverNames.map(server => (
+                                                <button
+                                                    key={server}
+                                                    onClick={() => setSelectedServer(server)}
+                                                    className={`px-4 py-2 text-xs md:text-sm font-bold rounded-full transition-all border ${activeServer === server
+                                                        ? 'bg-accent text-white border-accent'
+                                                        : 'bg-white/10 text-gray-300 border-white/20 hover:bg-white/20'
+                                                        }`}
+                                                >
+                                                    {server}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 <div
                                     className="absolute inset-0 -z-10 opacity-30 bg-cover bg-center blur-2xl grayscale"
