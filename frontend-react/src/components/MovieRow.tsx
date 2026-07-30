@@ -6,15 +6,46 @@ import { MovieCard } from './MovieCard';
 import { useLang } from '../context/LanguageContext';
 
 interface MovieRowProps {
+    rowId?: string;
     title: string;
     category?: string;
     searchQuery?: string;
     limit?: number;
     layout?: 'row' | 'grid';
     movies?: Movie[];
+    excludeIds?: Set<string>;
+    onMoviesLoaded?: (rowId: string, movies: Movie[]) => void;
 }
 
-const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies: manualMovies }: MovieRowProps) => {
+function deduplicateMovies(list: Movie[], excludeIds?: Set<string>): Movie[] {
+    const localSeen = new Set<string>();
+    const unique: Movie[] = [];
+    for (const m of list) {
+        if (!m) continue;
+
+        const normTitle = (m.title || '')
+            .toLowerCase()
+            .replace(/[\(\[\{].*?[\)\]\}]/g, '')
+            .replace(/[^a-z0-9]/g, '');
+
+        const key = m.id || m.slug || normTitle;
+
+        const isExcluded = excludeIds && (
+            (m.id && excludeIds.has(m.id)) ||
+            (m.slug && excludeIds.has(m.slug)) ||
+            (normTitle && excludeIds.has(normTitle))
+        );
+
+        if (!isExcluded && key && !localSeen.has(key) && (!normTitle || !localSeen.has(normTitle))) {
+            if (key) localSeen.add(key);
+            if (normTitle) localSeen.add(normTitle);
+            unique.push(m);
+        }
+    }
+    return unique;
+}
+
+const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', movies: manualMovies, excludeIds, onMoviesLoaded }: MovieRowProps) => {
     const { t } = useLang();
     const [movies, setMovies] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(true);
@@ -23,16 +54,22 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
     const isDown = useRef(false);
     const startX = useRef(0);
     const scrollLeft = useRef(0);
+    const prevLoadedKeysRef = useRef<string>('');
 
     useEffect(() => {
         const fetchMovies = async () => {
             if (manualMovies) {
-                let result = manualMovies;
+                let result = deduplicateMovies(manualMovies, excludeIds);
                 if (limit && result.length > 0) {
                     result = result.slice(0, limit);
                 }
                 setMovies(result);
                 setLoading(false);
+                const keys = result.map(m => m.id || m.slug || m.title).join(',');
+                if (rowId && onMoviesLoaded && prevLoadedKeysRef.current !== keys) {
+                    prevLoadedKeysRef.current = keys;
+                    onMoviesLoaded(rowId, result);
+                }
                 return;
             }
 
@@ -48,12 +85,17 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
 
                 const res = await fetch(endpoint);
                 const data = await res.json();
-                let result = data || [];
+                let result = deduplicateMovies(data || [], excludeIds);
 
                 if (limit && result.length > 0) {
                     result = result.slice(0, limit);
                 }
                 setMovies(result);
+                const keys = result.map(m => m.id || m.slug || m.title).join(',');
+                if (rowId && onMoviesLoaded && prevLoadedKeysRef.current !== keys) {
+                    prevLoadedKeysRef.current = keys;
+                    onMoviesLoaded(rowId, result);
+                }
             } catch {
                 console.error(`Failed to fetch movies for row ${title}`);
             } finally {
@@ -61,7 +103,7 @@ const MovieRow = ({ title, category, searchQuery, limit, layout = 'row', movies:
             }
         };
         fetchMovies();
-    }, [category, searchQuery, limit, manualMovies, title]);
+    }, [category, searchQuery, limit, manualMovies, title, excludeIds, rowId, onMoviesLoaded]);
 
     const scroll = (direction: 'left' | 'right') => {
         if (rowRef.current) {

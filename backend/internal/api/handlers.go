@@ -82,6 +82,22 @@ func (h *Handler) GetHomeVideos(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(movies)
 }
 
+func extractYear(query string) (string, int) {
+	re := regexp.MustCompile(`\b(19\d{2}|20\d{2})\b`)
+	match := re.FindString(query)
+	if match == "" {
+		return query, 0
+	}
+	year, _ := strconv.Atoi(match)
+	clean := re.ReplaceAllString(query, "")
+	clean = strings.TrimSpace(clean)
+	clean = regexp.MustCompile(`\s+`).ReplaceAllString(clean, " ")
+	if clean == "" {
+		return query, year
+	}
+	return clean, year
+}
+
 func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
@@ -94,9 +110,29 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 
+	cleanQuery, extractedYear := extractYear(query)
+
 	movies := h.fetchAndMergeMovies(func(p scraper.MovieProvider) ([]models.RophimMovie, error) {
-		return p.Search(query, page)
+		return p.Search(cleanQuery, page)
 	})
+
+	if extractedYear > 0 {
+		filtered := make([]models.RophimMovie, 0, len(movies))
+		for _, m := range movies {
+			if m.Year == extractedYear || m.Year == 0 {
+				filtered = append(filtered, m)
+			}
+		}
+		if len(filtered) > 0 {
+			movies = filtered
+		}
+	}
+
+	if len(movies) == 0 && cleanQuery != query {
+		movies = h.fetchAndMergeMovies(func(p scraper.MovieProvider) ([]models.RophimMovie, error) {
+			return p.Search(query, page)
+		})
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(movies)
@@ -160,7 +196,7 @@ func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int
 					continue
 				}
 
-				// Check 2: Slug match (e.g. "vu-tru-cua-doi-ta" from both providers)
+				// Check 2: Slug match
 				slugKey := normalizeKey(movie.Slug)
 				if slugKey != "" {
 					if idx, found := seenSlug[slugKey]; found {
@@ -169,13 +205,24 @@ func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int
 					}
 				}
 
-				// Check 3: Normalized title match
-				titleKey := normalizeKey(movie.OriginalTitle)
-				if titleKey == "" {
-					titleKey = normalizeKey(movie.Title)
+				// Check 3: Normalized title match (check both Title and OriginalTitle)
+				titleKey := normalizeKey(movie.Title)
+				origTitleKey := normalizeKey(movie.OriginalTitle)
+
+				matchedIdx := -1
+				if titleKey != "" {
+					if idx, found := seenTitle[titleKey]; found {
+						matchedIdx = idx
+					}
 				}
-				if idx, found := seenTitle[titleKey]; found && titleKey != "" {
-					h.mergeMovieMetadata(&allMovies[idx], &movie)
+				if matchedIdx == -1 && origTitleKey != "" {
+					if idx, found := seenTitle[origTitleKey]; found {
+						matchedIdx = idx
+					}
+				}
+
+				if matchedIdx != -1 {
+					h.mergeMovieMetadata(&allMovies[matchedIdx], &movie)
 					continue
 				}
 
@@ -187,6 +234,9 @@ func (h *Handler) mergeMovies(providerResults [][]models.RophimMovie, maxLen int
 				}
 				if titleKey != "" {
 					seenTitle[titleKey] = currIdx
+				}
+				if origTitleKey != "" {
+					seenTitle[origTitleKey] = currIdx
 				}
 			}
 		}
@@ -374,8 +424,22 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Header.Set("Referer", defaultReferer)
-	req.Header.Set("User-Agent", defaultUserAgent)
+	// Use browser-grade headers for streamc.xyz to bypass Cloudflare
+	if strings.Contains(videoURL, "streamc.xyz") {
+		req.Header.Set("Accept", "*/*")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9,vi;q=0.8")
+		req.Header.Set("sec-ch-ua", `"Chromium";v="148", "Google Chrome";v="148", ";Not A Brand";v="99"`)
+		req.Header.Set("sec-ch-ua-mobile", "?0")
+		req.Header.Set("sec-ch-ua-platform", `"Windows"`)
+		req.Header.Set("Sec-Fetch-Dest", "empty")
+		req.Header.Set("Sec-Fetch-Mode", "cors")
+		req.Header.Set("Sec-Fetch-Site", "same-origin")
+		req.Header.Set("Priority", "u=1, i")
+		req.Header.Set("Origin", fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host))
+	} else {
+		req.Header.Set("Referer", defaultReferer)
+		req.Header.Set("User-Agent", defaultUserAgent)
+	}
 	req.Header.Set("Range", r.Header.Get("Range"))
 
 	client := &http.Client{}
@@ -386,7 +450,8 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	if strings.HasSuffix(parsedURL.Path, ".m3u8") {
+	contentType := resp.Header.Get("Content-Type")
+	if strings.HasSuffix(parsedURL.Path, ".m3u8") || strings.Contains(contentType, "mpegurl") || strings.Contains(contentType, "m3u8") {
 		h.handleHLSManifest(w, resp, videoURL)
 		return
 	}
@@ -480,6 +545,8 @@ func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
 	}
 }
 
+var tagCleanerRegex = regexp.MustCompile(`(?i)\b(thuyet\s*minh|vietsub|long\s*tieng|full|hd|cam|raw|20\d\d|19\d\d)\b|[\(\[\{].*?[\)\]\}]`)
+
 func normalizeKey(s string) string {
 	if s == "" {
 		return ""
@@ -493,6 +560,8 @@ func normalizeKey(s string) string {
 	}
 	// Replace đ/Đ which NFD doesn't decompose
 	s = strings.ReplaceAll(s, "đ", "d")
+	// Clean common tags (e.g. (Thuyết Minh), (Vietsub), 2024, etc.)
+	s = tagCleanerRegex.ReplaceAllString(s, "")
 	// Keep only alphanumeric
 	reg := regexp.MustCompile("[^a-z0-9]+")
 	return reg.ReplaceAllString(s, "")

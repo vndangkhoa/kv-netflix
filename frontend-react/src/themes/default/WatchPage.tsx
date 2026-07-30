@@ -57,16 +57,21 @@ function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
 
 export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) => {
     const navigate = useNavigate();
+    const [selectedServer, setSelectedServer] = useState<string>('');
     const {
         movie, loading, currentEpisode, setCurrentEpisode, videoRef,
         episodeEnded, videoActuallyEnded, hasNextEpisode, hasPrevEpisode,
         playNextEpisode, dismissEndScreen,
         source,
-    } = useWatchMovie(slug, episode);
-    const [selectedServer, setSelectedServer] = useState<string>('');
+    } = useWatchMovie(slug, episode, selectedServer);
     const [expanded, setExpanded] = useState(false);
     const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const togglePiPRef = useRef<(() => Promise<void>) | null>(null);
+    const { togglePiP } = usePiP(videoRef);
+    useEffect(() => {
+        togglePiPRef.current = togglePiP;
+    }, [togglePiP]);
     const { t } = useLang();
     const { isSaved, addToList, removeFromList } = useMyList();
     const { isAuthenticated } = useAuth();
@@ -147,12 +152,36 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
     const plyrRef = useRef<Plyr | null>(null);
     const plyrInitRef = useRef(false);
-    const { togglePiP } = usePiP(videoRef);
-    const togglePiPRef = useRef(togglePiP);
+    const prevPlyrParentRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         togglePiPRef.current = togglePiP;
     }, [togglePiP]);
+
+    // Detect when Plyr recreates the video element (during episode change or seek)
+    useEffect(() => {
+        if (!source || !videoRef.current) return;
+
+        const parentDiv = videoRef.current.parentElement;
+        if (!parentDiv || parentDiv.tagName !== 'DIV') return;
+
+        // If Plyr recreated a new container, re-init HLS on the new video element
+        if (prevPlyrParentRef.current && prevPlyrParentRef.current !== parentDiv) {
+            const newVideo = videoRef.current as HTMLVideoElement;
+            void fetch(`/api/videos/${slug}`, { next: { cache: 'force-cache' } }).then(async () => {
+                // HLS re-initialization happens in useWatchMovie when source changes
+                // We just need to ensure the event listeners are on this new DOM node
+                if (newVideo.src && !newVideo.paused) {
+                    const duration = newVideo.duration;
+                    if (duration > 0 && duration - newVideo.currentTime < 30) {
+                        newVideo.currentTime = Math.max(0, duration - 10);
+                    }
+                }
+            }).catch(() => {});
+        }
+
+        prevPlyrParentRef.current = parentDiv;
+    }, [source, currentEpisode]);
 
     useEffect(() => {
         if (!source || !videoRef.current || plyrInitRef.current) return;
@@ -200,12 +229,9 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
     }, [source]);
 
-    // Navigate to next episode URL when episode changes
-    useEffect(() => {
-        if (currentEpisode && slug) {
-            navigate(`/watch/${slug}/${currentEpisode}`, { replace: true });
-        }
-    }, [currentEpisode, slug, navigate]);
+    // Do NOT call navigate() inside useEffect — it causes WatchPage to unmount and remount,
+    // which destroys useWatchMovie's internal state (HLS instance, event listeners).
+    // Let the URL update naturally when React Router detects route changes.
 
     const handleEpisodeClick = useCallback((epNumber: number) => {
         dismissEndScreen();
@@ -287,13 +313,23 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     return (
                         <>
                             <div className="absolute inset-0">
-                                <video
-                                    ref={videoRef}
-                                    controls
-                                    playsInline
-                                    className="w-full h-full"
-                                    poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
-                                />
+                                {source?.isEmbed || source?.ext === 'embed' || source?.format_id === 'embed' || (source?.stream_url && (source.stream_url.includes('embed') || source.stream_url.includes('streamc.xyz'))) ? (
+                                    <iframe
+                                        src={source.stream_url}
+                                        className="w-full h-full"
+                                        allowFullScreen
+                                        allow="autoplay; fullscreen"
+                                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                    />
+                                ) : (
+                                    <video
+                                        ref={videoRef}
+                                        controls
+                                        playsInline
+                                        className="w-full h-full"
+                                        poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
+                                    />
+                                )}
                             </div>
 
                             {/* Auto-Play End Screen Overlay */}

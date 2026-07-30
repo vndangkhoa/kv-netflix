@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Movie } from '../types';
 import MovieRow from './MovieRow';
@@ -29,13 +29,61 @@ export const HomeContent = () => {
     const isFiltered = !!(query || (category && category !== 'home'));
 
     const observer = useRef<IntersectionObserver | null>(null);
+    const [rowMoviesMap, setRowMoviesMap] = useState<Record<string, Movie[]>>({});
+
+    const handleRowMoviesLoaded = useCallback((rowId: string, loadedMovies: Movie[]) => {
+        setRowMoviesMap(prev => {
+            const existing = prev[rowId];
+            if (existing && existing.length === loadedMovies.length && existing.every((m, i) => m.id === loadedMovies[i].id)) {
+                return prev;
+            }
+            return { ...prev, [rowId]: loadedMovies };
+        });
+    }, []);
 
     useEffect(() => {
+        setRowMoviesMap({});
         setMovies([]);
         setPage(1);
         setHasMore(true);
         setLoading(true);
     }, [query, category]);
+
+    const rowOrder = useMemo(() => [
+        'continueWatching',
+        'myList',
+        'latestUpdates',
+        ...CATEGORIES.filter(c => c.id !== 'my-list').map(c => `cat-${c.id}`),
+        ...GENRES.slice(0, 8).map(g => `genre-${g.id}`),
+    ], []);
+
+    const getExcludeIds = useCallback((rowId: string): Set<string> => {
+        const excludeSet = new Set<string>();
+
+        if (movies.length > 0) {
+            movies.slice(0, 5).forEach(m => {
+                if (m.id) excludeSet.add(m.id);
+                if (m.slug) excludeSet.add(m.slug);
+                const normTitle = (m.title || '').toLowerCase().replace(/[\(\[\{].*?[\)\]\}]/g, '').replace(/[^a-z0-9]/g, '');
+                if (normTitle) excludeSet.add(normTitle);
+            });
+        }
+
+        const targetIdx = rowOrder.indexOf(rowId);
+        if (targetIdx > 0) {
+            for (let i = 0; i < targetIdx; i++) {
+                const prevRowId = rowOrder[i];
+                const prevMovies = rowMoviesMap[prevRowId] || [];
+                for (const m of prevMovies) {
+                    if (m.id) excludeSet.add(m.id);
+                    if (m.slug) excludeSet.add(m.slug);
+                    const normTitle = (m.title || '').toLowerCase().replace(/[\(\[\{].*?[\)\]\}]/g, '').replace(/[^a-z0-9]/g, '');
+                    if (normTitle) excludeSet.add(normTitle);
+                }
+            }
+        }
+        return excludeSet;
+    }, [movies, rowOrder, rowMoviesMap]);
 
     useEffect(() => {
         const fetchMovies = async () => {
@@ -45,7 +93,7 @@ export const HomeContent = () => {
             try {
                 let endpoint = '/api/videos/home';
                 if (query) {
-                    endpoint = `/api/videos/search?q=${query}&page=${page}`;
+                    endpoint = `/api/videos/search?q=${encodeURIComponent(query)}&page=${page}`;
                 } else if (category && category !== 'home') {
                     endpoint = `/api/videos/home?category=${category}&page=${page}`;
                 } else {
@@ -153,19 +201,24 @@ export const HomeContent = () => {
                 {(continueWatching.length > 0 || savedMovies.length > 0) && (
                     <section>
                         {continueWatching.length > 0 && (
-                            <MovieRow title={t.continueWatching} movies={continueWatching} />
+                            <MovieRow
+                                rowId="continueWatching"
+                                title={t.continueWatching}
+                                movies={continueWatching}
+                                onMoviesLoaded={handleRowMoviesLoaded}
+                            />
                         )}
                         {savedMovies.length > 0 && (
-                            <MovieRow title={t.myList} movies={savedMovies} />
+                            <MovieRow
+                                rowId="myList"
+                                title={t.myList}
+                                movies={savedMovies}
+                                excludeIds={getExcludeIds("myList")}
+                                onMoviesLoaded={handleRowMoviesLoaded}
+                            />
                         )}
                     </section>
                 )}
-
-                {/* Korean & Chinese Dramas */}
-                <section>
-                    <MovieRow title="Korean Dramas" category="korean-drama" />
-                    <MovieRow title="Chinese Dramas" category="chinese-drama" />
-                </section>
 
                 {/* Smart Recommendations */}
                 {recommendations.length > 0 && (
@@ -198,7 +251,13 @@ export const HomeContent = () => {
 
                 {/* New Updates */}
                 <section>
-                    <MovieRow title={t.latestUpdates} category="home" />
+                    <MovieRow
+                        rowId="latestUpdates"
+                        title={t.latestUpdates}
+                        category="home"
+                        excludeIds={getExcludeIds("latestUpdates")}
+                        onMoviesLoaded={handleRowMoviesLoaded}
+                    />
                 </section>
 
                 {/* Top 10 by Category */}
@@ -206,9 +265,12 @@ export const HomeContent = () => {
                     {CATEGORIES.filter(c => c.id !== 'my-list').map(cat => (
                         <MovieRow
                             key={cat.id}
+                            rowId={`cat-${cat.id}`}
                             title={`Top 10 ${cat.id === 'han-quoc' ? 'K-drama' : cat.id === 'trung-quoc' ? 'C-drama' : t[cat.nameKey as keyof typeof t] || cat.nameKey}`}
                             category={cat.id}
                             limit={10}
+                            excludeIds={getExcludeIds(`cat-${cat.id}`)}
+                            onMoviesLoaded={handleRowMoviesLoaded}
                         />
                     ))}
                 </section>
@@ -216,7 +278,14 @@ export const HomeContent = () => {
                 {/* Genre Rows */}
                 <section>
                     {GENRES.slice(0, 8).map(g => (
-                        <MovieRow key={g.id} title={lang === 'vi' ? g.vi : g.en} category={g.id} />
+                        <MovieRow
+                            key={g.id}
+                            rowId={`genre-${g.id}`}
+                            title={lang === 'vi' ? g.vi : g.en}
+                            category={g.id}
+                            excludeIds={getExcludeIds(`genre-${g.id}`)}
+                            onMoviesLoaded={handleRowMoviesLoaded}
+                        />
                     ))}
                 </section>
             </div>

@@ -15,7 +15,7 @@ export const useMovies = () => {
             try {
                 let endpoint = '/api/videos/home';
                 if (query) {
-                    endpoint = `/api/videos/search?q=${query}`;
+                    endpoint = `/api/videos/search?q=${encodeURIComponent(query)}`;
                 } else if (category && category !== 'home') {
                     endpoint = `/api/videos/home?category=${category}`;
                 }

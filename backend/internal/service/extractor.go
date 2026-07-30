@@ -34,6 +34,11 @@ func (e *VideoExtractor) Extract(url string, quality string) (*VideoInfo, error)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	// Custom extractor for streamc.xyz (nguonc.com embed provider)
+	if strings.Contains(url, "streamc.xyz") {
+		return e.extractStreamC(ctx, url)
+	}
+
 	// Check for custom extractors
 	if strings.Contains(url, "phim30.me") {
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -125,3 +130,14 @@ func (e *VideoExtractor) Extract(url string, quality string) (*VideoInfo, error)
 
 	return &info, nil
 }
+
+func (e *VideoExtractor) extractStreamC(ctx context.Context, url string) (*VideoInfo, error) {
+	return &VideoInfo{
+		StreamURL:  url,
+		Ext:        "embed",
+		FormatID:   "embed",
+		Resolution: "unknown",
+	}, nil
+}
+
+

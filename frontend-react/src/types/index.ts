@@ -45,6 +45,7 @@ export interface VideoSource {
     stream_url: string;
     resolution: string;
     format_id: string;
+    isEmbed?: boolean;
 }
 export interface Category {
     name: string;

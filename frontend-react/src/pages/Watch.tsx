@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMyList } from '../hooks/useMyList';
-
+import { useWatchProgress } from '../hooks/useWatchProgress';
 import { defaultTheme } from '../themes/default';
 
 const Watch = () => {
     const { slug, episode } = useParams();
     const { addToHistory } = useMyList();
+    const { saveProgress } = useWatchProgress();
 
-    // Fetch movie detail to get info for history
+    // Fetch movie detail to get info for history & watch progress
     useEffect(() => {
         if (!slug) return;
         const fetchDetail = async () => {
@@ -30,13 +31,24 @@ const Watch = () => {
                         director: data.director,
                         cast: data.cast
                     });
+
+                    // Save watch progress so movie immediately appears in "Tiếp Tục Xem" on main page
+                    saveProgress(slug, parseInt(episode || '1'), 1, 100, {
+                        title: data.title,
+                        thumbnail: data.thumbnail,
+                        backdrop: data.backdrop,
+                        year: data.year,
+                        category: data.category || 'movies',
+                        genre: data.genre,
+                        country: data.country,
+                    });
                 }
             } catch {
                 console.error("Failed to fetch for history");
             }
         };
         fetchDetail();
-    }, [slug]);
+    }, [slug, episode, addToHistory, saveProgress]);
 
     const { WatchPage } = defaultTheme.components;
 

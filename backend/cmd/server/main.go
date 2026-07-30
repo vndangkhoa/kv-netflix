@@ -33,11 +33,12 @@ func main() {
 	videoRepo := database.NewVideoRepository(database.DB)
 	ophimService := scraper.NewOphimScraper()
 	phim30Service := scraper.NewPhim30Scraper()
+	nguonPhimService := scraper.NewNguonPhimScraper()
 	tmdbService := service.NewTMDBService()
 	extractorService := service.NewVideoExtractor()
 	imageService := service.NewImageService()
 
-	providers := []scraper.MovieProvider{ophimService, phim30Service}
+	providers := []scraper.MovieProvider{ophimService, phim30Service, nguonPhimService}
 
 	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService, cfg.JWTSecret)
 

@@ -44,6 +44,18 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
 
     const getRawImageUrl = (url: string) => {
         if (!url) return '';
+        if (url.includes('{') && url.includes('}')) {
+            try {
+                const start = url.indexOf('{');
+                const end = url.lastIndexOf('}');
+                const jsonStr = url.substring(start, end + 1);
+                const parsed = JSON.parse(jsonStr);
+                const path = parsed.original || parsed.poster || parsed.resize || '';
+                if (path) {
+                    url = path.startsWith('http') ? path : `https://phim.nguonc.com${path.startsWith('/') ? '' : '/'}${path}`;
+                }
+            } catch {}
+        }
         if (url.startsWith('//')) return `https:${url}`;
         if (!url.startsWith('http')) return `https://${url}`;
         return url;

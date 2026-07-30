@@ -62,6 +62,13 @@ func (p *Phim30Scraper) GetMoviesByCategory(category string, page int) ([]models
 	switch category {
 	case "phim-le", "phim-bo", "phim-sap-chieu":
 		path = fmt.Sprintf("danh-sach/%s", category)
+	case "han-quoc", "trung-quoc", "nhat-ban", "thai-lan", "au-my", "dai-loan", "hong-kong", "an-do",
+		"anh", "phap", "canada", "quoc-gia-khac", "duc", "tay-ban-nha", "tho-nhi-ky", "ha-lan",
+		"indonesia", "nga", "mexico", "ba-lan", "uc", "thuy-dien", "malaysia", "brazil",
+		"philippines", "bo-dao-nha", "y", "dan-mach", "uae", "na-uy", "thuy-si", "chau-phi",
+		"nam-phi", "ukraina", "a-rap-xe-ut", "bi", "ireland", "colombia", "phan-lan", "viet-nam",
+		"chile", "hy-lap", "nigeria", "argentina", "singapore":
+		path = fmt.Sprintf("quoc-gia/%s", category)
 	default:
 		// Assume everything else is a Genre (e.g., hanh-dong, hoat-hinh, tv-shows)
 		path = fmt.Sprintf("the-loai/%s", category)
