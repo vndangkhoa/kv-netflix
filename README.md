@@ -11,7 +11,7 @@ A self-hosted movie streaming application with Go backend, React frontend, and A
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com)
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-vndangkhoa%2Fkv--netflix-blue?style=flat&logo=docker&logoColor=white)](https://hub.docker.com/r/vndangkhoa/kv-netflix)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](#license)
 
 [Deploy](#deployment) · [Features](#features) · [API](#api-reference) · [Development](#local-development)
@@ -26,8 +26,8 @@ KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and 
 
 **Key Highlights:**
 
-- Multi-provider movie scraping (Ophim, PhimMoiChill)
-- HLS streaming with backend proxy to bypass CORS
+- Multi-provider movie scraping (Ophim, PhimMoiChill, NguonPhim)
+- HLS & embed streaming with backend proxy to bypass CORS
 - User accounts with JWT authentication
 - Device pairing: PC shows 6-digit code, other devices enter to login
 - Saved movies & watch history synced across devices via API
@@ -35,7 +35,7 @@ KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and 
 - Dark & light theme with automatic system detection
 - Personalized movie recommendations based on watch history
 - Android TV app with D-pad navigation and 10s skip
-- Docker multi-stage build optimized for Synology NAS (linux/amd64)
+- Docker image hosted on [Docker Hub](https://hub.docker.com/r/vndangkhoa/kv-netflix) (`vndangkhoa/kv-netflix:latest`)
 
 ---
 
@@ -95,7 +95,7 @@ KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and 
 │  D-pad navigation · 10s skip                       │
 ├─────────────────────────────────────────────────────┤
 │                 DEPLOYMENT                          │
-│  Docker multi-stage · Forgejo Registry              │
+│  Docker Hub: vndangkhoa/kv-netflix:latest           │
 │  Synology NAS optimized (linux/amd64)              │
 └─────────────────────────────────────────────────────┘
 ```
@@ -106,17 +106,15 @@ KV-NETFLIX is a self-hosted movie streaming platform built for Synology NAS and 
 
 ### Docker (Recommended)
 
-The easiest way to run KV-NETFLIX is with Docker on a Synology NAS or any Docker host.
+The easiest way to run KV-NETFLIX is using the official Docker image on Docker Hub: [https://hub.docker.com/r/vndangkhoa/kv-netflix](https://hub.docker.com/r/vndangkhoa/kv-netflix)
 
 #### Option 1: Container Manager GUI (Synology)
 
 1. Open **Container Manager** on your Synology NAS
-2. Go to **Registry** and add the container registry:
-   - Registry: `git.khoavo.myds.me`
-   - Authenticate with your credentials when prompted
-3. Search `vndangkhoa/kv-netflix` and pull the `latest` tag
+2. Go to **Registry** and search for `vndangkhoa/kv-netflix`
+3. Download the `latest` image tag
 4. Create a container:
-   - **Image**: `git.khoavo.myds.me/vndangkhoa/kv-netflix:latest`
+   - **Image**: `vndangkhoa/kv-netflix:latest`
    - **Name**: `streamflow`
    - **Ports**: `3478` (local) → `8000` (container)
    - **Environment**: `TZ=Asia/Ho_Chi_Minh`, `JWT_SECRET=your-secret-key-here`
@@ -127,9 +125,6 @@ The easiest way to run KV-NETFLIX is with Docker on a Synology NAS or any Docker
 #### Option 2: Docker Compose (CLI)
 
 ```bash
-# Login to registry
-docker login git.khoavo.myds.me
-
 # Pull and start
 docker compose up -d
 
@@ -143,7 +138,7 @@ docker compose logs -f
 ```yaml
 services:
   streamflow:
-    image: git.khoavo.myds.me/vndangkhoa/kv-netflix:latest
+    image: vndangkhoa/kv-netflix:latest
     container_name: streamflow
     platform: linux/amd64
     ports:
@@ -172,7 +167,17 @@ echo "JWT_SECRET=your-secret-key-here" > .env
 
 </details>
 
-### Build from Source
+### Quick Docker Run Command
+
+```bash
+docker run -d \
+  --name streamflow \
+  -p 3478:8000 \
+  -v ./data:/app/data \
+  -e JWT_SECRET=your-secret-key-here \
+  -e TZ=Asia/Ho_Chi_Minh \
+  vndangkhoa/kv-netflix:latest
+```
 
 ```bash
 # Clone the repo
