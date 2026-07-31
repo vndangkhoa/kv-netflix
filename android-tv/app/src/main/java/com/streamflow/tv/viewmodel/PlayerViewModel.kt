@@ -13,6 +13,7 @@ data class PlayerUiState(
     val movie: MovieDetail? = null,
     val source: VideoSource? = null,
     val currentEpisode: Int = 1,
+    val selectedServer: String = "",
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -23,13 +24,14 @@ class PlayerViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState
 
-    fun loadPlayer(slug: String, episode: Int = 1) {
+    fun loadPlayer(slug: String, episode: Int = 1, server: String? = null) {
         viewModelScope.launch {
-            _uiState.value = PlayerUiState(isLoading = true, currentEpisode = episode)
+            _uiState.value = PlayerUiState(isLoading = true, currentEpisode = episode, selectedServer = server ?: "")
             try {
                 val movie = repository.getMovieDetail(slug)
-                _uiState.value = _uiState.value.copy(movie = movie)
-                loadStream(movie, episode)
+                val activeServer = server ?: movie.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.firstOrNull() ?: ""
+                _uiState.value = _uiState.value.copy(movie = movie, selectedServer = activeServer)
+                loadStream(movie, episode, activeServer)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -39,11 +41,21 @@ class PlayerViewModel : ViewModel() {
         }
     }
 
-    fun changeEpisode(episode: Int) {
+    fun changeEpisode(episode: Int, server: String? = null) {
         val movie = _uiState.value.movie ?: return
-        _uiState.value = _uiState.value.copy(currentEpisode = episode, isLoading = true, source = null)
+        val targetServer = server ?: _uiState.value.selectedServer
+        _uiState.value = _uiState.value.copy(currentEpisode = episode, selectedServer = targetServer, isLoading = true, source = null)
         viewModelScope.launch {
-            loadStream(movie, episode)
+            loadStream(movie, episode, targetServer)
+        }
+    }
+
+    fun changeServer(server: String) {
+        val movie = _uiState.value.movie ?: return
+        val currentEp = _uiState.value.currentEpisode
+        _uiState.value = _uiState.value.copy(selectedServer = server, isLoading = true, source = null)
+        viewModelScope.launch {
+            loadStream(movie, currentEp, server)
         }
     }
 
@@ -55,10 +67,17 @@ class PlayerViewModel : ViewModel() {
         }
     }
 
-    private suspend fun loadStream(movie: MovieDetail, episode: Int) {
+    private suspend fun loadStream(movie: MovieDetail, episode: Int, server: String = "") {
         try {
-            val ep = movie.episodes?.find { it.number == episode }
-            android.util.Log.e("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode. Episode data: $ep")
+            val episodes = movie.episodes ?: emptyList()
+            val filteredEpisodes = if (server.isNotBlank()) {
+                episodes.filter { it.serverName.equals(server, ignoreCase = true) || (it.serverName.isBlank() && server.isBlank()) }
+            } else episodes
+
+            val ep = filteredEpisodes.find { it.number == episode } 
+                ?: episodes.find { it.number == episode }
+
+            android.util.Log.e("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$server. Episode data: $ep")
 
             if (ep != null && (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8"))) {
                 // Direct HLS URL

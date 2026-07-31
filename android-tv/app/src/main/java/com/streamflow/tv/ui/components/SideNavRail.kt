@@ -1,5 +1,8 @@
 package com.streamflow.tv.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -10,13 +13,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
-import androidx.tv.material3.*
-import com.streamflow.tv.ui.theme.StreamFlowTheme
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.tv.material3.*
+import com.streamflow.tv.R
+import com.streamflow.tv.ui.theme.StreamFlowTheme
 
 data class NavItem(
     val id: String,
@@ -27,7 +36,8 @@ data class NavItem(
 
 val NAV_ITEMS = listOf(
     NavItem("home", "home", "Home", Icons.Default.Home),
-    NavItem("categories", "home/phim-le", "Categories", Icons.Default.Category),
+    NavItem("movies", "home/phim-le", "Movies", Icons.Default.Movie),
+    NavItem("series", "home/phim-bo", "TV Series", Icons.Default.Tv),
     NavItem("search", "search", "Search", Icons.Default.Search),
     NavItem("mylist", "mylist", "My List", Icons.Default.Favorite),
     NavItem("settings", "settings", "Settings", Icons.Default.Settings)
@@ -41,49 +51,77 @@ fun SideNavRail(
     modifier: Modifier = Modifier
 ) {
     val colors = StreamFlowTheme.colors
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        try {
-            focusRequester.requestFocus()
-        } catch (e: Exception) {
-            // Ignore
-        }
-    }
+    var isRailFocused by remember { mutableStateOf(false) }
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isRailFocused) 220.dp else 68.dp,
+        animationSpec = tween(durationMillis = 250),
+        label = "navRailWidth"
+    )
 
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .width(56.dp)
-            .background(colors.background.copy(alpha = 0.95f))
-            .padding(vertical = 16.dp),
+            .width(animatedWidth)
+            .background(colors.surface.copy(alpha = 0.95f))
+            .onFocusChanged { isRailFocused = it.hasFocus }
+            .padding(vertical = 20.dp, horizontal = 10.dp),
         verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
-        Box(
+        // App Logo Header (YouTube TV Style)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(colors.primary),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 8.dp)
         ) {
-            Text("S", style = StreamFlowTheme.typography.titleMedium.copy(color = Color.White))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "KV",
+                    style = StreamFlowTheme.typography.titleMedium.copy(
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                )
+            }
+            if (isRailFocused) {
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = "NETFLIX",
+                    style = StreamFlowTheme.typography.titleMedium.copy(
+                        color = colors.primary,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        letterSpacing = 1.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
 
+        // Navigation Items List
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.Start
         ) {
             NAV_ITEMS.forEach { item ->
                 NavRailItem(
                     item = item,
                     isSelected = selectedId == item.id,
+                    isExpanded = isRailFocused,
                     onClick = { onNavigate(item) },
-                    accentColor = colors.primary,
-                    modifier = if (item.id == "home") Modifier.focusRequester(focusRequester) else Modifier
+                    accentColor = colors.primary
                 )
             }
         }
@@ -95,6 +133,7 @@ fun SideNavRail(
 private fun NavRailItem(
     item: NavItem,
     isSelected: Boolean,
+    isExpanded: Boolean,
     onClick: () -> Unit,
     accentColor: Color,
     modifier: Modifier = Modifier
@@ -104,24 +143,41 @@ private fun NavRailItem(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .size(48.dp),
+            .fillMaxWidth()
+            .height(48.dp)
+            .onFocusChanged { isFocused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isSelected) accentColor.copy(alpha = 0.15f) else Color.Transparent,
-            focusedContainerColor = accentColor.copy(alpha = 0.2f)
+            containerColor = if (isSelected) accentColor.copy(alpha = 0.2f) else Color.Transparent,
+            focusedContainerColor = accentColor.copy(alpha = 0.35f)
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.label,
-                tint = if (isSelected) accentColor else Color.White.copy(alpha = 0.6f),
-                modifier = Modifier.size(22.dp)
+                tint = if (isFocused || isSelected) accentColor else Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(24.dp)
             )
+
+            if (isExpanded) {
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    text = item.label,
+                    style = StreamFlowTheme.typography.bodyLarge.copy(
+                        color = if (isFocused || isSelected) Color.White else Color.White.copy(alpha = 0.7f),
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

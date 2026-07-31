@@ -51,6 +51,11 @@ object AppTypography {
         fontWeight = FontWeight.Medium,
         color = TextPrimary
     )
+    val labelMedium = TextStyle(
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = TextPrimary
+    )
     val labelSmall = TextStyle(
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium,

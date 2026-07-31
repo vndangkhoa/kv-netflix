@@ -13,7 +13,8 @@ data class DetailUiState(
     val movie: MovieDetail? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
-    val isInMyList: Boolean = false
+    val isInMyList: Boolean = false,
+    val selectedServer: String = ""
 )
 
 class DetailViewModel : ViewModel() {
@@ -34,10 +35,12 @@ class DetailViewModel : ViewModel() {
             try {
                 val movie = repository.getMovieDetail(slug)
                 val isInMyList = userDataRepository?.isInMyList(slug) ?: false
+                val firstServer = movie.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.firstOrNull() ?: ""
                 _uiState.value = _uiState.value.copy(
                     movie = movie, 
                     isLoading = false,
-                    isInMyList = isInMyList
+                    isInMyList = isInMyList,
+                    selectedServer = firstServer
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -46,6 +49,10 @@ class DetailViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    fun selectServer(server: String) {
+        _uiState.value = _uiState.value.copy(selectedServer = server)
     }
 
     fun toggleMyList() {

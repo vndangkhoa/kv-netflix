@@ -12,22 +12,16 @@
 
     <!-- Gradient accent bar -->
     <path
-        android:pathData="M0,160h320v20H0z"
-        android:fillColor="#06B6D4"/>
+        android:pathData="M0,165h320v15H0z"
+        android:fillColor="#E50914"/>
 
     <!-- Icon circle -->
     <path
-        android:pathData="M160,75m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"
-        android:fillColor="#06B6D4"/>
+        android:pathData="M160,75m-32,0a32,32 0,1 1,64 0a32,32 0,1 1,-64 0"
+        android:fillColor="#E50914"/>
 
     <!-- Play triangle -->
     <path
-        android:pathData="M152,60L172,75L152,90z"
+        android:pathData="M152,60L174,75L152,90z"
         android:fillColor="#FFFFFF"/>
-
-    <!-- Text: StreamFlow -->
-    <path
-        android:pathData="M95,130h130"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="0.5"/>
 </vector>

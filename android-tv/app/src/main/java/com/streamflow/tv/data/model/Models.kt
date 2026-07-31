@@ -62,7 +62,8 @@ data class MovieDetail(
 data class Episode(
     val number: Int = 0,
     val title: String = "",
-    val url: String = ""
+    val url: String = "",
+    @Json(name = "server_name") val serverName: String = ""
 )
 
 @JsonClass(generateAdapter = false)

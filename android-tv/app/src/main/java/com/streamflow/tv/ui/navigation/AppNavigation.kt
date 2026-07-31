@@ -45,22 +45,27 @@ fun AppNavigation(
                 val slug = backStackEntry.arguments?.getString("slug") ?: return@composable
                 DetailScreen(
                     slug = slug,
-                    onPlayClick = { s, ep -> navController.navigate("player/$s/$ep") },
+                    onPlayClick = { s, ep, srv ->
+                        val encodedSrv = java.net.URLEncoder.encode(srv, "UTF-8")
+                        navController.navigate("player/$s/$ep?server=$encodedSrv")
+                    },
                     onBack = { navController.popBackStack() }
                 )
             }
 
             // Video Player
             composable(
-                "player/{slug}/{episode}",
+                "player/{slug}/{episode}?server={server}",
                 arguments = listOf(
                     navArgument("slug") { type = NavType.StringType },
-                    navArgument("episode") { type = NavType.IntType; defaultValue = 1 }
+                    navArgument("episode") { type = NavType.IntType; defaultValue = 1 },
+                    navArgument("server") { type = NavType.StringType; nullable = true; defaultValue = null }
                 )
             ) { backStackEntry ->
                 val slug = backStackEntry.arguments?.getString("slug") ?: return@composable
                 val episode = backStackEntry.arguments?.getInt("episode") ?: 1
-                PlayerScreen(slug = slug, episode = episode)
+                val server = backStackEntry.arguments?.getString("server")
+                PlayerScreen(slug = slug, episode = episode, server = server)
             }
 
             // Search

@@ -119,35 +119,41 @@ fun StreamFlowTvApp() {
                         }
 
                         composable(
-                        "detail/{slug}",
-                        arguments = listOf(navArgument("slug") { type = NavType.StringType })
-                    ) { entry ->
-                        val slug = entry.arguments?.getString("slug") ?: return@composable
-                        DetailScreen(
-                            slug = slug,
-                            onPlayClick = { s, ep -> navController.navigate("player/$s/$ep") },
-                            onBack = { navController.popBackStack() },
-                            userDataRepository = userRepo
-                        )
-                    }
+                            "detail/{slug}",
+                            arguments = listOf(navArgument("slug") { type = NavType.StringType })
+                        ) { entry ->
+                            val slug = entry.arguments?.getString("slug") ?: return@composable
+                            DetailScreen(
+                                slug = slug,
+                                onPlayClick = { s, ep, srv ->
+                                    val encodedSrv = java.net.URLEncoder.encode(srv, "UTF-8")
+                                    navController.navigate("player/$s/$ep?server=$encodedSrv")
+                                },
+                                onBack = { navController.popBackStack() },
+                                userDataRepository = userRepo
+                            )
+                        }
 
                         composable(
-                            "player/{slug}/{episode}",
+                            "player/{slug}/{episode}?server={server}",
                             arguments = listOf(
                                 navArgument("slug") { type = NavType.StringType },
-                                navArgument("episode") { type = NavType.IntType; defaultValue = 1 }
+                                navArgument("episode") { type = NavType.IntType; defaultValue = 1 },
+                                navArgument("server") { type = NavType.StringType; nullable = true; defaultValue = null }
                             ),
                             deepLinks = listOf(androidx.navigation.navDeepLink { uriPattern = "streamflow://player/{slug}/{episode}" })
                         ) { entry ->
                             val slug = entry.arguments?.getString("slug")
                             val episode = entry.arguments?.getInt("episode") ?: 1
-                            Log.d("StreamFlowNav", "Navigating to player: slug=$slug, episode=$episode")
+                            val server = entry.arguments?.getString("server")
+                            Log.d("StreamFlowNav", "Navigating to player: slug=$slug, episode=$episode, server=$server")
                             if (slug == null) {
                                 return@composable
                             }
                             PlayerScreen(
                                 slug = slug,
                                 episode = episode,
+                                server = server,
                                 userDataRepository = userRepo
                             )
                         }

@@ -25,6 +25,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.streamflow.tv.ui.components.ServerSelector
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.PlayerViewModel
 
@@ -34,6 +35,7 @@ import com.streamflow.tv.viewmodel.PlayerViewModel
 fun PlayerScreen(
     slug: String,
     episode: Int = 1,
+    server: String? = null,
     userDataRepository: com.streamflow.tv.data.repository.UserDataRepository? = null,
     viewModel: PlayerViewModel = viewModel()
 ) {
@@ -42,8 +44,8 @@ fun PlayerScreen(
     val colors = StreamFlowTheme.colors
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
 
-    LaunchedEffect(slug, episode) {
-        viewModel.loadPlayer(slug, episode)
+    LaunchedEffect(slug, episode, server) {
+        viewModel.loadPlayer(slug, episode, server)
     }
 
     LaunchedEffect(uiState.movie) {
@@ -138,6 +140,10 @@ fun PlayerScreen(
     }
 
     val focusRequester = remember { FocusRequester() }
+
+    val availableServers = remember(uiState.movie) {
+        uiState.movie?.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.distinct() ?: emptyList()
+    }
 
     Box(
         modifier = Modifier
@@ -234,6 +240,23 @@ fun PlayerScreen(
                 },
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Server Selection Overlay when available
+            if (availableServers.size > 1) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 28.dp, end = 36.dp)
+                        .background(Color.Black.copy(alpha = 0.65f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    ServerSelector(
+                        servers = availableServers,
+                        selectedServer = uiState.selectedServer,
+                        onServerSelect = { s -> viewModel.changeServer(s) }
+                    )
+                }
+            }
         }
 
         // Error overlay
