@@ -108,7 +108,7 @@ func (s *OphimScraper) GetMoviesByCategory(category string, page int) ([]models.
 	switch category {
 	case "home", "":
 		path = "danh-sach/phim-moi-cap-nhat"
-	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu":
+	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu", "phim-long-tieng", "phim-vietsub":
 		path = fmt.Sprintf("danh-sach/%s", category)
 	case "han-quoc", "trung-quoc", "nhat-ban", "thai-lan", "au-my", "dai-loan", "hong-kong", "an-do",
 	     "anh", "phap", "canada", "quoc-gia-khac", "duc", "tay-ban-nha", "tho-nhi-ky", "ha-lan",

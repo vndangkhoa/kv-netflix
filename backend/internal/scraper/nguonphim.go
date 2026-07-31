@@ -165,7 +165,7 @@ func (s *NguonPhimScraper) GetMoviesByCategory(category string, page int) ([]mod
 		} else {
 			listURL = fmt.Sprintf("%s/danh-sach-phim?page=%d&load=1", NguonPhimBaseURL, page)
 		}
-	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu":
+	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu", "phim-long-tieng", "phim-vietsub":
 		listURL = fmt.Sprintf("%s/danh-sach/%s?page=%d&load=1", NguonPhimBaseURL, category, page)
 	case "han-quoc", "trung-quoc", "nhat-ban", "thai-lan", "au-my", "dai-loan", "hong-kong", "an-do",
 		"anh", "phap", "canada", "quoc-gia-khac", "duc", "tay-ban-nha", "tho-nhi-ky", "ha-lan",

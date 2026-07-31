@@ -119,7 +119,55 @@ fun HomeScreen(
                     }
                 }
 
-                // Interleaved Category rows (alternating Horizontal and Vertical thumbnails)
+                // 🔊 Phim Lồng Tiếng (Positioned directly AFTER Recommended for You, Horizontal 16:9)
+                if (uiState.dubbedMovies.isNotEmpty()) {
+                    item {
+                        MovieRow(
+                            title = "🔊 Phim Lồng Tiếng",
+                            movies = uiState.dubbedMovies,
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = true
+                        )
+                    }
+                }
+
+                // 🇰🇷 K-drama (Korean Drama, Vertical 2:3)
+                if (uiState.kdramaMovies.isNotEmpty()) {
+                    item {
+                        MovieRow(
+                            title = "🇰🇷 K-drama",
+                            movies = uiState.kdramaMovies,
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = false
+                        )
+                    }
+                }
+
+                // 🇨🇳 C-drama (Chinese Drama, Horizontal 16:9)
+                if (uiState.cdramaMovies.isNotEmpty()) {
+                    item {
+                        MovieRow(
+                            title = "🇨🇳 C-drama",
+                            movies = uiState.cdramaMovies,
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = true
+                        )
+                    }
+                }
+
+                // 🇻🇳 Phim Việt Nam (Vietnamese Movies, Vertical 2:3)
+                if (uiState.vietnamMovies.isNotEmpty()) {
+                    item {
+                        MovieRow(
+                            title = "🇻🇳 Phim Việt Nam",
+                            movies = uiState.vietnamMovies,
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = false
+                        )
+                    }
+                }
+
+                // Remaining Category rows (alternating Horizontal and Vertical thumbnails)
                 uiState.categoryMovies.entries.forEachIndexed { index, entry ->
                     val (title, movies) = entry
                     if (movies.isNotEmpty()) {
@@ -128,7 +176,7 @@ fun HomeScreen(
                                 title = title,
                                 movies = movies,
                                 onMovieClick = { movie -> onMovieClick(movie.slug) },
-                                isHorizontal = (index % 2 == 0) // Alternates: true, false, true, false
+                                isHorizontal = (index % 2 == 0)
                             )
                         }
                     }
