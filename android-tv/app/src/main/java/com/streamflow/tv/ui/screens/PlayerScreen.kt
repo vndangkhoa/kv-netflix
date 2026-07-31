@@ -142,7 +142,7 @@ fun PlayerScreen(
     val focusRequester = remember { FocusRequester() }
 
     val availableServers = remember(uiState.movie) {
-        uiState.movie?.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.distinct() ?: emptyList()
+        uiState.movie?.episodes?.map { it.displayServerName }?.distinct() ?: emptyList()
     }
 
     Box(

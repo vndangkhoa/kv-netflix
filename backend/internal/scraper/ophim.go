@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -294,42 +296,41 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 	}
 
 	epMap := make(map[string]int) // map[epNum-serverName]sliceIndex
+	digitsRegex := regexp.MustCompile(`\d+`)
 	for _, server := range rawEpisodes {
 		for _, ep := range server.ServerData {
 			epNum := 0
-			fmt.Sscanf(ep.Name, "%d", &epNum)
+			if match := digitsRegex.FindString(ep.Name); match != "" {
+				epNum, _ = strconv.Atoi(match)
+			}
 			if epNum == 0 {
-				var n int
-				if _, err := fmt.Sscanf(ep.Name, "Tap %d", &n); err == nil {
-					epNum = n
-				}
-				if strings.EqualFold(ep.Name, "Full") || strings.EqualFold(ep.Name, "Trailer") {
-					epNum = 1 // single-movie or trailer as ep 1
-				}
-
-				// If still 0, skip
-				if epNum == 0 {
+				if strings.EqualFold(ep.Name, "Full") || strings.EqualFold(ep.Name, "Trailer") || ep.Name != "" {
+					epNum = 1
+				} else {
 					continue
 				}
 			}
 
+			streamURL := ep.LinkM3U8
+			if streamURL == "" {
+				streamURL = ep.LinkEmbed
+			}
+			if streamURL == "" {
+				continue
+			}
+
 			serverKey := fmt.Sprintf("%d-%s", epNum, server.ServerName)
 			if idx, exists := epMap[serverKey]; exists {
-				// If existing is empty, replace with this one
-				if episodes[idx].URL == "" && ep.LinkM3U8 != "" {
-					episodes[idx].URL = ep.LinkM3U8
+				if episodes[idx].URL == "" && streamURL != "" {
+					episodes[idx].URL = streamURL
 					episodes[idx].Title = ep.Name
 				}
 			} else {
-				if ep.LinkM3U8 == "" && ep.LinkEmbed == "" {
-					continue
-				}
-
 				epMap[serverKey] = len(episodes)
 				episodes = append(episodes, models.Episode{
 					Number:     epNum,
 					Title:      ep.Name,
-					URL:        ep.LinkM3U8,
+					URL:        streamURL,
 					ServerName: server.ServerName,
 				})
 			}

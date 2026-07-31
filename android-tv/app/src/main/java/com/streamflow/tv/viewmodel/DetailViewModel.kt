@@ -35,7 +35,7 @@ class DetailViewModel : ViewModel() {
             try {
                 val movie = repository.getMovieDetail(slug)
                 val isInMyList = userDataRepository?.isInMyList(slug) ?: false
-                val firstServer = movie.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.firstOrNull() ?: ""
+                val firstServer = movie.episodes?.map { it.displayServerName }?.firstOrNull() ?: ""
                 _uiState.value = _uiState.value.copy(
                     movie = movie, 
                     isLoading = false,

@@ -29,7 +29,7 @@ class PlayerViewModel : ViewModel() {
             _uiState.value = PlayerUiState(isLoading = true, currentEpisode = episode, selectedServer = server ?: "")
             try {
                 val movie = repository.getMovieDetail(slug)
-                val activeServer = server ?: movie.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.firstOrNull() ?: ""
+                val activeServer = server ?: movie.episodes?.map { it.displayServerName }?.firstOrNull() ?: ""
                 _uiState.value = _uiState.value.copy(movie = movie, selectedServer = activeServer)
                 loadStream(movie, episode, activeServer)
             } catch (e: Exception) {
@@ -71,35 +71,38 @@ class PlayerViewModel : ViewModel() {
         try {
             val episodes = movie.episodes ?: emptyList()
             val filteredEpisodes = if (server.isNotBlank()) {
-                episodes.filter { it.serverName.equals(server, ignoreCase = true) || (it.serverName.isBlank() && server.isBlank()) }
+                episodes.filter { it.displayServerName.equals(server, ignoreCase = true) }
             } else episodes
 
             val ep = filteredEpisodes.find { it.number == episode } 
                 ?: episodes.find { it.number == episode }
+                ?: episodes.firstOrNull()
 
             android.util.Log.e("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$server. Episode data: $ep")
 
-            if (ep != null && (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8"))) {
-                // Direct HLS URL
-                android.util.Log.e("PlayerViewModel", "Direct HLS URL found: ${ep.url}")
-                _uiState.value = _uiState.value.copy(
-                    source = VideoSource(
-                        streamUrl = ep.url,
-                        resolution = "HD",
-                        formatId = "hls"
-                    ),
-                    isLoading = false
-                )
-            } else if (ep != null && ep.url.isNotEmpty()) {
-                // Non-HLS URL — try to extract via backend
-                android.util.Log.e("PlayerViewModel", "Extracting from URL: ${ep.url}")
-                val source = repository.extractVideo(ep.url)
-                android.util.Log.e("PlayerViewModel", "Extraction successful: $source")
-                
-                _uiState.value = _uiState.value.copy(
-                    source = source,
-                    isLoading = false
-                )
+            if (ep != null && ep.url.isNotBlank()) {
+                if (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8")) {
+                    // Direct HLS URL
+                    android.util.Log.e("PlayerViewModel", "Direct HLS URL found: ${ep.url}")
+                    _uiState.value = _uiState.value.copy(
+                        source = VideoSource(
+                            streamUrl = ep.url,
+                            resolution = "HD",
+                            formatId = "hls"
+                        ),
+                        isLoading = false
+                    )
+                } else {
+                    // Non-HLS URL — try to extract via backend
+                    android.util.Log.e("PlayerViewModel", "Extracting from URL: ${ep.url}")
+                    val source = repository.extractVideo(ep.url)
+                    android.util.Log.e("PlayerViewModel", "Extraction successful: $source")
+                    
+                    _uiState.value = _uiState.value.copy(
+                        source = source,
+                        isLoading = false
+                    )
+                }
             } else {
                 // No valid episode URL found
                 android.util.Log.e("PlayerViewModel", "No stream URL found for episode $episode")

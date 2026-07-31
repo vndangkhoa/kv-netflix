@@ -59,13 +59,18 @@ fun DetailScreen(
             Log.d("DetailScreen", "Rendering movie details: ${movie.title}")
 
             val servers = remember(movie.episodes) {
-                movie.episodes?.mapNotNull { it.serverName.ifBlank { null } }?.distinct() ?: emptyList()
+                movie.episodes?.map { it.displayServerName }?.distinct() ?: emptyList()
             }
 
-            val filteredEpisodes = remember(movie.episodes, uiState.selectedServer) {
-                if (uiState.selectedServer.isNotBlank()) {
-                    val matching = movie.episodes?.filter { it.serverName.equals(uiState.selectedServer, ignoreCase = true) }
-                    if (!matching.isNullOrEmpty()) matching else movie.episodes ?: emptyList()
+            val activeServer = if (uiState.selectedServer.isNotBlank() && servers.contains(uiState.selectedServer)) {
+                uiState.selectedServer
+            } else {
+                servers.firstOrNull() ?: ""
+            }
+
+            val filteredEpisodes = remember(movie.episodes, activeServer) {
+                if (activeServer.isNotBlank()) {
+                    movie.episodes?.filter { it.displayServerName.equals(activeServer, ignoreCase = true) } ?: emptyList()
                 } else {
                     movie.episodes ?: emptyList()
                 }
@@ -178,11 +183,11 @@ fun DetailScreen(
                 }
 
                 // Server Selector Row
-                if (servers.isNotEmpty()) {
+                if (servers.size > 1) {
                     Spacer(Modifier.height(20.dp))
                     ServerSelector(
                         servers = servers,
-                        selectedServer = uiState.selectedServer,
+                        selectedServer = activeServer,
                         onServerSelect = { server -> viewModel.selectServer(server) }
                     )
                 }
@@ -194,7 +199,7 @@ fun DetailScreen(
                     EpisodeSelector(
                         episodes = filteredEpisodes,
                         currentEpisode = 1,
-                        onEpisodeSelect = { episode -> onPlayClick(movie.slug, episode.number, uiState.selectedServer) },
+                        onEpisodeSelect = { episode -> onPlayClick(movie.slug, episode.number, activeServer) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)

@@ -63,8 +63,15 @@ data class Episode(
     val number: Int = 0,
     val title: String = "",
     val url: String = "",
-    @Json(name = "server_name") val serverName: String = ""
-)
+    @Json(name = "serverName") val serverName: String = "",
+    @Json(name = "server_name") val server_name: String = ""
+) {
+    val displayServerName: String
+        get() {
+            val name = serverName.ifBlank { server_name }
+            return if (name.isBlank()) "Default Server" else name
+        }
+}
 
 @JsonClass(generateAdapter = false)
 data class VideoSource(
