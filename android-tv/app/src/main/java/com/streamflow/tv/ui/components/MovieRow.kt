@@ -7,7 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.foundation.lazy.list.TvLazyRow
-import androidx.tv.foundation.lazy.list.items
+import androidx.tv.foundation.lazy.list.itemsIndexed
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.data.model.Movie
@@ -23,6 +23,7 @@ fun MovieRow(
     modifier: Modifier = Modifier
 ) {
     if (movies.isEmpty()) return
+    val uniqueMovies = remember(movies) { movies.distinctBy { it.slug } }
 
     Column(modifier = modifier.padding(vertical = 12.dp)) {
         // Section title
@@ -40,7 +41,7 @@ fun MovieRow(
             contentPadding = PaddingValues(horizontal = 36.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(movies, key = { it.slug }) { movie ->
+            itemsIndexed(uniqueMovies, key = { index, movie -> "${title}_${movie.slug}_$index" }) { _, movie ->
                 if (isHorizontal) {
                     HorizontalMovieCard(
                         movie = movie,

@@ -34,7 +34,7 @@ fun HeroBanner(
     val colors = StreamFlowTheme.colors
 
     var currentIndex by remember { mutableIntStateOf(0) }
-    val currentMovie = movies[currentIndex]
+    val currentMovie = movies.getOrNull(currentIndex) ?: movies.firstOrNull() ?: return
 
     LaunchedEffect(currentIndex) {
         delay(7000)
