@@ -2,6 +2,7 @@ package com.kvnetflix.mobile.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.view.OrientationEventListener
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,9 +58,29 @@ fun WatchScreen(
     val colors = KvTheme.colors
     var isFullscreen by remember { mutableStateOf(false) }
     val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
 
-    DisposableEffect(Unit) {
+    DisposableEffect(context) {
+        val orientationEventListener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                val isLandscapeDevice = (orientation in 60..120) || (orientation in 240..300)
+                val isPortraitDevice = (orientation in 0..30) || (orientation in 330..359)
+
+                if (isLandscapeDevice && !isFullscreen) {
+                    isFullscreen = true
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                } else if (isPortraitDevice && isFullscreen) {
+                    isFullscreen = false
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+            }
+        }
+        if (orientationEventListener.canDetectOrientation()) {
+            orientationEventListener.enable()
+        }
         onDispose {
+            orientationEventListener.disable()
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
@@ -189,7 +210,7 @@ fun WatchScreen(
                                     onClick = {
                                         isFullscreen = !isFullscreen
                                         activity?.requestedOrientation = if (isFullscreen) {
-                                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                                         } else {
                                             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                                         }

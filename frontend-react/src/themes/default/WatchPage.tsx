@@ -229,6 +229,27 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
     }, [source]);
 
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const isFS = !!document.fullscreenElement;
+            if (isFS) {
+                if ('orientation' in screen && typeof (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock === 'function') {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (screen.orientation as any).lock('landscape').catch(() => {});
+                }
+            } else {
+                if ('orientation' in screen && typeof screen.orientation.unlock === 'function') {
+                    screen.orientation.unlock();
+                }
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
     // Do NOT call navigate() inside useEffect — it causes WatchPage to unmount and remount,
     // which destroys useWatchMovie's internal state (HLS instance, event listeners).
     // Let the URL update naturally when React Router detects route changes.
