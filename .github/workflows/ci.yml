@@ -176,7 +176,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            git.khoavo.myds.me/vndangkhoa/kv-streamflow:latest
-            git.khoavo.myds.me/vndangkhoa/kv-streamflow:${{ steps.version.outputs.version }}
+            git.khoavo.myds.me/vndangkhoa/kv-netflix:latest
+            git.khoavo.myds.me/vndangkhoa/kv-netflix:${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
