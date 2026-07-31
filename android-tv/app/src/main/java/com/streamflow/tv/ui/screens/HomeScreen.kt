@@ -13,7 +13,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.ui.components.HeroBanner
 import com.streamflow.tv.ui.components.MovieRow
-import com.streamflow.tv.ui.components.Top10Row
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.HomeViewModel
 
@@ -72,58 +71,64 @@ fun HomeScreen(
                     }
                 }
 
-                // Top 10 Movies Today (YouTube TV / Netflix Style Row)
+                // Top 10 Movies Today (Horizontal 16:9 Thumbnails)
                 if (uiState.top10Movies.isNotEmpty()) {
                     item {
-                        Top10Row(
+                        MovieRow(
                             title = "🔥 TOP 10 MOVIES TODAY",
                             movies = uiState.top10Movies,
-                            onMovieClick = { movie -> onMovieClick(movie.slug) }
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = true
                         )
                     }
                 }
 
-                // Continue Watching (Watch History)
+                // Continue Watching (Vertical 2:3 Thumbnails)
                 if (uiState.watchedMovies.isNotEmpty()) {
                     item {
                         MovieRow(
                             title = "Continue Watching",
                             movies = uiState.watchedMovies,
-                            onMovieClick = { movie -> onMovieClick(movie.slug) }
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = false
                         )
                     }
                 }
 
-                // My List (Liked)
+                // My List (Horizontal 16:9 Thumbnails)
                 if (uiState.myListMovies.isNotEmpty()) {
                     item {
                         MovieRow(
                             title = "My List",
                             movies = uiState.myListMovies,
-                            onMovieClick = { movie -> onMovieClick(movie.slug) }
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = true
                         )
                     }
                 }
 
-                // Recommended for You
+                // Recommended for You (Vertical 2:3 Thumbnails)
                 if (uiState.recommendedMovies.isNotEmpty()) {
                     item {
                         MovieRow(
                             title = "Recommended for You",
                             movies = uiState.recommendedMovies,
-                            onMovieClick = { movie -> onMovieClick(movie.slug) }
+                            onMovieClick = { movie -> onMovieClick(movie.slug) },
+                            isHorizontal = false
                         )
                     }
                 }
 
-                // Category rows
-                uiState.categoryMovies.forEach { (title, movies) ->
+                // Interleaved Category rows (alternating Horizontal and Vertical thumbnails)
+                uiState.categoryMovies.entries.forEachIndexed { index, entry ->
+                    val (title, movies) = entry
                     if (movies.isNotEmpty()) {
                         item {
                             MovieRow(
                                 title = title,
                                 movies = movies,
-                                onMovieClick = { movie -> onMovieClick(movie.slug) }
+                                onMovieClick = { movie -> onMovieClick(movie.slug) },
+                                isHorizontal = (index % 2 == 0) // Alternates: true, false, true, false
                             )
                         }
                     }

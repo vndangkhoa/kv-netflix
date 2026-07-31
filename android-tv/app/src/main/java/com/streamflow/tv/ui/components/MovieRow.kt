@@ -19,8 +19,11 @@ fun MovieRow(
     title: String,
     movies: List<Movie>,
     onMovieClick: (Movie) -> Unit,
+    isHorizontal: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    if (movies.isEmpty()) return
+
     Column(modifier = modifier.padding(vertical = 12.dp)) {
         // Section title
         Text(
@@ -38,10 +41,17 @@ fun MovieRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(movies, key = { it.slug }) { movie ->
-                MovieCard(
-                    movie = movie,
-                    onClick = { onMovieClick(movie) }
-                )
+                if (isHorizontal) {
+                    HorizontalMovieCard(
+                        movie = movie,
+                        onClick = { onMovieClick(movie) }
+                    )
+                } else {
+                    MovieCard(
+                        movie = movie,
+                        onClick = { onMovieClick(movie) }
+                    )
+                }
             }
         }
     }
