@@ -1,6 +1,7 @@
 package com.streamflow.tv.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -11,8 +12,10 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
 import com.streamflow.tv.data.api.ApiClient
@@ -27,40 +30,53 @@ fun MovieCard(
     modifier: Modifier = Modifier
 ) {
     val colors = StreamFlowTheme.colors
+    var isFocused by remember { mutableStateOf(false) }
 
     Surface(
         onClick = onClick,
         modifier = modifier
-            .width(200.dp)
-            .height(300.dp),
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+            .width(140.dp)
+            .height(205.dp)
+            .onFocusChanged { isFocused = it.isFocused },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = colors.surfaceVariant,
             focusedContainerColor = colors.surfaceVariant
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (isFocused) Modifier.border(2.dp, colors.primary, RoundedCornerShape(10.dp))
+                    else Modifier
+                )
+        ) {
             AsyncImage(
                 model = ApiClient.imageProxyUrl(movie.thumbnail, 300),
                 contentDescription = movie.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
             )
 
             movie.quality?.let { quality ->
                 Box(
                     modifier = Modifier
-                        .padding(8.dp)
+                        .padding(6.dp)
                         .align(Alignment.TopEnd)
                         .background(colors.primary, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = quality,
-                        style = StreamFlowTheme.typography.labelSmall.copy(color = Color.White)
+                        text = quality.uppercase(),
+                        style = StreamFlowTheme.typography.labelSmall.copy(
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
                 }
             }
@@ -68,16 +84,16 @@ fun MovieCard(
             movie.provider?.let { provider ->
                 Box(
                     modifier = Modifier
-                        .padding(8.dp)
+                        .padding(6.dp)
                         .align(Alignment.TopStart)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = provider,
                         style = StreamFlowTheme.typography.labelSmall.copy(
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = androidx.compose.ui.unit.TextUnit.Unspecified // Default or small
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 9.sp
                         ),
                         maxLines = 1
                     )
@@ -90,14 +106,18 @@ fun MovieCard(
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))
                         )
                     )
-                    .padding(horizontal = 10.dp, vertical = 10.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
                 Text(
                     text = movie.title,
-                    style = StreamFlowTheme.typography.labelLarge,
+                    style = StreamFlowTheme.typography.labelMedium.copy(
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -106,7 +126,8 @@ fun MovieCard(
                     Text(
                         text = year.toString(),
                         style = StreamFlowTheme.typography.labelSmall.copy(
-                            color = Color.White.copy(alpha = 0.6f)
+                            color = Color.White.copy(alpha = 0.65f),
+                            fontSize = 10.sp
                         )
                     )
                 }

@@ -6,13 +6,13 @@ import com.streamflow.tv.data.model.Movie
 import com.streamflow.tv.data.repository.MovieRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val heroMovies: List<Movie> = emptyList(),
+    val top10Movies: List<Movie> = emptyList(),
     val watchedMovies: List<Movie> = emptyList(),
     val myListMovies: List<Movie> = emptyList(),
     val recommendedMovies: List<Movie> = emptyList(),
@@ -31,10 +31,12 @@ class HomeViewModel : ViewModel() {
     private var userDataRepository: com.streamflow.tv.data.repository.UserDataRepository? = null
 
     private val categories = listOf(
-        "phim-le" to "Phim Lẻ",
-        "phim-bo" to "Phim Bộ",
-        "hoat-hinh" to "Hoạt Hình",
-        "tv-shows" to "TV Shows"
+        "phim-le" to "Phim Lẻ Mới Nhất",
+        "phim-bo" to "Phim Bộ Nổi Bật",
+        "hoat-hinh" to "Hoạt Hình Anime",
+        "tv-shows" to "TV Shows Hot",
+        "phim-chieu-rap" to "Phim Chiếu Rạp",
+        "phim-vietsub" to "Phim Thuyết Minh"
     )
 
     init {
@@ -69,41 +71,46 @@ class HomeViewModel : ViewModel() {
                 if (category != null) {
                     // Load single category
                     val response = repository.getHomeVideos(category)
+                    val items = response.items
                     _uiState.value = _uiState.value.copy(
-                        heroMovies = response.items.take(5),
-                        recommendedMovies = response.items.take(10).shuffled(),
+                        heroMovies = items.take(5),
+                        top10Movies = items.take(10),
+                        recommendedMovies = items.take(15).shuffled(),
                         categoryMovies = mapOf(
-                            categories.find { it.first == category }?.second.orEmpty() to response.items
+                            categories.find { it.first == category }?.second.orEmpty().ifBlank { category } to items
                         ),
                         isLoading = false
                     )
                 } else {
                     // Load all categories for home
-                    val allMovies = java.util.Collections.synchronizedMap(mutableMapOf<String, List<Movie>>())
+                    val allMovies = java.util.Collections.synchronizedMap(LinkedHashMap<String, List<Movie>>())
                     val allFlattened = java.util.Collections.synchronizedList(mutableListOf<Movie>())
 
                     kotlinx.coroutines.coroutineScope {
-                        // Load main categories only (to avoid OOM on TV devices)
                         val categoryTasks = categories.map { (slug, name) ->
                             async {
                                 try {
                                     val response = repository.getHomeVideos(slug)
-                                    allMovies[name] = response.items.take(15)
-                                    allFlattened.addAll(response.items.take(15))
+                                    if (response.items.isNotEmpty()) {
+                                        allMovies[name] = response.items.take(15)
+                                        allFlattened.addAll(response.items.take(15))
+                                    }
                                     response.items
                                 } catch (_: Exception) { emptyList<Movie>() }
                             }
                         }
 
-                        // Wait for categories
                         categoryTasks.awaitAll()
                     }
 
-                    val heroItems = allMovies[categories.first().second]?.take(5) ?: emptyList()
+                    val distinctAll = allFlattened.distinctBy { it.slug }
+                    val heroItems = distinctAll.take(5)
+                    val top10Items = distinctAll.take(10)
 
                     _uiState.value = _uiState.value.copy(
                         heroMovies = heroItems,
-                        recommendedMovies = allFlattened.distinctBy { it.slug }.shuffled().take(15),
+                        top10Movies = top10Items,
+                        recommendedMovies = distinctAll.shuffled().take(15),
                         categoryMovies = allMovies.toMap(),
                         isLoading = false
                     )

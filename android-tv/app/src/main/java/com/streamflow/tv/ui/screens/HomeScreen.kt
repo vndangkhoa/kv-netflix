@@ -13,6 +13,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.ui.components.HeroBanner
 import com.streamflow.tv.ui.components.MovieRow
+import com.streamflow.tv.ui.components.Top10Row
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.HomeViewModel
 
@@ -42,7 +43,7 @@ fun HomeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Loading...",
+                    text = "Loading catalog...",
                     style = StreamFlowTheme.typography.headlineMedium.copy(color = colors.primary)
                 )
             }
@@ -59,7 +60,7 @@ fun HomeScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 32.dp)
             ) {
                 // Hero Banner
                 if (uiState.heroMovies.isNotEmpty()) {
@@ -67,6 +68,17 @@ fun HomeScreen(
                         HeroBanner(
                             movies = uiState.heroMovies,
                             onPlayClick = { movie -> onMovieClick(movie.slug) }
+                        )
+                    }
+                }
+
+                // Top 10 Movies Today (YouTube TV / Netflix Style Row)
+                if (uiState.top10Movies.isNotEmpty()) {
+                    item {
+                        Top10Row(
+                            title = "🔥 TOP 10 MOVIES TODAY",
+                            movies = uiState.top10Movies,
+                            onMovieClick = { movie -> onMovieClick(movie.slug) }
                         )
                     }
                 }

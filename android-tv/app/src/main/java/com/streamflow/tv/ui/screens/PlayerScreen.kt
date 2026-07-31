@@ -240,23 +240,6 @@ fun PlayerScreen(
                 },
                 modifier = Modifier.fillMaxSize()
             )
-
-            // Server Selection Overlay when available
-            if (availableServers.size > 1) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 28.dp, end = 36.dp)
-                        .background(Color.Black.copy(alpha = 0.65f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    ServerSelector(
-                        servers = availableServers,
-                        selectedServer = uiState.selectedServer,
-                        onServerSelect = { s -> viewModel.changeServer(s) }
-                    )
-                }
-            }
         }
 
         // Error overlay
