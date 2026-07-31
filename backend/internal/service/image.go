@@ -8,6 +8,8 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	_ "golang.org/x/image/webp"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -98,7 +100,7 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 		return nil, "", err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Referer", "https://ophim1.com/")
+	req.Header.Set("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -110,21 +112,31 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 		return nil, "", fmt.Errorf("image fetch failed: %d", resp.StatusCode)
 	}
 
+	rawData, err := io.ReadAll(resp.Body)
+	if err != nil || len(rawData) == 0 {
+		return nil, "", fmt.Errorf("empty or error reading image: %v", err)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = http.DetectContentType(rawData)
+	}
+
 	// 4. Decode
 	var img image.Image
-	contentType := resp.Header.Get("Content-Type")
-
 	switch contentType {
-	case "image/jpeg":
-		img, err = jpeg.Decode(resp.Body)
+	case "image/jpeg", "image/jpg":
+		img, err = jpeg.Decode(bytes.NewReader(rawData))
 	case "image/png":
-		img, err = png.Decode(resp.Body)
+		img, err = png.Decode(bytes.NewReader(rawData))
 	default:
-		img, _, err = image.Decode(resp.Body)
+		img, _, err = image.Decode(bytes.NewReader(rawData))
 	}
 
 	if err != nil {
-		return nil, "", fmt.Errorf("decode error: %v", err)
+		// Fallback to raw data directly if decoding fails
+		s.setMemCache(cacheKey, rawData, contentType)
+		return rawData, contentType, nil
 	}
 
 	// 5. Resize if needed (skip if already small enough)
@@ -134,7 +146,6 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 		height := int(float64(bounds.Dy()) * ratio)
 
 		dst := image.NewRGBA(image.Rect(0, 0, width, height))
-		// Use NearestNeighbor for tiny thumbnails (fast), CatmullRom for larger
 		if width <= 200 {
 			draw.NearestNeighbor.Scale(dst, dst.Bounds(), img, bounds, draw.Over, nil)
 		} else {
@@ -146,22 +157,19 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 	// 6. Encode to JPEG with adaptive quality
 	quality := 80
 	if width <= 200 {
-		quality = 60 // Lower quality for small thumbnails = much smaller files
+		quality = 60
 	} else if width <= 400 {
 		quality = 70
 	}
 
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
-		return nil, "", fmt.Errorf("jpeg encode error: %v", err)
+		s.setMemCache(cacheKey, rawData, contentType)
+		return rawData, contentType, nil
 	}
 
 	jpegData := buf.Bytes()
-
-	// 7. Write to disk cache (async)
 	go os.WriteFile(cachePath, jpegData, 0644)
-
-	// 8. Store in memory cache
 	s.setMemCache(cacheKey, jpegData, "image/jpeg")
 
 	return jpegData, "image/jpeg", nil

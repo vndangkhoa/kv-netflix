@@ -231,16 +231,8 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 	}
 
 	for _, item := range items {
-		thumb := item.ThumbURL
-		if !strings.HasPrefix(thumb, "http") {
-			// Search API might return relative paths too
-			thumb = "https://img.ophim.live/uploads/movies/" + thumb
-		}
-
-		backdrop := item.PosterURL
-		if !strings.HasPrefix(backdrop, "http") {
-			backdrop = "https://img.ophim.live/uploads/movies/" + backdrop
-		}
+		thumb := cleanOphimImageURL(item.ThumbURL)
+		backdrop := cleanOphimImageURL(item.PosterURL)
 
 		movies = append(movies, models.RophimMovie{
 			ID:            item.Slug,
@@ -285,15 +277,8 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		movie = result.Data.Item
 	}
 
-	thumb := movie.ThumbURL
-	if !strings.HasPrefix(thumb, "http") {
-		thumb = "https://img.ophim.live/uploads/movies/" + thumb
-	}
-
-	backdrop := movie.PosterURL
-	if !strings.HasPrefix(backdrop, "http") {
-		backdrop = "https://img.ophim.live/uploads/movies/" + backdrop
-	}
+	thumb := cleanOphimImageURL(movie.ThumbURL)
+	backdrop := cleanOphimImageURL(movie.PosterURL)
 
 	var episodes []models.Episode
 	// Try Top Level Episodes, then Data.Episodes, then Movie.Episodes?
@@ -379,4 +364,19 @@ func safeGetName(items []struct {
 		names = append(names, i.Name)
 	}
 	return strings.Join(names, ", ")
+}
+
+func cleanOphimImageURL(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+		return raw
+	}
+	if strings.HasPrefix(raw, "//") {
+		return "https:" + raw
+	}
+	trimmed := strings.TrimPrefix(raw, "/")
+	trimmed = strings.TrimPrefix(trimmed, "uploads/movies/")
+	return "https://img.ophim.live/uploads/movies/" + trimmed
 }

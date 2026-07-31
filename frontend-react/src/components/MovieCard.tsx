@@ -63,6 +63,21 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
 
     const rawUrl = getRawImageUrl(movie.thumbnail);
     const proxyUrl = rawUrl ? `/api/images/proxy?url=${encodeURIComponent(rawUrl)}&width=300` : '';
+    const [imgSrc, setImgSrc] = useState(proxyUrl);
+
+    useEffect(() => {
+        setImgSrc(proxyUrl);
+        setImgError(false);
+        setImgLoaded(false);
+    }, [proxyUrl]);
+
+    const handleImgError = () => {
+        if (imgSrc !== rawUrl && rawUrl) {
+            setImgSrc(rawUrl);
+        } else {
+            setImgError(true);
+        }
+    };
 
     return (
         <div ref={cardRef} className={`group/card relative flex flex-col h-full ${className}`}>
@@ -77,10 +92,10 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
                             className={`absolute inset-0 bg-[var(--bg-tertiary)] transition-opacity duration-500 ${imgLoaded ? 'opacity-0' : 'opacity-100'}`}
                         />
                         <img
-                            src={proxyUrl}
+                            src={imgSrc || rawUrl}
                             alt={movie.title}
                             onLoad={() => setImgLoaded(true)}
-                            onError={() => setImgError(true)}
+                            onError={handleImgError}
                             className={`w-full h-full object-cover transition-all duration-700 group-hover/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
                             draggable={false}
                         />

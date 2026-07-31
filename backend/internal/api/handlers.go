@@ -318,6 +318,23 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !success || primaryMovie == nil {
+		// Fallback: Try searching provider with slug terms (e.g. "ham-silo-phan-3" -> "ham silo phan 3" or "silo phan 3")
+		searchQuery := strings.ReplaceAll(slug, "-", " ")
+		for i, provider := range h.Providers {
+			results, err := provider.Search(searchQuery, 5)
+			if err == nil && len(results) > 0 {
+				movie, err := provider.GetMovieDetail(results[0].Slug)
+				if err == nil && movie != nil {
+					primaryMovie = movie
+					primaryProviderIdx = i
+					success = true
+					break
+				}
+			}
+		}
+	}
+
+	if !success || primaryMovie == nil {
 		http.Error(w, "movie not found", http.StatusNotFound)
 		return
 	}
