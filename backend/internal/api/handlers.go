@@ -320,13 +320,27 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 	var primaryProviderIdx int = -1
 	var success bool
 
+	// Fetch detail from all providers for exact slug
 	for i, provider := range h.Providers {
 		movie, err := provider.GetMovieDetail(slug)
 		if err == nil && movie != nil {
-			primaryMovie = movie
-			primaryProviderIdx = i
-			success = true
-			break
+			providerName := movie.Provider
+			if providerName == "" {
+				providerName = "Server"
+			}
+			for j := range movie.Episodes {
+				if !strings.HasPrefix(movie.Episodes[j].ServerName, providerName) {
+					movie.Episodes[j].ServerName = fmt.Sprintf("%s - %s", providerName, movie.Episodes[j].ServerName)
+				}
+			}
+
+			if primaryMovie == nil {
+				primaryMovie = movie
+				primaryProviderIdx = i
+				success = true
+			} else {
+				h.mergeMovieMetadata(primaryMovie, movie)
+			}
 		}
 	}
 
@@ -350,16 +364,6 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 	if !success || primaryMovie == nil {
 		http.Error(w, "movie not found", http.StatusNotFound)
 		return
-	}
-
-	primaryProviderName := primaryMovie.Provider
-	if primaryProviderName == "" {
-		primaryProviderName = "Server"
-	}
-	for i := range primaryMovie.Episodes {
-		if !strings.HasPrefix(primaryMovie.Episodes[i].ServerName, primaryProviderName) {
-			primaryMovie.Episodes[i].ServerName = fmt.Sprintf("%s - %s", primaryProviderName, primaryMovie.Episodes[i].ServerName)
-		}
 	}
 
 	for i, provider := range h.Providers {
@@ -401,8 +405,20 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		if epI.Number != epJ.Number {
 			return epI.Number < epJ.Number
 		}
-		isDirectI := strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Phim30") || strings.Contains(epI.URL, ".m3u8")
-		isDirectJ := strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Phim30") || strings.Contains(epJ.URL, ".m3u8")
+
+		// Deprioritize known offline/broken CDN domains
+		isBrokenI := strings.Contains(epI.URL, "opstream90") || strings.Contains(epI.URL, "opstream10")
+		isBrokenJ := strings.Contains(epJ.URL, "opstream90") || strings.Contains(epJ.URL, "opstream10")
+		if !isBrokenI && isBrokenJ {
+			return true
+		}
+		if isBrokenI && !isBrokenJ {
+			return false
+		}
+
+		// Prioritize direct HLS servers
+		isDirectI := strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Phim30") || strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.URL, ".m3u8")
+		isDirectJ := strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Phim30") || strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.URL, ".m3u8")
 		if isDirectI && !isDirectJ {
 			return true
 		}
