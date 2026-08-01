@@ -94,6 +94,10 @@ class MainActivity : ComponentActivity() {
                     userRepo.language.collect { lang -> language = lang }
                 }
 
+                LaunchedEffect(Unit) {
+                    updateViewModel?.checkUpdate()
+                }
+
                 val isFullScreen = currentRoute?.contains("watch/") == true
 
                 LaunchedEffect(currentRoute) {
@@ -207,6 +211,9 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
+                        if (updateViewModel != null) {
+                            com.kvnetflix.mobile.ui.components.UpdateDialog(updateViewModel = updateViewModel)
+                        }
                     }
                 }
             }

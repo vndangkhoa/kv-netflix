@@ -116,6 +116,9 @@ class PlayerViewModel : ViewModel() {
     private suspend fun loadStream(movie: MovieDetail, episode: Int, serverName: String = "") {
         try {
             val ep = movie.episodes?.find { it.number == episode && (serverName.isEmpty() || it.serverName == serverName) }
+                ?: movie.episodes?.find { it.number == episode }
+                ?: movie.episodes?.firstOrNull()
+            val targetEpNum = ep?.number ?: episode
 
             if (ep != null && (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8"))) {
                 _uiState.value = _uiState.value.copy(

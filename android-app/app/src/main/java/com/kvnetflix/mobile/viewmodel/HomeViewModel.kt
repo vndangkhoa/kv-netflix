@@ -47,8 +47,12 @@ class HomeViewModel : ViewModel() {
     private val mainCategories = listOf(
         "phim-le" to "Phim Lẻ",
         "phim-bo" to "Phim Bộ",
+        "phim-long-tieng" to "Phim Lồng Tiếng",
         "hoat-hinh" to "Hoạt Hình",
-        "tv-shows" to "TV Shows"
+        "tv-shows" to "TV Shows",
+        "han-quoc" to "K-drama",
+        "trung-quoc" to "C-drama",
+        "viet-nam" to "Phim Việt Nam"
     )
 
     init {

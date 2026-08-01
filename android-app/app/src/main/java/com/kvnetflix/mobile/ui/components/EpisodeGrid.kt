@@ -113,7 +113,7 @@ fun EpisodeGrid(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${episode.number}",
+                        text = if (episode.title.isNotBlank() && episode.title != "0" && !episode.title.startsWith("0") && !episode.title.startsWith("Tập 0")) episode.title else (if (episode.number <= 0) "Full" else "${episode.number}"),
                         color = if (isActive) Color.White
                         else colors.textPrimary,
                         fontSize = 14.sp,
