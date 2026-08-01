@@ -118,23 +118,49 @@ class PlayerViewModel : ViewModel() {
             val ep = movie.episodes?.find { it.number == episode && (serverName.isEmpty() || it.serverName == serverName) }
                 ?: movie.episodes?.find { it.number == episode }
                 ?: movie.episodes?.firstOrNull()
-            val targetEpNum = ep?.number ?: episode
 
-            if (ep != null && (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8"))) {
-                _uiState.value = _uiState.value.copy(
-                    source = VideoSource(
-                        streamUrl = ep.url,
-                        resolution = "HD",
-                        formatId = "hls"
-                    ),
-                    isLoading = false
-                )
-            } else if (ep != null && ep.url.isNotEmpty()) {
-                val source = repository.extractVideo(ep.url)
-                _uiState.value = _uiState.value.copy(
-                    source = source,
-                    isLoading = false
-                )
+            android.util.Log.d("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$serverName. Episode: $ep")
+
+            if (ep != null && ep.url.isNotBlank()) {
+                val isDirectHls = ep.url.contains(".m3u8", ignoreCase = true)
+                if (isDirectHls) {
+                    android.util.Log.d("PlayerViewModel", "Direct HLS URL: ${ep.url}")
+                    _uiState.value = _uiState.value.copy(
+                        source = VideoSource(
+                            streamUrl = ep.url,
+                            resolution = "HD",
+                            formatId = "hls",
+                            isEmbed = false
+                        ),
+                        isLoading = false
+                    )
+                } else {
+                    android.util.Log.d("PlayerViewModel", "Extracting or embedding from URL: ${ep.url}")
+                    var extractedSource: VideoSource? = null
+                    try {
+                        extractedSource = repository.extractVideo(ep.url)
+                    } catch (e: Exception) {
+                        android.util.Log.w("PlayerViewModel", "Extraction error, using WebView embed: ${e.message}")
+                    }
+
+                    if (extractedSource != null && extractedSource.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                        _uiState.value = _uiState.value.copy(
+                            source = extractedSource.copy(isEmbed = false),
+                            isLoading = false
+                        )
+                    } else {
+                        // WebView embed player fallback
+                        _uiState.value = _uiState.value.copy(
+                            source = VideoSource(
+                                streamUrl = ep.url,
+                                resolution = "Embed",
+                                formatId = "embed",
+                                isEmbed = true
+                            ),
+                            isLoading = false
+                        )
+                    }
+                }
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -142,6 +168,7 @@ class PlayerViewModel : ViewModel() {
                 )
             }
         } catch (e: Exception) {
+            android.util.Log.e("PlayerViewModel", "Error loading stream", e)
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 error = e.message ?: "Failed to extract stream"

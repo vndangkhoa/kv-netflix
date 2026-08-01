@@ -31,10 +31,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.view.ViewGroup
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import com.kvnetflix.mobile.data.repository.UserDataRepository
 import com.kvnetflix.mobile.ui.components.EpisodeGrid
@@ -117,118 +126,192 @@ fun WatchScreen(
                     }
                 } else if (uiState.source != null) {
                     val context = LocalContext.current
-                    val player = remember {
-                        ExoPlayer.Builder(context).build()
-                    }
+                    val currentSource = uiState.source!!
+                    var isFallbackToEmbed by remember { mutableStateOf(false) }
 
+                    // Reset fallback when source changes
                     LaunchedEffect(uiState.source, uiState.currentEpisode) {
-                        try {
-                            val source = uiState.source ?: return@LaunchedEffect
-                            if (source.streamUrl.isNotEmpty()) {
-                                val mediaItem = MediaItem.fromUri(source.streamUrl)
-                                player.setMediaItem(mediaItem)
-                                player.prepare()
-                                player.playWhenReady = true
-                            }
-                            if (userRepo != null) {
-                                viewModel.saveToHistory(userRepo)
-                            }
-                        } catch (e: Exception) {
-                            viewModel.uiState.value.let {
-                                // Error handled silently — player will show nothing
-                            }
-                        }
+                        isFallbackToEmbed = false
                     }
 
-                    DisposableEffect(Unit) {
-                        onDispose { player.release() }
-                    }
+                    val shouldUseEmbed = currentSource.isEmbed || isFallbackToEmbed
 
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    if (shouldUseEmbed) {
+                        // WebView Embed Player
                         AndroidView(
                             factory = { ctx ->
-                                PlayerView(ctx).apply {
-                                    this.player = player
-                                    useController = true
-                                    keepScreenOn = true
+                                WebView(ctx).apply {
+                                    layoutParams = FrameLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                    )
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    settings.mediaPlaybackRequiresUserGesture = false
+                                    settings.useWideViewPort = true
+                                    settings.loadWithOverviewMode = true
+                                    settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+                                    webChromeClient = WebChromeClient()
+                                    webViewClient = object : WebViewClient() {
+                                        override fun onPageFinished(view: WebView?, url: String?) {
+                                            super.onPageFinished(view, url)
+                                            view?.evaluateJavascript(
+                                                """(function() { var v = document.querySelector('video'); if (v) v.play(); })();""", null
+                                            )
+                                        }
+                                    }
+
+                                    loadUrl(currentSource.streamUrl)
                                 }
                             },
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // Overlay buttons
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .fillMaxWidth()
-                        ) {
-                            // Back button (left)
-                            if (!isFullscreen) {
-                                IconButton(
-                                    onClick = onBack,
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .size(40.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.6f),
-                                            RoundedCornerShape(20.dp)
-                                        )
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowBack,
-                                        "Back",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                        // Save to history
+                        LaunchedEffect(currentSource) {
+                            if (userRepo != null) {
+                                viewModel.saveToHistory(userRepo)
                             }
+                        }
+                    } else {
+                        // ExoPlayer with custom HTTP headers
+                        val player = remember {
+                            ExoPlayer.Builder(context).build()
+                        }
 
-                            // Fullscreen + PiP buttons (right)
-                            Row(
-                                modifier = Modifier.align(Alignment.TopEnd),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                IconButton(
-                                    onClick = onEnterPip,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.6f),
-                                            RoundedCornerShape(20.dp)
+                        LaunchedEffect(uiState.source, uiState.currentEpisode) {
+                            try {
+                                val source = uiState.source ?: return@LaunchedEffect
+                                if (source.streamUrl.isNotEmpty()) {
+                                    val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                                        .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                                        .setDefaultRequestProperties(
+                                            mapOf(
+                                                "Referer" to "https://ophim17.cc/",
+                                                "Origin" to "https://ophim17.cc"
+                                            )
                                         )
-                                ) {
-                                    Icon(
-                                        Icons.Default.PictureInPicture,
-                                        "PiP",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                        .setAllowCrossProtocolRedirects(true)
+                                    val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
+                                    val mediaItem = MediaItem.fromUri(source.streamUrl)
+
+                                    player.addListener(object : androidx.media3.common.Player.Listener {
+                                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                                            android.util.Log.e("WatchScreen", "ExoPlayer error, switching to WebView embed: ${error.message}", error)
+                                            isFallbackToEmbed = true
+                                        }
+                                    })
+
+                                    if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                                        val hlsSource = HlsMediaSource.Factory(dataSourceFactory)
+                                            .createMediaSource(mediaItem)
+                                        player.setMediaSource(hlsSource)
+                                    } else {
+                                        player.setMediaItem(mediaItem)
+                                    }
+                                    player.prepare()
+                                    player.playWhenReady = true
+                                }
+                                if (userRepo != null) {
+                                    viewModel.saveToHistory(userRepo)
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("WatchScreen", "Player setup error", e)
+                                isFallbackToEmbed = true
+                            }
+                        }
+
+                        DisposableEffect(Unit) {
+                            onDispose { player.release() }
+                        }
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    PlayerView(ctx).apply {
+                                        this.player = player
+                                        useController = true
+                                        keepScreenOn = true
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            // Overlay buttons
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .fillMaxWidth()
+                            ) {
+                                // Back button (left)
+                                if (!isFullscreen) {
+                                    IconButton(
+                                        onClick = onBack,
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .size(40.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.6f),
+                                                RoundedCornerShape(20.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            "Back",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
 
-                                IconButton(
-                                    onClick = {
-                                        isFullscreen = !isFullscreen
-                                        activity?.requestedOrientation = if (isFullscreen) {
-                                            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                        } else {
-                                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.6f),
-                                            RoundedCornerShape(20.dp)
-                                        )
+                                // Fullscreen + PiP buttons (right)
+                                Row(
+                                    modifier = Modifier.align(Alignment.TopEnd),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Icon(
-                                        if (isFullscreen) Icons.Default.FullscreenExit
-                                        else Icons.Default.Fullscreen,
-                                        "Fullscreen",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    IconButton(
+                                        onClick = onEnterPip,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.6f),
+                                                RoundedCornerShape(20.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PictureInPicture,
+                                            "PiP",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            isFullscreen = !isFullscreen
+                                            activity?.requestedOrientation = if (isFullscreen) {
+                                                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                            } else {
+                                                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.6f),
+                                                RoundedCornerShape(20.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            if (isFullscreen) Icons.Default.FullscreenExit
+                                            else Icons.Default.Fullscreen,
+                                            "Fullscreen",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

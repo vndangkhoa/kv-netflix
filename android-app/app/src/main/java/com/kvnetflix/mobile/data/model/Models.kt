@@ -80,7 +80,8 @@ data class Episode(
 data class VideoSource(
     @Json(name = "url") val streamUrl: String = "",
     val resolution: String = "",
-    @Json(name = "format_id") val formatId: String = ""
+    @Json(name = "format_id") val formatId: String = "",
+    val isEmbed: Boolean = false
 )
 
 @JsonClass(generateAdapter = false)
