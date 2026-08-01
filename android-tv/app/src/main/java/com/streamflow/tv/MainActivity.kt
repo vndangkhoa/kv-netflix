@@ -18,9 +18,11 @@ import androidx.navigation.navArgument
 import com.streamflow.tv.data.api.ApiClient
 import com.streamflow.tv.data.repository.UserDataRepository
 import com.streamflow.tv.ui.components.SideNavRail
+import com.streamflow.tv.ui.components.UpdateDialog
 import com.streamflow.tv.ui.screens.*
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.ui.theme.StreamFlowTvTheme
+import com.streamflow.tv.viewmodel.UpdateViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -39,12 +41,13 @@ fun StreamFlowTvApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val userRepo = remember { UserDataRepository(context) }
+    val updateViewModel = remember { UpdateViewModel(context) }
     val navController = rememberNavController()
 
     var currentTheme by remember { mutableStateOf("default") }
     var selectedNavId by remember { mutableStateOf("home") }
 
-    // Load persisted settings
+    // Load persisted settings & check for updates on app launch
     LaunchedEffect(Unit) {
         try {
             currentTheme = userRepo.theme.first()
@@ -55,10 +58,12 @@ fun StreamFlowTvApp() {
             val token = userRepo.authToken.first()
             if (!token.isNullOrBlank()) {
                 ApiClient.authToken = token
-                // Sync on app launch
                 userRepo.syncWithRemote()
             }
             Log.d("StreamFlowTvApp", "Settings loaded: theme=$currentTheme, url=$serverUrl, hasToken=${!token.isNullOrBlank()}")
+
+            // Check for updates on startup
+            updateViewModel.checkUpdate()
         } catch (e: Exception) {
             Log.e("StreamFlowTvApp", "Error loading settings", e)
         }
@@ -72,122 +77,127 @@ fun StreamFlowTvApp() {
             val currentRoute = navBackStackEntry?.destination?.route
             val showSideNav = currentRoute != null && !currentRoute.startsWith("player")
 
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(colors.background)
-            ) {
-                // Side Navigation
-                if (showSideNav) {
-                    SideNavRail(
-                        selectedId = selectedNavId,
-                        onNavigate = { item ->
-                            selectedNavId = item.id
-                            navController.navigate(item.route) {
-                                popUpTo("home") { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                }
-
-                // Main content
-                Box(modifier = Modifier.weight(1f)) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = "home"
-                    ) {
-                        composable("home") {
-                            HomeScreen(
-                                onMovieClick = { slug ->
-                                    navController.navigate("detail/$slug")
-                                },
-                                userDataRepository = userRepo
-                            )
-                        }
-
-                        composable(
-                            "home/{category}",
-                            arguments = listOf(navArgument("category") { type = NavType.StringType })
-                        ) { entry ->
-                            HomeScreen(
-                                onMovieClick = { slug -> navController.navigate("detail/$slug") },
-                                category = entry.arguments?.getString("category"),
-                                userDataRepository = userRepo
-                            )
-                        }
-
-                        composable(
-                            "detail/{slug}",
-                            arguments = listOf(navArgument("slug") { type = NavType.StringType })
-                        ) { entry ->
-                            val slug = entry.arguments?.getString("slug") ?: return@composable
-                            DetailScreen(
-                                slug = slug,
-                                onPlayClick = { s, ep, srv ->
-                                    val encodedSrv = java.net.URLEncoder.encode(srv, "UTF-8")
-                                    navController.navigate("player/$s/$ep?server=$encodedSrv")
-                                },
-                                onBack = { navController.popBackStack() },
-                                userDataRepository = userRepo
-                            )
-                        }
-
-                        composable(
-                            "player/{slug}/{episode}?server={server}",
-                            arguments = listOf(
-                                navArgument("slug") { type = NavType.StringType },
-                                navArgument("episode") { type = NavType.IntType; defaultValue = 1 },
-                                navArgument("server") { type = NavType.StringType; nullable = true; defaultValue = null }
-                            ),
-                            deepLinks = listOf(androidx.navigation.navDeepLink { uriPattern = "streamflow://player/{slug}/{episode}" })
-                        ) { entry ->
-                            val slug = entry.arguments?.getString("slug")
-                            val episode = entry.arguments?.getInt("episode") ?: 1
-                            val server = entry.arguments?.getString("server")
-                            Log.d("StreamFlowNav", "Navigating to player: slug=$slug, episode=$episode, server=$server")
-                            if (slug == null) {
-                                return@composable
-                            }
-                            PlayerScreen(
-                                slug = slug,
-                                episode = episode,
-                                server = server,
-                                userDataRepository = userRepo
-                            )
-                        }
-
-                        composable("search") {
-                            SearchScreen(
-                                onMovieClick = { slug -> navController.navigate("detail/$slug") }
-                            )
-                        }
-
-                        composable("mylist") {
-                            MyListScreen(
-                                onMovieClick = { slug -> navController.navigate("detail/$slug") }
-                            )
-                        }
-
-                        composable("settings") {
-                            SettingsScreen(
-                                currentTheme = currentTheme,
-                                onThemeChange = { theme ->
-                                    currentTheme = theme
-                                    scope.launch { userRepo.setTheme(theme) }
+            Box(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(colors.background)
+                ) {
+                    // Side Navigation
+                    if (showSideNav) {
+                        SideNavRail(
+                            selectedId = selectedNavId,
+                            onNavigate = { item ->
+                                selectedNavId = item.id
+                                navController.navigate(item.route) {
+                                    popUpTo("home") { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                            )
-                        }
+                            }
+                        )
+                    }
 
-                        composable("pairing") {
-                            PairingScreen(
-                                onSuccess = { navController.popBackStack() },
-                                onBack = { navController.popBackStack() }
-                            )
+                    // Main content
+                    Box(modifier = Modifier.weight(1f)) {
+                        NavHost(
+                            navController = navController,
+                            startDestination = "home"
+                        ) {
+                            composable("home") {
+                                HomeScreen(
+                                    onMovieClick = { slug ->
+                                        navController.navigate("detail/$slug")
+                                    },
+                                    userDataRepository = userRepo
+                                )
+                            }
+
+                            composable(
+                                "home/{category}",
+                                arguments = listOf(navArgument("category") { type = NavType.StringType })
+                            ) { entry ->
+                                HomeScreen(
+                                    onMovieClick = { slug -> navController.navigate("detail/$slug") },
+                                    category = entry.arguments?.getString("category"),
+                                    userDataRepository = userRepo
+                                )
+                            }
+
+                            composable(
+                                "detail/{slug}",
+                                arguments = listOf(navArgument("slug") { type = NavType.StringType })
+                            ) { entry ->
+                                val slug = entry.arguments?.getString("slug") ?: return@composable
+                                DetailScreen(
+                                    slug = slug,
+                                    onPlayClick = { s, ep, srv ->
+                                        val encodedSrv = java.net.URLEncoder.encode(srv, "UTF-8")
+                                        navController.navigate("player/$s/$ep?server=$encodedSrv")
+                                    },
+                                    onBack = { navController.popBackStack() },
+                                    userDataRepository = userRepo
+                                )
+                            }
+
+                            composable(
+                                "player/{slug}/{episode}?server={server}",
+                                arguments = listOf(
+                                    navArgument("slug") { type = NavType.StringType },
+                                    navArgument("episode") { type = NavType.IntType; defaultValue = 1 },
+                                    navArgument("server") { type = NavType.StringType; nullable = true; defaultValue = null }
+                                ),
+                                deepLinks = listOf(androidx.navigation.navDeepLink { uriPattern = "streamflow://player/{slug}/{episode}" })
+                            ) { entry ->
+                                val slug = entry.arguments?.getString("slug")
+                                val episode = entry.arguments?.getInt("episode") ?: 1
+                                val server = entry.arguments?.getString("server")
+                                Log.d("StreamFlowNav", "Navigating to player: slug=$slug, episode=$episode, server=$server")
+                                if (slug == null) {
+                                    return@composable
+                                }
+                                PlayerScreen(
+                                    slug = slug,
+                                    episode = episode,
+                                    server = server,
+                                    userDataRepository = userRepo
+                                )
+                            }
+
+                            composable("search") {
+                                SearchScreen(
+                                    onMovieClick = { slug -> navController.navigate("detail/$slug") }
+                                )
+                            }
+
+                            composable("mylist") {
+                                MyListScreen(
+                                    onMovieClick = { slug -> navController.navigate("detail/$slug") }
+                                )
+                            }
+
+                            composable("settings") {
+                                SettingsScreen(
+                                    currentTheme = currentTheme,
+                                    onThemeChange = { theme ->
+                                        currentTheme = theme
+                                        scope.launch { userRepo.setTheme(theme) }
+                                    }
+                                )
+                            }
+
+                            composable("pairing") {
+                                PairingScreen(
+                                    onSuccess = { navController.popBackStack() },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
                         }
                     }
                 }
+
+                // Global In-App Update Dialog
+                UpdateDialog(updateViewModel = updateViewModel)
             }
         }
     }
