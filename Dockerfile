@@ -32,7 +32,11 @@ FROM --platform=linux/amd64 alpine:latest AS final
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache sqlite ca-certificates tzdata mpv yt-dlp
+RUN apk add --no-cache sqlite ca-certificates tzdata mpv python3
+
+# Install yt-dlp nightly (recommended channel - daily extractor updates)
+RUN wget -q https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp \
+    && chmod +x /usr/local/bin/yt-dlp
 
 # Copy backend binary
 COPY --from=backend-builder /app/backend/server .

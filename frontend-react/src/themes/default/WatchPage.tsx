@@ -374,13 +374,19 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                         <>
                             <div className="absolute inset-0">
                                 {source?.isEmbed || source?.ext === 'embed' || source?.format_id === 'embed' || (source?.stream_url && (source.stream_url.includes('embed') || source.stream_url.includes('streamc.xyz'))) ? (
-                                    <iframe
-                                        src={source.stream_url}
-                                        className="w-full h-full"
-                                        allowFullScreen
-                                        allow="autoplay; fullscreen"
-                                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
-                                    />
+                                    <>
+                                        <iframe
+                                            src={source.stream_url}
+                                            className="w-full h-full"
+                                            allowFullScreen
+                                            allow="autoplay; fullscreen; presentation"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                                        />
+                                        <style>{`
+                                            iframe[src*="${new URL(source.stream_url).hostname}"] ~ .ad-overlay { display: none; }
+                                        `}</style>
+                                        <div className="ad-overlay absolute inset-0 pointer-events-none z-10" />
+                                    </>
                                 ) : (
                                     <video
                                         ref={videoRef}

@@ -29,7 +29,6 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             {/* Main Content Area */}
             <main className="flex-1 pt-14 pb-16 lg:pb-0 min-h-[calc(100vh-3.5rem)]">
                 {children}
-                <Footer />
             </main>
 
             {/* Bottom Tab Bar - Mobile & Tablet only (lg:hidden) */}

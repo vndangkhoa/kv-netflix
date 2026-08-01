@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,9 +41,13 @@ type Phim30Scraper struct {
 }
 
 func NewPhim30Scraper() *Phim30Scraper {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	return &Phim30Scraper{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: tr,
+			Timeout:   30 * time.Second,
 		},
 	}
 }

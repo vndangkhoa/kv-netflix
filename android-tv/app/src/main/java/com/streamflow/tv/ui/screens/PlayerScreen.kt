@@ -3,7 +3,8 @@ package com.streamflow.tv.ui.screens
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
-import android.webkit.WebSettings
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -35,6 +36,135 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.PlayerViewModel
+import java.io.ByteArrayInputStream
+
+private val AD_BLOCK_DOMAINS = listOf(
+    "googleads.g.doubleclick.net",
+    "pagead2.googlesyndication.com",
+    "adservice.google.com",
+    "googleadservices.com",
+    "ad.doubleclick.net",
+    "ad.turn.com",
+    "adroll.com",
+    "amazon-adsystem.com",
+    "pubmatic.com",
+    "adnxs.com",
+    "adskeeper.com",
+    "propellerads.com",
+    "exoclick.com",
+    "voom.mgid.com",
+    "cdn.popinads.com",
+    "ads.twitter.com",
+    "analytics.twitter.com",
+    "static.ads-twitter.com",
+    "syndication.twitter.com",
+    "ads.facebook.com",
+    "analytics.facebook.com",
+    "connect.facebook.net",
+    "ad.lgappstv.com",
+    "ads.lgappstv.com",
+    "vsbet", "1xbet", "fun88", "w88", "m88", "fb88", "bk8", "dafabet",
+    "histats.com", "onclickads.net", "popads.net", "popcash.net", "adsterra.com",
+    "mc.yandex.ru", "creative", "banner", "popup", "adserver", "syndication", "opstream10"
+)
+
+private const val AD_BLOCK_JS = """
+(function() {
+    try {
+        if (!document.getElementById('streamflow-adblock-style')) {
+            var style = document.createElement('style');
+            style.id = 'streamflow-adblock-style';
+            style.type = 'text/css';
+            style.innerHTML = `
+                [class*="ad-"], [class*="ads-"], [class*="advert"], 
+                [id*="ad-"], [id*="ads-"], [id*="advert"],
+                .ad, .ads, .advert, .advertisement,
+                [class*="popup"], [id*="popup"],
+                [class*="overlay"], [id*="overlay"],
+                [class*="banner"], [id*="banner"],
+                [class*="vsbet"], [id*="vsbet"],
+                .vsbet, .banner, .popup, .overlay,
+                iframe[src*="doubleclick"], iframe[src*="googlesyndication"],
+                iframe[src*="facebook"], iframe[src*="adskeeper"],
+                iframe[src*="propeller"], iframe[src*="exoclick"],
+                iframe[src*="mgid"], iframe[src*="popin"],
+                div[style*="z-index: 9999"], div[style*="z-index:9999"],
+                div[style*="z-index: 2147483647"],
+                [class*="interstitial"], [class*="preroll"],
+                [class*="midroll"], [class*="postroll"] {
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                    width: 0px !important;
+                    height: 0px !important;
+                }
+            `;
+            (document.head || document.documentElement).appendChild(style);
+        }
+
+        var cleanAndElevateVideo = function() {
+            var selectors = [
+                '[class*="ad-"]', '[class*="ads-"]', '[class*="advert"]',
+                '[id*="ad-"]', '[id*="ads-"]', '[id*="advert"]',
+                '.ad', '.ads', '.advert', '.advertisement',
+                '[class*="popup"]', '[class*="overlay"]',
+                '[class*="banner"]', '[id*="banner"]',
+                '[class*="vsbet"]', '.vsbet', '[id*="vsbet"]',
+                'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
+                'iframe[src*="facebook"]', 'iframe[src*="adskeeper"]',
+                'iframe[src*="propeller"]', 'iframe[src*="exoclick"]',
+                'iframe[src*="mgid"]', 'iframe[src*="popin"]',
+                '[class*="skip"]', '[id*="skip"]', '.skip-ad', '.skip-btn'
+            ];
+            selectors.forEach(function(sel) {
+                try {
+                    document.querySelectorAll(sel).forEach(function(el) {
+                        if (el.tagName !== 'VIDEO' && el.tagName !== 'SOURCE') {
+                            el.remove();
+                        }
+                    });
+                } catch(e) {}
+            });
+            document.querySelectorAll('div[style]').forEach(function(el) {
+                var z = parseInt(el.style.zIndex) || 0;
+                if (z > 100 && el.querySelector('video') === null) {
+                    el.remove();
+                }
+            });
+
+            var v = document.querySelector('video');
+            if (v) {
+                v.style.position = 'fixed';
+                v.style.top = '0px';
+                v.style.left = '0px';
+                v.style.width = '100vw';
+                v.style.height = '100vh';
+                v.style.zIndex = '2147483647';
+                v.style.objectFit = 'contain';
+                v.style.backgroundColor = '#000';
+                if (v.paused) {
+                    v.play().catch(function(){});
+                }
+            }
+        };
+
+        cleanAndElevateVideo();
+        if (!window.__adBlockInterval) {
+            window.__adBlockInterval = setInterval(cleanAndElevateVideo, 250);
+        }
+    } catch(e) {}
+})();
+"""
+
+private const val AUTO_PLAY_JS = """
+(function() {
+    try {
+        var v = document.querySelector('video');
+        if (v) { v.play(); }
+    } catch(e) {}
+})();
+"""
 
 @OptIn(UnstableApi::class)
 @kotlin.OptIn(ExperimentalTvMaterial3Api::class)
@@ -201,11 +331,36 @@ fun PlayerScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = uiState.error ?: "Failed to play video",
-                    style = StreamFlowTheme.typography.bodyLarge,
-                    color = Color.Red
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text(
+                        text = "Unable to play stream",
+                        style = StreamFlowTheme.typography.titleMedium,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = uiState.error ?: "Stream server is offline or unreachable.",
+                        style = StreamFlowTheme.typography.bodyMedium,
+                        color = Color.LightGray
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Row {
+                        androidx.tv.material3.Button(
+                            onClick = { viewModel.retryStream() }
+                        ) {
+                            Text("Retry Stream")
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        androidx.tv.material3.Button(
+                            onClick = { (context as? android.app.Activity)?.finish() }
+                        ) {
+                            Text("Go Back")
+                        }
+                    }
+                }
             }
         } else if (shouldUseEmbed && currentSource != null) {
             // Android TV WebView Embed Player Component
@@ -225,17 +380,29 @@ fun PlayerScreen(
 
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): WebResourceResponse? {
+                                val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+                                if (AD_BLOCK_DOMAINS.any { url.contains(it, ignoreCase = true) }) {
+                                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                }
+                                return super.shouldInterceptRequest(view, request)
+                            }
+
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
-                                // Auto play video inside iframe if present
-                                view?.evaluateJavascript(
-                                    """
-                                    (function() {
-                                        var v = document.querySelector('video');
-                                        if (v) { v.play(); }
-                                    })();
-                                    """.trimIndent(), null
-                                )
+                                view?.evaluateJavascript(AD_BLOCK_JS, null)
+                                view?.evaluateJavascript(AUTO_PLAY_JS, null)
+                            }
+
+                            override fun onReceivedSslError(
+                                view: WebView?,
+                                handler: android.webkit.SslErrorHandler?,
+                                error: android.net.http.SslError?
+                            ) {
+                                handler?.proceed()
                             }
                         }
 

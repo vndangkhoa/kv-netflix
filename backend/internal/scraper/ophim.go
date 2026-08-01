@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,9 +21,13 @@ type OphimScraper struct {
 }
 
 func NewOphimScraper() *OphimScraper {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	return &OphimScraper{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: tr,
+			Timeout:   30 * time.Second,
 		},
 	}
 }

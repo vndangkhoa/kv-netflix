@@ -71,20 +71,26 @@ async function fetchGitHubLatest(): Promise<ReleaseDownloads | null> {
         const res = await fetch(`https://api.github.com/repos${GITHUB_REPO}/releases/latest`);
         if (!res.ok) return null;
         const data = await res.json();
-        const version = data.tag_name?.replace(/^v/, '') || '1.0.2';
+        const version = data.tag_name?.replace(/^v/, '') || '1.0.3';
         const assets = data.assets || [];
-        const findAsset = (name: string) =>
-            assets.find((a: { name: string }) => a.name.includes(name))?.browser_download_url || '';
+        const findAsset = (keywords: string[]) =>
+            assets.find((a: { name: string }) => keywords.some(k => a.name.toLowerCase().includes(k.toLowerCase())))?.browser_download_url || '';
+
+        const tvUrl = findAsset(['kv-netflix-tv', 'android-tv', 'tv-v', 'tv.apk']) ||
+            `https://github.com${GITHUB_REPO}/releases/download/v${version}/kv-netflix-tv-v${version}.apk`;
+
+        const mobileUrl = findAsset(['kv-netflix-mobile', 'android-mobile', 'mobile-v', 'mobile.apk', 'app-debug']) ||
+            `https://github.com${GITHUB_REPO}/releases/download/v${version}/kv-netflix-mobile-v${version}.apk`;
 
         return {
             version,
             tv: {
-                github: findAsset('kv-netflix-tv') || `https://github.com${GITHUB_REPO}/releases/download/v${version}/kv-netflix-tv-v${version}.apk`,
-                forgejo: `${FORGEJO_BASE}/attachments/${FORGEJO_ATTACHMENTS.tv}`,
+                github: tvUrl,
+                forgejo: `${FORGEJO_BASE}${FORGEJO_OWNER}/${FORGEJO_REPO}/releases/download/v${version}/kv-netflix-tv-v${version}.apk`,
             },
             mobile: {
-                github: findAsset('kv-netflix-mobile') || `https://github.com${GITHUB_REPO}/releases/download/v${version}/kv-netflix-mobile-v${version}.apk`,
-                forgejo: `${FORGEJO_BASE}/attachments/${FORGEJO_ATTACHMENTS.mobile}`,
+                github: mobileUrl,
+                forgejo: `${FORGEJO_BASE}${FORGEJO_OWNER}/${FORGEJO_REPO}/releases/download/v${version}/kv-netflix-mobile-v${version}.apk`,
             },
             releases: {
                 github: data.html_url || `https://github.com${GITHUB_REPO}/releases/tag/v${version}`,
@@ -101,17 +107,26 @@ async function fetchForgejoLatest(): Promise<ReleaseDownloads | null> {
         const res = await fetch(`${FORGEJO_BASE}/api/v1/repos${FORGEJO_OWNER}/${FORGEJO_REPO}/releases/latest`);
         if (!res.ok) return null;
         const data = await res.json();
-        const version = data.tag_name?.replace(/^v/, '') || '1.0.2';
+        const version = data.tag_name?.replace(/^v/, '') || '1.0.3';
+        const assets = data.assets || [];
+        const findAsset = (keywords: string[]) =>
+            assets.find((a: { name: string }) => keywords.some(k => a.name.toLowerCase().includes(k.toLowerCase())))?.browser_download_url || '';
+
+        const tvUrl = findAsset(['kv-netflix-tv', 'android-tv', 'tv']) ||
+            `${FORGEJO_BASE}${FORGEJO_OWNER}/${FORGEJO_REPO}/releases/download/v${version}/kv-netflix-tv-v${version}.apk`;
+
+        const mobileUrl = findAsset(['kv-netflix-mobile', 'android-mobile', 'mobile']) ||
+            `${FORGEJO_BASE}${FORGEJO_OWNER}/${FORGEJO_REPO}/releases/download/v${version}/kv-netflix-mobile-v${version}.apk`;
 
         return {
             version,
             tv: {
                 github: `https://github.com${GITHUB_REPO}/releases/download/v${version}/kv-netflix-tv-v${version}.apk`,
-                forgejo: `${FORGEJO_BASE}/attachments/${FORGEJO_ATTACHMENTS.tv}`,
+                forgejo: tvUrl,
             },
             mobile: {
                 github: `https://github.com${GITHUB_REPO}/releases/download/v${version}/kv-netflix-mobile-v${version}.apk`,
-                forgejo: `${FORGEJO_BASE}/attachments/${FORGEJO_ATTACHMENTS.mobile}`,
+                forgejo: mobileUrl,
             },
             releases: {
                 github: `https://github.com${GITHUB_REPO}/releases/tag/v${version}`,

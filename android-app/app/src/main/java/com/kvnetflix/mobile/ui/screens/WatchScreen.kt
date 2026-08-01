@@ -33,7 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
-import android.webkit.WebSettings
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -51,6 +52,133 @@ import com.kvnetflix.mobile.data.repository.UserDataRepository
 import com.kvnetflix.mobile.ui.components.EpisodeGrid
 import com.kvnetflix.mobile.ui.theme.KvTheme
 import com.kvnetflix.mobile.viewmodel.PlayerViewModel
+import java.io.ByteArrayInputStream
+
+private val AD_BLOCK_DOMAINS = listOf(
+    "googleads.g.doubleclick.net",
+    "pagead2.googlesyndication.com",
+    "adservice.google.com",
+    "googleadservices.com",
+    "ad.doubleclick.net",
+    "ad.turn.com",
+    "adroll.com",
+    "amazon-adsystem.com",
+    "pubmatic.com",
+    "adnxs.com",
+    "adskeeper.com",
+    "propellerads.com",
+    "exoclick.com",
+    "voom.mgid.com",
+    "cdn.popinads.com",
+    "ads.twitter.com",
+    "analytics.twitter.com",
+    "static.ads-twitter.com",
+    "syndication.twitter.com",
+    "ads.facebook.com",
+    "analytics.facebook.com",
+    "connect.facebook.net",
+    "vsbet", "1xbet", "fun88", "w88", "m88", "fb88", "bk8", "dafabet",
+    "histats.com", "onclickads.net", "popads.net", "popcash.net", "adsterra.com",
+    "mc.yandex.ru", "creative", "banner", "popup", "adserver", "syndication", "opstream10"
+)
+
+private const val AD_BLOCK_JS = """
+(function() {
+    try {
+        if (!document.getElementById('streamflow-adblock-style')) {
+            var style = document.createElement('style');
+            style.id = 'streamflow-adblock-style';
+            style.type = 'text/css';
+            style.innerHTML = `
+                [class*="ad-"], [class*="ads-"], [class*="advert"], 
+                [id*="ad-"], [id*="ads-"], [id*="advert"],
+                .ad, .ads, .advert, .advertisement,
+                [class*="popup"], [id*="popup"],
+                [class*="overlay"], [id*="overlay"],
+                [class*="banner"], [id*="banner"],
+                [class*="vsbet"], [id*="vsbet"],
+                .vsbet, .banner, .popup, .overlay,
+                iframe[src*="doubleclick"], iframe[src*="googlesyndication"],
+                iframe[src*="facebook"], iframe[src*="adskeeper"],
+                iframe[src*="propeller"], iframe[src*="exoclick"],
+                iframe[src*="mgid"], iframe[src*="popin"],
+                div[style*="z-index: 9999"], div[style*="z-index:9999"],
+                div[style*="z-index: 2147483647"],
+                [class*="interstitial"], [class*="preroll"],
+                [class*="midroll"], [class*="postroll"] {
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                    width: 0px !important;
+                    height: 0px !important;
+                }
+            `;
+            (document.head || document.documentElement).appendChild(style);
+        }
+
+        var cleanAndElevateVideo = function() {
+            var selectors = [
+                '[class*="ad-"]', '[class*="ads-"]', '[class*="advert"]',
+                '[id*="ad-"]', '[id*="ads-"]', '[id*="advert"]',
+                '.ad', '.ads', '.advert', '.advertisement',
+                '[class*="popup"]', '[class*="overlay"]',
+                '[class*="banner"]', '[id*="banner"]',
+                '[class*="vsbet"]', '.vsbet', '[id*="vsbet"]',
+                'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
+                'iframe[src*="facebook"]', 'iframe[src*="adskeeper"]',
+                'iframe[src*="propeller"]', 'iframe[src*="exoclick"]',
+                'iframe[src*="mgid"]', 'iframe[src*="popin"]',
+                '[class*="skip"]', '[id*="skip"]', '.skip-ad', '.skip-btn'
+            ];
+            selectors.forEach(function(sel) {
+                try {
+                    document.querySelectorAll(sel).forEach(function(el) {
+                        if (el.tagName !== 'VIDEO' && el.tagName !== 'SOURCE') {
+                            el.remove();
+                        }
+                    });
+                } catch(e) {}
+            });
+            document.querySelectorAll('div[style]').forEach(function(el) {
+                var z = parseInt(el.style.zIndex) || 0;
+                if (z > 100 && el.querySelector('video') === null) {
+                    el.remove();
+                }
+            });
+
+            var v = document.querySelector('video');
+            if (v) {
+                v.style.position = 'fixed';
+                v.style.top = '0px';
+                v.style.left = '0px';
+                v.style.width = '100vw';
+                v.style.height = '100vh';
+                v.style.zIndex = '2147483647';
+                v.style.objectFit = 'contain';
+                v.style.backgroundColor = '#000';
+                if (v.paused) {
+                    v.play().catch(function(){});
+                }
+            }
+        };
+
+        cleanAndElevateVideo();
+        if (!window.__adBlockInterval) {
+            window.__adBlockInterval = setInterval(cleanAndElevateVideo, 250);
+        }
+    } catch(e) {}
+})();
+"""
+
+private const val AUTO_PLAY_JS = """
+(function() {
+    try {
+        var v = document.querySelector('video');
+        if (v) { v.play(); }
+    } catch(e) {}
+})();
+"""
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -156,11 +284,29 @@ fun WatchScreen(
 
                                     webChromeClient = WebChromeClient()
                                     webViewClient = object : WebViewClient() {
+                                        override fun shouldInterceptRequest(
+                                            view: WebView?,
+                                            request: WebResourceRequest?
+                                        ): WebResourceResponse? {
+                                            val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+                                            if (AD_BLOCK_DOMAINS.any { url.contains(it, ignoreCase = true) }) {
+                                                return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                            }
+                                            return super.shouldInterceptRequest(view, request)
+                                        }
+
                                         override fun onPageFinished(view: WebView?, url: String?) {
                                             super.onPageFinished(view, url)
-                                            view?.evaluateJavascript(
-                                                """(function() { var v = document.querySelector('video'); if (v) v.play(); })();""", null
-                                            )
+                                            view?.evaluateJavascript(AD_BLOCK_JS, null)
+                                            view?.evaluateJavascript(AUTO_PLAY_JS, null)
+                                        }
+
+                                        override fun onReceivedSslError(
+                                            view: WebView?,
+                                            handler: android.webkit.SslErrorHandler?,
+                                            error: android.net.http.SslError?
+                                        ) {
+                                            handler?.proceed()
                                         }
                                     }
 

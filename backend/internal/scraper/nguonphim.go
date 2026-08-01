@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -21,9 +22,13 @@ type NguonPhimScraper struct {
 }
 
 func NewNguonPhimScraper() *NguonPhimScraper {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	return &NguonPhimScraper{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: tr,
+			Timeout:   30 * time.Second,
 		},
 	}
 }

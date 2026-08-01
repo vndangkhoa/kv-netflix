@@ -1,6 +1,8 @@
 package api
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 
 	"streamflow-backend/internal/database"
@@ -41,12 +44,13 @@ var (
 )
 
 type Handler struct {
-	Repo      *database.VideoRepository
-	Providers []scraper.MovieProvider
-	TMDB      *service.TMDBService
-	Extractor *service.VideoExtractor
-	Image     *service.ImageService
-	JWTSecret []byte
+	Repo         *database.VideoRepository
+	Providers    []scraper.MovieProvider
+	TMDB         *service.TMDBService
+	Extractor    *service.VideoExtractor
+	Image        *service.ImageService
+	JWTSecret    []byte
+	StreamClient *http.Client
 }
 
 func NewHandler(
@@ -57,13 +61,22 @@ func NewHandler(
 	image *service.ImageService,
 	jwtSecret string,
 ) *Handler {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	streamClient := &http.Client{
+		Transport: tr,
+		Timeout:   45 * time.Second,
+	}
+
 	return &Handler{
-		Repo:      repo,
-		Providers: providers,
-		TMDB:      tmdb,
-		Extractor: extractor,
-		Image:     image,
-		JWTSecret: []byte(jwtSecret),
+		Repo:         repo,
+		Providers:    providers,
+		TMDB:         tmdb,
+		Extractor:    extractor,
+		Image:        image,
+		JWTSecret:    []byte(jwtSecret),
+		StreamClient: streamClient,
 	}
 }
 
@@ -383,8 +396,20 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sort.Slice(primaryMovie.Episodes, func(i, j int) bool {
-		return primaryMovie.Episodes[i].Number < primaryMovie.Episodes[j].Number
+	sort.SliceStable(primaryMovie.Episodes, func(i, j int) bool {
+		epI, epJ := primaryMovie.Episodes[i], primaryMovie.Episodes[j]
+		if epI.Number != epJ.Number {
+			return epI.Number < epJ.Number
+		}
+		isDirectI := strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Phim30") || strings.Contains(epI.URL, ".m3u8")
+		isDirectJ := strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Phim30") || strings.Contains(epJ.URL, ".m3u8")
+		if isDirectI && !isDirectJ {
+			return true
+		}
+		if !isDirectI && isDirectJ {
+			return false
+		}
+		return false
 	})
 
 	if len(primaryMovie.Episodes) > 0 {
@@ -478,17 +503,25 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Range", r.Header.Get("Range"))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := h.StreamClient.Do(req)
 	if err != nil {
 		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "upstream read error: "+err.Error(), http.StatusBadGateway)
+		return
+	}
 
 	contentType := resp.Header.Get("Content-Type")
-	if strings.HasSuffix(parsedURL.Path, ".m3u8") || strings.Contains(contentType, "mpegurl") || strings.Contains(contentType, "m3u8") {
-		h.handleHLSManifest(w, resp, videoURL)
+	isHLS := strings.HasSuffix(parsedURL.Path, ".m3u8") ||
+		strings.Contains(contentType, "mpegurl") ||
+		strings.Contains(contentType, "m3u8") ||
+		bytes.HasPrefix(bodyBytes, []byte("#EXTM3U"))
+
+	if isHLS {
+		h.handleHLSManifest(w, resp.StatusCode, bodyBytes, videoURL)
 		return
 	}
 
@@ -497,17 +530,10 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	w.Write(bodyBytes)
 }
 
-func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response, baseURL string) {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Stream proxy read error: %v\n", err)
-		http.Error(w, "read error", http.StatusInternalServerError)
-		return
-	}
-
+func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body []byte, baseURL string) {
 	baseParsed, err := url.Parse(baseURL)
 	if err != nil {
 		http.Error(w, "invalid base URL", http.StatusInternalServerError)
@@ -516,10 +542,35 @@ func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response, 
 
 	proxyBase := "/api/stream?url="
 	lines := strings.Split(string(body), "\n")
+	reURI := regexp.MustCompile(`URI="([^"]+)"`)
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+		if trimmed == "" {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "#") {
+			if strings.Contains(trimmed, `URI=`) {
+				lines[i] = reURI.ReplaceAllStringFunc(line, func(match string) string {
+					subMatch := reURI.FindStringSubmatch(match)
+					if len(subMatch) > 1 {
+						rawURI := subMatch[1]
+						var resolved string
+						if strings.HasPrefix(rawURI, "http://") || strings.HasPrefix(rawURI, "https://") {
+							resolved = rawURI
+						} else {
+							rel, err := url.Parse(rawURI)
+							if err != nil {
+								return match
+							}
+							resolved = baseParsed.ResolveReference(rel).String()
+						}
+						return fmt.Sprintf(`URI="%s%s"`, proxyBase, url.QueryEscape(resolved))
+					}
+					return match
+				})
+			}
 			continue
 		}
 
@@ -540,7 +591,7 @@ func (h *Handler) handleHLSManifest(w http.ResponseWriter, resp *http.Response, 
 
 	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(resp.StatusCode)
+	w.WriteHeader(statusCode)
 	w.Write([]byte(newContent))
 }
 
