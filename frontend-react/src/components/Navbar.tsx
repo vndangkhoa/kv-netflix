@@ -271,11 +271,11 @@ const Navbar = () => {
                         {/* App Download Button */}
                         <button
                             onClick={() => setShowDownloadModal(true)}
-                            className="flex items-center gap-1.5 text-xs font-bold text-accent bg-accent/10 hover:bg-accent/20 px-3 py-1.5 rounded-xl border border-accent/30 transition-all active:scale-95 shadow-sm"
+                            className="flex items-center gap-1.5 text-xs font-bold text-white bg-accent hover:bg-accent-hover px-3.5 py-1.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-accent/20"
                             title="Download Android TV & Mobile Apps"
                         >
                             <Download size={14} />
-                            <span>Tải App</span>
+                            <span>Tải App TV & Mobile</span>
                         </button>
 
                         {/* Language Selector (Globe icon) */}
