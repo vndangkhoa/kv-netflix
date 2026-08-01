@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown } from 'lucide-react';
+import { Search, X, User, Globe, ChevronDown, Download } from 'lucide-react';
 import { CATEGORIES, GENRES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
+import { AppDownloadModal } from './AppDownloadModal';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import DevicePairPage from '../pages/DevicePairPage';
@@ -19,6 +20,7 @@ const Navbar = () => {
     const [showMore, setShowMore] = useState(false);
     const [authModal, setAuthModal] = useState<'login' | 'register' | 'reset' | null>(null);
     const [showPairModal, setShowPairModal] = useState(false);
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     
     const searchRef = useRef<HTMLDivElement>(null);
@@ -266,6 +268,16 @@ const Navbar = () => {
                             )}
                         </div>
 
+                        {/* App Download Button */}
+                        <button
+                            onClick={() => setShowDownloadModal(true)}
+                            className="flex items-center gap-1.5 text-xs font-bold text-accent bg-accent/10 hover:bg-accent/20 px-3 py-1.5 rounded-xl border border-accent/30 transition-all active:scale-95 shadow-sm"
+                            title="Download Android TV & Mobile Apps"
+                        >
+                            <Download size={14} />
+                            <span>Tải App</span>
+                        </button>
+
                         {/* Language Selector (Globe icon) */}
                         <button
                             onClick={toggleLang}
@@ -366,6 +378,7 @@ const Navbar = () => {
         {showPairModal && (
             <DevicePairPage onClose={() => setShowPairModal(false)} />
         )}
+        <AppDownloadModal isOpen={showDownloadModal} onClose={() => setShowDownloadModal(false)} />
         </>
     );
 };

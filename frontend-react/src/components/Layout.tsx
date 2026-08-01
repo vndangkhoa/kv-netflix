@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { Home, Film, Tv, Heart } from 'lucide-react';
 import { useLang } from '../context/LanguageContext';
 import Navbar from './Navbar';
+import { Footer } from './Footer';
 
 const BOTTOM_TABS = [
     { nameKey: 'home' as const, path: '/', icon: Home },
@@ -28,6 +29,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
             {/* Main Content Area */}
             <main className="flex-1 pt-14 pb-16 lg:pb-0 min-h-[calc(100vh-3.5rem)]">
                 {children}
+                <Footer />
             </main>
 
             {/* Bottom Tab Bar - Mobile & Tablet only (lg:hidden) */}
