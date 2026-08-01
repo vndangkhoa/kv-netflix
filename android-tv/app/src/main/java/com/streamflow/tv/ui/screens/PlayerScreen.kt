@@ -1,31 +1,36 @@
 package com.streamflow.tv.ui.screens
 
+import android.view.KeyEvent
 import android.view.ViewGroup
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.foundation.focusable
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
-import com.streamflow.tv.ui.components.ServerSelector
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.PlayerViewModel
 
@@ -42,9 +47,10 @@ fun PlayerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val colors = StreamFlowTheme.colors
-    var playerView by remember { mutableStateOf<PlayerView?>(null) }
+    var isFallbackToEmbed by remember { mutableStateOf(false) }
 
     LaunchedEffect(slug, episode, server) {
+        isFallbackToEmbed = false
         viewModel.loadPlayer(slug, episode, server)
     }
 
@@ -54,14 +60,14 @@ fun PlayerScreen(
         }
     }
 
-    // ExoPlayer instance
+    // ExoPlayer setup
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
         }
     }
 
-    // Wrap ExoPlayer to intercept next/previous UI clicks
+    // ForwardingPlayer to handle TV Remote Next/Prev episode actions
     val forwardingPlayer = remember(exoPlayer, uiState.movie, uiState.currentEpisode) {
         object : androidx.media3.common.ForwardingPlayer(exoPlayer) {
             override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
@@ -90,38 +96,43 @@ fun PlayerScreen(
                     viewModel.changeEpisode(uiState.currentEpisode + 1)
                 }
             }
-            override fun seekToNext() {
-                seekToNextMediaItem()
-            }
+            override fun seekToNext() { seekToNextMediaItem() }
             override fun seekToPreviousMediaItem() {
                 if (hasPreviousMediaItem()) {
                     viewModel.changeEpisode(uiState.currentEpisode - 1)
                 }
             }
-            override fun seekToPrevious() {
-                seekToPreviousMediaItem()
-            }
+            override fun seekToPrevious() { seekToPreviousMediaItem() }
         }
     }
 
-    // Update player when source changes
-    LaunchedEffect(uiState.source) {
-        uiState.source?.let { source ->
-            val dataSourceFactory = DefaultDataSource.Factory(context)
+    // Configure ExoPlayer media source with custom browser HTTP headers
+    LaunchedEffect(uiState.source, isFallbackToEmbed) {
+        val source = uiState.source
+        if (source != null && !source.isEmbed && !isFallbackToEmbed) {
+            val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .setDefaultRequestProperties(
+                    mapOf(
+                        "Referer" to "https://ophim17.cc/",
+                        "Origin" to "https://ophim17.cc"
+                    )
+                )
+                .setAllowCrossProtocolRedirects(true)
+
+            val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
             val mediaItem = MediaItem.fromUri(source.streamUrl)
 
-            android.util.Log.e("StreamFlowPlayer", "Setting media source: ${source.streamUrl}")
+            android.util.Log.d("PlayerScreen", "Loading ExoPlayer stream: ${source.streamUrl}")
 
             exoPlayer.addListener(object : androidx.media3.common.Player.Listener {
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    android.util.Log.e("StreamFlowPlayer", "Player Error: ${error.message}", error)
-                }
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    android.util.Log.e("StreamFlowPlayer", "Playback State: $playbackState")
+                    android.util.Log.e("PlayerScreen", "ExoPlayer error: ${error.message}. Triggering WebView embed fallback.", error)
+                    isFallbackToEmbed = true
                 }
             })
 
-            if (source.streamUrl.contains(".m3u8")) {
+            if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
                 val hlsSource = HlsMediaSource.Factory(dataSourceFactory)
                     .createMediaSource(mediaItem)
                 exoPlayer.setMediaSource(hlsSource)
@@ -132,7 +143,6 @@ fun PlayerScreen(
         }
     }
 
-    // Cleanup
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
@@ -141,114 +151,119 @@ fun PlayerScreen(
 
     val focusRequester = remember { FocusRequester() }
 
-    val availableServers = remember(uiState.movie) {
-        uiState.movie?.episodes?.map { it.displayServerName }?.distinct() ?: emptyList()
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .focusRequester(focusRequester)
-            .focusable()
-            .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown) {
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
-                        android.view.KeyEvent.KEYCODE_ENTER -> {
-                            // Toggle controls visibility
-                            if (playerView?.isControllerFullyVisible == true) {
-                                playerView?.hideController()
-                            } else {
-                                playerView?.showController()
-                            }
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            // Seek backward 10s
-                            playerView?.showController()
-                            exoPlayer.seekTo(maxOf(0, exoPlayer.currentPosition - 10000))
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            // Seek forward 10s
-                            playerView?.showController()
-                            exoPlayer.seekTo(minOf(exoPlayer.duration, exoPlayer.currentPosition + 10000))
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_DPAD_UP,
-                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            playerView?.showController()
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                            if (forwardingPlayer.hasNextMediaItem()) {
-                                forwardingPlayer.seekToNextMediaItem()
-                            }
-                            true
-                        }
-                        android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                            if (forwardingPlayer.hasPreviousMediaItem()) {
-                                forwardingPlayer.seekToPreviousMediaItem()
-                            }
-                            true
-                        }
-                        else -> false
-                    }
-                } else false
-            }
     ) {
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
-        }
+        val currentSource = uiState.source
+        val shouldUseEmbed = currentSource?.isEmbed == true || isFallbackToEmbed
 
-        if (uiState.isLoading || uiState.source == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "Loading stream...",
-                        style = StreamFlowTheme.typography.headlineMedium.copy(color = colors.primary)
-                    )
-                    uiState.movie?.let { movie ->
-                        Text(
-                            movie.title,
-                            style = StreamFlowTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
+                    androidx.compose.material3.CircularProgressIndicator(color = colors.primary)
+                    Spacer(Modifier.height(16.dp))
+                    Text(text = "Loading stream...", style = StreamFlowTheme.typography.bodyLarge)
                 }
             }
-        } else {
-            // ExoPlayer View
-            android.util.Log.e("StreamFlowPlayer", "Drawing AndroidView for Player")
+        } else if (uiState.error != null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = uiState.error ?: "Failed to play video",
+                    style = StreamFlowTheme.typography.bodyLarge,
+                    color = Color.Red
+                )
+            }
+        } else if (shouldUseEmbed && currentSource != null) {
+            // Android TV WebView Embed Player Component
             AndroidView(
                 factory = { ctx ->
-                    android.util.Log.e("StreamFlowPlayer", "Creating PlayerView factory")
+                    WebView(ctx).apply {
+                        layoutParams = FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.mediaPlaybackRequiresUserGesture = false
+                        settings.useWideViewPort = true
+                        settings.loadWithOverviewMode = true
+                        settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+                        webChromeClient = WebChromeClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                // Auto play video inside iframe if present
+                                view?.evaluateJavascript(
+                                    """
+                                    (function() {
+                                        var v = document.querySelector('video');
+                                        if (v) { v.play(); }
+                                    })();
+                                    """.trimIndent(), null
+                                )
+                            }
+                        }
+
+                        // Allow WebView to capture TV remote D-Pad OK key
+                        setOnKeyListener { v, keyCode, event ->
+                            if (event.action == KeyEvent.ACTION_DOWN && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                                (v as? WebView)?.evaluateJavascript(
+                                    """
+                                    (function() {
+                                        var v = document.querySelector('video');
+                                        if (v) {
+                                            if (v.paused) v.play(); else v.pause();
+                                        }
+                                    })();
+                                    """.trimIndent(), null
+                                )
+                                true
+                            } else {
+                                false
+                            }
+                        }
+
+                        loadUrl(currentSource.streamUrl)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(focusRequester)
+                    .focusable()
+            )
+        } else if (currentSource != null) {
+            // ExoPlayer Native Player View
+            AndroidView(
+                factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = forwardingPlayer
                         useController = true
                         setShowNextButton(true)
                         setShowPreviousButton(true)
-                        controllerAutoShow = true
-                        keepScreenOn = true // Prevent screen sleep during playback
+                        controllerShowTimeoutMs = 3500
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
-                        playerView = this
                     }
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(focusRequester)
+                    .focusable()
             )
-        }
 
-        // Error overlay
-        uiState.error?.let { error ->
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    error,
-                    style = StreamFlowTheme.typography.bodyLarge.copy(color = Color.Red)
-                )
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
             }
         }
     }

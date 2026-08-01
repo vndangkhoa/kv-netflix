@@ -35,7 +35,7 @@ class PlayerViewModel : ViewModel() {
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Failed to load"
+                    error = e.message ?: "Failed to load movie details"
                 )
             }
         }
@@ -63,7 +63,7 @@ class PlayerViewModel : ViewModel() {
         val movie = _uiState.value.movie ?: return
         viewModelScope.launch {
             userDataRepository.addToHistory(movie.toMovie())
-            android.util.Log.e("PlayerViewModel", "Movie saved to history: ${movie.title}")
+            android.util.Log.d("PlayerViewModel", "Movie saved to history: ${movie.title}")
         }
     }
 
@@ -74,38 +74,53 @@ class PlayerViewModel : ViewModel() {
                 episodes.filter { it.displayServerName.equals(server, ignoreCase = true) }
             } else episodes
 
-            val ep = filteredEpisodes.find { it.number == episode } 
+            val ep = filteredEpisodes.find { it.number == episode }
                 ?: episodes.find { it.number == episode }
                 ?: episodes.firstOrNull()
 
-            android.util.Log.e("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$server. Episode data: $ep")
+            android.util.Log.d("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$server. Episode: $ep")
 
             if (ep != null && ep.url.isNotBlank()) {
-                if (ep.url.contains(".m3u8") || ep.url.contains("index.m3u8")) {
-                    // Direct HLS URL
-                    android.util.Log.e("PlayerViewModel", "Direct HLS URL found: ${ep.url}")
+                val isDirectHls = ep.url.contains(".m3u8", ignoreCase = true) || ep.url.contains("index.m3u8", ignoreCase = true)
+                if (isDirectHls) {
+                    android.util.Log.d("PlayerViewModel", "Direct HLS URL found: ${ep.url}")
                     _uiState.value = _uiState.value.copy(
                         source = VideoSource(
                             streamUrl = ep.url,
                             resolution = "HD",
-                            formatId = "hls"
+                            formatId = "hls",
+                            isEmbed = false
                         ),
                         isLoading = false
                     )
                 } else {
-                    // Non-HLS URL — try to extract via backend
-                    android.util.Log.e("PlayerViewModel", "Extracting from URL: ${ep.url}")
-                    val source = repository.extractVideo(ep.url)
-                    android.util.Log.e("PlayerViewModel", "Extraction successful: $source")
-                    
-                    _uiState.value = _uiState.value.copy(
-                        source = source,
-                        isLoading = false
-                    )
+                    android.util.Log.d("PlayerViewModel", "Extracting or embedding from URL: ${ep.url}")
+                    var extractedSource: VideoSource? = null
+                    try {
+                        extractedSource = repository.extractVideo(ep.url)
+                    } catch (e: Exception) {
+                        android.util.Log.w("PlayerViewModel", "Extraction error, using WebView embed: ${e.message}")
+                    }
+
+                    if (extractedSource != null && extractedSource.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                        _uiState.value = _uiState.value.copy(
+                            source = extractedSource.copy(isEmbed = false),
+                            isLoading = false
+                        )
+                    } else {
+                        // Web Embed Player Fallback
+                        _uiState.value = _uiState.value.copy(
+                            source = VideoSource(
+                                streamUrl = ep.url,
+                                resolution = "Embed",
+                                formatId = "embed",
+                                isEmbed = true
+                            ),
+                            isLoading = false
+                        )
+                    }
                 }
             } else {
-                // No valid episode URL found
-                android.util.Log.e("PlayerViewModel", "No stream URL found for episode $episode")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = "No stream available for episode $episode"
