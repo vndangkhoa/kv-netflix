@@ -68,20 +68,24 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     }, [currentEpisode]);
 
     useEffect(() => {
-        if (!movie) return;
-        // Don't fetch stream until a server is selected by WatchPage
-        if (!selectedServer) {
-            setLoading(false);
-            return;
+        if (!movie?.episodes || movie.episodes.length === 0) return;
+        const hasCurrentEp = movie.episodes.some(e => e.number === currentEpisode);
+        if (!hasCurrentEp && movie.episodes.length > 0) {
+            setCurrentEpisode(movie.episodes[0].number);
         }
+    }, [movie, currentEpisode]);
+
+    useEffect(() => {
+        if (!movie) return;
 
         const fetchStream = async () => {
             setLoading(true);
             try {
+                const targetServer = selectedServer || movie.episodes?.[0]?.serverName || movie.episodes?.[0]?.server_name;
                 const ep = movie.episodes?.find(e =>
                     e.number === currentEpisode &&
-                    (e.serverName || e.server_name) === selectedServer
-                );
+                    (e.serverName || e.server_name) === targetServer
+                ) || movie.episodes?.find(e => e.number === currentEpisode) || movie.episodes?.[0];
 
                 // If no episode or no URL, don't try to extract — let WatchPage show "Coming Soon"
                 if (!ep?.url) {

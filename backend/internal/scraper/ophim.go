@@ -303,7 +303,7 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 			if match := digitsRegex.FindString(ep.Name); match != "" {
 				epNum, _ = strconv.Atoi(match)
 			}
-			if epNum == 0 {
+			if epNum <= 0 {
 				if strings.EqualFold(ep.Name, "Full") || strings.EqualFold(ep.Name, "Trailer") || ep.Name != "" {
 					epNum = 1
 				} else {

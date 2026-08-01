@@ -304,6 +304,9 @@ func (s *NguonPhimScraper) GetMovieDetail(slug string) (*models.RophimMovie, err
 			for _, server := range servers {
 				for _, ep := range server.List {
 					epNum, _ := strconv.Atoi(ep.Name)
+					if epNum <= 0 {
+						epNum = 1
+					}
 					movie.Episodes = append(movie.Episodes, models.Episode{
 						Number:     epNum,
 						Title:      fmt.Sprintf("Tập %s", ep.Name),

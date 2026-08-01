@@ -272,11 +272,11 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     const epNum = parseInt(episode || '1');
     const serversWithEpisode = serverNames.filter(server => {
         const eps = episodesByServer[server] || [];
-        return eps.some(e => e.number === epNum && !!e.url);
+        return eps.some(e => (e.number === epNum || eps.length === 1) && !!e.url);
     });
     const defaultServer = serversWithEpisode.find(server => {
         const eps = episodesByServer[server] || [];
-        const ep = eps.find(e => e.number === epNum);
+        const ep = eps.find(e => e.number === epNum) || eps[0];
         return ep?.url && (ep.url.includes('embed') || ep.url.includes('streamc'));
     }) || serversWithEpisode[0] || serverNames[0] || '';
     const activeServer = selectedServer && serverNames.includes(selectedServer) ? selectedServer : defaultServer;
@@ -287,6 +287,16 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
     }, [defaultServer, selectedServer]);
 
+    const currentServerEpisodes = episodesByServer[activeServer] || [];
+
+    useEffect(() => {
+        if (!currentServerEpisodes || currentServerEpisodes.length === 0) return;
+        const hasCurrentEp = currentServerEpisodes.some(e => e.number === currentEpisode);
+        if (!hasCurrentEp) {
+            setCurrentEpisode(currentServerEpisodes[0].number);
+        }
+    }, [currentServerEpisodes, currentEpisode, setCurrentEpisode]);
+
     if (!movie) return (
         <div className="h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
             <div className="flex flex-col items-center gap-4">
@@ -296,7 +306,6 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         </div>
     );
 
-    const currentServerEpisodes = episodesByServer[activeServer] || [];
     const visibleEpisodes = expanded ? currentServerEpisodes : currentServerEpisodes.slice(0, 20);
 
     const nextEp = hasNextEpisode
@@ -327,7 +336,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     </div>
                 )}
                 {(() => {
-                    const activeEpisode = currentServerEpisodes?.find(e => e.number === currentEpisode);
+                    const activeEpisode = currentServerEpisodes?.find(e => e.number === currentEpisode) || currentServerEpisodes?.[0];
                     if (!activeEpisode?.url) {
                         return (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
@@ -548,7 +557,9 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                     <div className="flex items-center justify-center">
                                         <span className={`font-bold text-sm ${currentEpisode === ep.number ? 'text-accent' : 'text-[var(--text-muted)] group-hover:text-[var(--text-primary)]'
                                             }`}>
-                                            {ep.number}
+                                            {ep.title && ep.title !== '0' && !ep.title.startsWith('0') && !ep.title.startsWith('Tập 0')
+                                                ? ep.title
+                                                : (ep.number === 0 ? (ep.title || 'Full') : ep.number)}
                                         </span>
                                     </div>
                                     {currentEpisode === ep.number && (
