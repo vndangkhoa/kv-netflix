@@ -39,10 +39,12 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import com.kvnetflix.mobile.data.repository.UserDataRepository
@@ -175,31 +177,60 @@ fun WatchScreen(
                             }
                         }
                     } else {
-                        // ExoPlayer with custom HTTP headers
+                        // ExoPlayer with custom HTTP headers and optimized buffer
                         val player = remember {
-                            ExoPlayer.Builder(context).build()
+                            val loadControl = DefaultLoadControl.Builder()
+                                .setBufferDurationsMs(
+                                    DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                                    DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                                )
+                                .build()
+                            ExoPlayer.Builder(context)
+                                .setLoadControl(loadControl)
+                                .build()
                         }
+
+                        var exoRetryCount by remember { mutableIntStateOf(0) }
+                        val maxRetries = 3
 
                         LaunchedEffect(uiState.source, uiState.currentEpisode) {
                             try {
                                 val source = uiState.source ?: return@LaunchedEffect
                                 if (source.streamUrl.isNotEmpty()) {
+                                    exoRetryCount = 0
                                     val httpDataSourceFactory = DefaultHttpDataSource.Factory()
                                         .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                                        .setDefaultRequestProperties(
-                                            mapOf(
-                                                "Referer" to "https://ophim17.cc/",
-                                                "Origin" to "https://ophim17.cc"
-                                            )
-                                        )
+                                        .setConnectTimeoutMs(15_000)
+                                        .setReadTimeoutMs(30_000)
                                         .setAllowCrossProtocolRedirects(true)
                                     val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
                                     val mediaItem = MediaItem.fromUri(source.streamUrl)
 
                                     player.addListener(object : androidx.media3.common.Player.Listener {
-                                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                                            android.util.Log.e("WatchScreen", "ExoPlayer error, switching to WebView embed: ${error.message}", error)
-                                            isFallbackToEmbed = true
+                                        override fun onPlayerError(error: PlaybackException) {
+                                            android.util.Log.e("WatchScreen", "ExoPlayer error (attempt ${exoRetryCount + 1}/$maxRetries): ${error.message}", error)
+                                            if (exoRetryCount < maxRetries && source.streamUrl.isNotEmpty()) {
+                                                exoRetryCount++
+                                                android.util.Log.d("WatchScreen", "Retrying ExoPlayer in 1s (attempt $exoRetryCount)")
+                                                player.stop()
+                                                player.setMediaSource(
+                                                    if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                                                        HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+                                                    } else {
+                                                        androidx.media3.common.MediaItem.fromUri(source.streamUrl).let {
+                                                            player.setMediaItem(it)
+                                                            return
+                                                        }
+                                                    }
+                                                )
+                                                player.prepare()
+                                                player.playWhenReady = true
+                                            } else {
+                                                android.util.Log.e("WatchScreen", "Max retries reached, switching to WebView embed")
+                                                isFallbackToEmbed = true
+                                            }
                                         }
                                     })
 
@@ -318,7 +349,16 @@ fun WatchScreen(
                     }
                 } else if (uiState.error != null) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(uiState.error ?: "Error", color = Color.Red, fontSize = 14.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(uiState.error ?: "Error", color = Color.Red, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { viewModel.retryStream() },
+                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
+                            ) {
+                                Text("Retry", color = Color.White, fontSize = 14.sp)
+                            }
+                        }
                     }
                 }
             }

@@ -2,6 +2,7 @@ package com.kvnetflix.mobile.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kvnetflix.mobile.data.api.ApiClient
 import com.kvnetflix.mobile.data.model.MovieDetail
 import com.kvnetflix.mobile.data.model.VideoSource
 import com.kvnetflix.mobile.data.repository.MovieRepository
@@ -9,6 +10,7 @@ import com.kvnetflix.mobile.data.repository.UserDataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 data class PlayerUiState(
     val movie: MovieDetail? = null,
@@ -20,6 +22,7 @@ data class PlayerUiState(
     val isSaved: Boolean = false,
     val error: String? = null,
     val savedPosition: Long = 0L,
+    val retryCount: Int = 0,
     val recommendations: List<com.kvnetflix.mobile.data.model.Movie> = emptyList(),
     val genres: List<com.kvnetflix.mobile.data.model.Category> = emptyList()
 )
@@ -113,6 +116,12 @@ class PlayerViewModel : ViewModel() {
         }
     }
 
+    private fun proxyUrl(url: String): String {
+        val base = ApiClient.baseUrl.removeSuffix("/")
+        val encoded = URLEncoder.encode(url, "UTF-8")
+        return "$base/api/stream?url=$encoded"
+    }
+
     private suspend fun loadStream(movie: MovieDetail, episode: Int, serverName: String = "") {
         try {
             val ep = movie.episodes?.find { it.number == episode && (serverName.isEmpty() || it.serverName == serverName) }
@@ -124,15 +133,17 @@ class PlayerViewModel : ViewModel() {
             if (ep != null && ep.url.isNotBlank()) {
                 val isDirectHls = ep.url.contains(".m3u8", ignoreCase = true)
                 if (isDirectHls) {
-                    android.util.Log.d("PlayerViewModel", "Direct HLS URL: ${ep.url}")
+                    val proxiedUrl = proxyUrl(ep.url)
+                    android.util.Log.d("PlayerViewModel", "Direct HLS URL (proxied): $proxiedUrl")
                     _uiState.value = _uiState.value.copy(
                         source = VideoSource(
-                            streamUrl = ep.url,
+                            streamUrl = proxiedUrl,
                             resolution = "HD",
                             formatId = "hls",
                             isEmbed = false
                         ),
-                        isLoading = false
+                        isLoading = false,
+                        retryCount = 0
                     )
                 } else {
                     android.util.Log.d("PlayerViewModel", "Extracting or embedding from URL: ${ep.url}")
@@ -143,10 +154,24 @@ class PlayerViewModel : ViewModel() {
                         android.util.Log.w("PlayerViewModel", "Extraction error, using WebView embed: ${e.message}")
                     }
 
-                    if (extractedSource != null && extractedSource.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                    if (extractedSource != null && extractedSource.streamUrl.isNotBlank()) {
+                        val streamUrl = extractedSource.streamUrl
+                        val isHls = streamUrl.contains(".m3u8", ignoreCase = true)
+                        val proxiedUrl = if (isHls || streamUrl.contains("phimmoichill") || streamUrl.contains("ophim") || streamUrl.contains("streamc.xyz")) {
+                            proxyUrl(streamUrl)
+                        } else {
+                            streamUrl
+                        }
+                        android.util.Log.d("PlayerViewModel", "Extracted stream (proxied): $proxiedUrl")
                         _uiState.value = _uiState.value.copy(
-                            source = extractedSource.copy(isEmbed = false),
-                            isLoading = false
+                            source = VideoSource(
+                                streamUrl = proxiedUrl,
+                                resolution = extractedSource.resolution.ifEmpty { "HD" },
+                                formatId = extractedSource.formatId,
+                                isEmbed = false
+                            ),
+                            isLoading = false,
+                            retryCount = 0
                         )
                     } else {
                         // WebView embed player fallback
@@ -157,7 +182,8 @@ class PlayerViewModel : ViewModel() {
                                 formatId = "embed",
                                 isEmbed = true
                             ),
-                            isLoading = false
+                            isLoading = false,
+                            retryCount = 0
                         )
                     }
                 }
@@ -173,6 +199,35 @@ class PlayerViewModel : ViewModel() {
                 isLoading = false,
                 error = e.message ?: "Failed to extract stream"
             )
+        }
+    }
+
+    fun retryStream() {
+        val movie = _uiState.value.movie ?: return
+        val episode = _uiState.value.currentEpisode
+        val server = _uiState.value.selectedServer
+        val retryCount = _uiState.value.retryCount
+        if (retryCount < 3) {
+            android.util.Log.d("PlayerViewModel", "Retrying stream (attempt ${retryCount + 1})")
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                source = null,
+                error = null,
+                retryCount = retryCount + 1
+            )
+            viewModelScope.launch {
+                loadStream(movie, episode, server)
+            }
+        } else {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                source = null,
+                error = null,
+                retryCount = 0
+            )
+            viewModelScope.launch {
+                loadStream(movie, episode, server)
+            }
         }
     }
 }

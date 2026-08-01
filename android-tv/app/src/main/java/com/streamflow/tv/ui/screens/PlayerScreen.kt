@@ -23,10 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -60,11 +62,19 @@ fun PlayerScreen(
         }
     }
 
-    // ExoPlayer setup
+    // ExoPlayer setup with optimized buffer
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
-        }
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+            )
+            .build()
+        ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
+            .build()
     }
 
     // ForwardingPlayer to handle TV Remote Next/Prev episode actions
@@ -106,18 +116,18 @@ fun PlayerScreen(
         }
     }
 
-    // Configure ExoPlayer media source with custom browser HTTP headers
+    // Configure ExoPlayer media source with retry and optimized settings
+    var exoRetryCount by remember { mutableIntStateOf(0) }
+    val maxRetries = 3
+
     LaunchedEffect(uiState.source, isFallbackToEmbed) {
         val source = uiState.source
         if (source != null && !source.isEmbed && !isFallbackToEmbed) {
+            exoRetryCount = 0
             val httpDataSourceFactory = DefaultHttpDataSource.Factory()
                 .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                .setDefaultRequestProperties(
-                    mapOf(
-                        "Referer" to "https://ophim17.cc/",
-                        "Origin" to "https://ophim17.cc"
-                    )
-                )
+                .setConnectTimeoutMs(15_000)
+                .setReadTimeoutMs(30_000)
                 .setAllowCrossProtocolRedirects(true)
 
             val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
@@ -126,9 +136,24 @@ fun PlayerScreen(
             android.util.Log.d("PlayerScreen", "Loading ExoPlayer stream: ${source.streamUrl}")
 
             exoPlayer.addListener(object : androidx.media3.common.Player.Listener {
-                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    android.util.Log.e("PlayerScreen", "ExoPlayer error: ${error.message}. Triggering WebView embed fallback.", error)
-                    isFallbackToEmbed = true
+                override fun onPlayerError(error: PlaybackException) {
+                    android.util.Log.e("PlayerScreen", "ExoPlayer error (attempt ${exoRetryCount + 1}/$maxRetries): ${error.message}", error)
+                    if (exoRetryCount < maxRetries && source.streamUrl.isNotEmpty()) {
+                        exoRetryCount++
+                        android.util.Log.d("PlayerScreen", "Retrying ExoPlayer (attempt $exoRetryCount)")
+                        exoPlayer.stop()
+                        val retryMediaItem = MediaItem.fromUri(source.streamUrl)
+                        if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                            val retryHlsSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(retryMediaItem)
+                            exoPlayer.setMediaSource(retryHlsSource)
+                        } else {
+                            exoPlayer.setMediaItem(retryMediaItem)
+                        }
+                        exoPlayer.prepare()
+                        exoPlayer.playWhenReady = true
+                    } else {
+                        isFallbackToEmbed = true
+                    }
                 }
             })
 
@@ -140,6 +165,7 @@ fun PlayerScreen(
                 exoPlayer.setMediaItem(mediaItem)
             }
             exoPlayer.prepare()
+            exoPlayer.playWhenReady = true
         }
     }
 
