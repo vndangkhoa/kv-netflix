@@ -8,40 +8,18 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.streamflix.tv"
-        minSdk = 21
+        applicationId = "com.streamflow.tv"
+        minSdk = 24
         targetSdk = 35
         versionCode = 104
         versionName = "1.0.3"
-    }
-
-    signingConfigs {
-        create("release") {
-            val ksFile = file("${project.rootDir}/../release.keystore")
-            if (ksFile.exists()) {
-                storeFile = ksFile
-                storePassword = "kvnetflixsecret"
-                keyAlias = "kvnetflix"
-                keyPassword = "kvnetflixsecret"
-                enableV1Signing = true
-                enableV2Signing = true
-            } else {
-                val debugConfig = signingConfigs.getByName("debug")
-                storeFile = debugConfig.storeFile
-                storePassword = debugConfig.storePassword
-                keyAlias = debugConfig.keyAlias
-                keyPassword = debugConfig.keyPassword
-                enableV1Signing = true
-                enableV2Signing = true
-            }
-        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
