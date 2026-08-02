@@ -259,7 +259,7 @@ export const HomeContent = () => {
                         rowId="latestUpdates"
                         title={t.latestUpdates}
                         category="home"
-                        cardAspect="landscape"
+                        cardAspect="poster"
                         excludeIds={getExcludeIds("latestUpdates")}
                         onMoviesLoaded={handleRowMoviesLoaded}
                     />
