@@ -1,4 +1,4 @@
-name: StreamFlow CI/CD
+name: kv-netflix CI/CD
 
 on:
   push:
@@ -116,6 +116,34 @@ jobs:
           path: android-tv/app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
+  android-mobile-build:
+    name: Android Mobile Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+      
+      - name: Grant execute permission
+        run: chmod +x android-app/gradlew
+      
+      - name: Build Debug APK
+        working-directory: android-app
+        run: ./gradlew assembleDebug --no-daemon
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-mobile-debug
+          path: android-app/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -133,7 +161,7 @@ jobs:
           context: .
           push: false
           load: true
-          tags: streamflow:test
+          tags: kv-netflix:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
@@ -141,7 +169,7 @@ jobs:
         run: |
           docker run -d --name test -p 8000:8000 \
             -e TMDB_API_KEY=test \
-            streamflow:test
+            kv-netflix:test
           sleep 10
           curl -f http://localhost:8000/api/health || exit 1
           docker stop test
