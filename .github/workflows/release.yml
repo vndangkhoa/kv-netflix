@@ -60,38 +60,16 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: 'gradle'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Build Web App
-        run: |
-          cd frontend
-          npm run build
-
-      - name: Sync Capacitor
-        run: |
-          cd frontend
-          npx cap sync android --deployment
-
       - name: Grant execute permission
-        run: chmod +x frontend/android/gradlew
+        run: chmod +x android-app/gradlew
       
       - name: Build Mobile APK
         run: |
-          cd frontend/android
+          cd android-app
           ./gradlew assembleDebug --no-daemon
       
       - name: Rename APK
-        run: mv frontend/android/app/build/outputs/apk/debug/app-debug.apk StreamFlix.apk
+        run: mv android-app/app/build/outputs/apk/debug/app-debug.apk StreamFlix.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
