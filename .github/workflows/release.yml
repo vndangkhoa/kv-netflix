@@ -35,13 +35,13 @@ jobs:
           ./gradlew assembleDebug --no-daemon
       
       - name: Rename APK
-        run: mv android-tv/app/build/outputs/apk/debug/app-debug.apk StreamFlix-TV.apk
+        run: mv android-tv/app/build/outputs/apk/debug/app-debug.apk kv-netflix-tv-${{ github.ref_name }}.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: tv-apk
-          path: StreamFlix-TV.apk
+          path: kv-netflix-tv-${{ github.ref_name }}.apk
 
   # ====================
   # Build Android Mobile APK
@@ -69,13 +69,13 @@ jobs:
           ./gradlew assembleDebug --no-daemon
       
       - name: Rename APK
-        run: mv android-app/app/build/outputs/apk/debug/app-debug.apk StreamFlix.apk
+        run: mv android-app/app/build/outputs/apk/debug/app-debug.apk kv-netflix-mobile-${{ github.ref_name }}.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: mobile-apk
-          path: StreamFlix.apk
+          path: kv-netflix-mobile-${{ github.ref_name }}.apk
 
   # ====================
   # Create GitHub Release
@@ -107,10 +107,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.version.outputs.version }} - StreamFlix Release
+          name: Release ${{ steps.version.outputs.version }} - Android TV & Mobile App Update
           files: |
-            StreamFlix-TV.apk
-            StreamFlix.apk
+            kv-netflix-tv-${{ steps.version.outputs.version }}.apk
+            kv-netflix-mobile-${{ steps.version.outputs.version }}.apk
           generate_release_notes: true
           draft: false
           prerelease: false
