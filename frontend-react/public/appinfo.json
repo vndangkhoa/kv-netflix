@@ -1,0 +1,19 @@
+{
+  "id": "com.kvnetflix.app",
+  "version": "1.0.0",
+  "vendor": "KV Netflix",
+  "type": "web",
+  "main": "index.html",
+  "title": "KV Netflix",
+  "icon": "favicon.png",
+  "largeIcon": "apple-touch-icon.png",
+  "bgImage": "pwa-512x512.png",
+  "bgColor": "#141414",
+  "iconColor": "#E50914",
+  "resolution": "1920x1080",
+  "handlesPageVisibilityInStateChange": true,
+  "requiredPermissions": [
+    "network",
+    "media"
+  ]
+}

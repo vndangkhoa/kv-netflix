@@ -58,7 +58,8 @@ export default function MyList() {
                             <button
                                 key={id}
                                 onClick={() => setTab(id)}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${
+                                tabIndex={0}
+                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all whitespace-nowrap focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${
                                     currentTab === id
                                         ? 'bg-accent text-white shadow-sm shadow-accent/20'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'

@@ -3,45 +3,17 @@ import { Link } from 'react-router-dom';
 import { Play, Image as ImageIcon } from 'lucide-react';
 import type { Movie } from '../types';
 
+const loadedImageCache = new Set<string>();
+
 interface MovieCardProps {
     movie: Movie;
     className?: string;
     isDragging?: boolean;
+    aspectRatio?: 'poster' | 'landscape';
 }
 
-export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCardProps) => {
-    const [imgLoaded, setImgLoaded] = useState(false);
-    const [imgError, setImgError] = useState(false);
-    const [isVisible, setIsVisible] = useState(false);
-    const cardRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const el = cardRef.current;
-        if (!el) return;
-        const observer = new IntersectionObserver(
-            ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
-            { rootMargin: '400px' }
-        );
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
-
-    const progressPercent = movie.watchedTimestamp && movie.duration
-        ? (movie.watchedTimestamp / movie.duration) * 100
-        : 0;
-
-    const formatTime = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        return `${m}:${s.toString().padStart(2, '0')}`;
-    };
-
-    const remainingTime = movie.watchedTimestamp && movie.duration
-        ? movie.duration - movie.watchedTimestamp
-        : 0;
-
+export const MovieCard = ({ movie, className = '', isDragging = false, aspectRatio = 'poster' }: MovieCardProps) => {
+    const targetUrl = aspectRatio === 'landscape' ? (movie.backdrop || movie.thumbnail) : movie.thumbnail;
     const getRawImageUrl = (url: string) => {
         if (!url) return '';
         if (url.includes('{') && url.includes('}')) {
@@ -61,15 +33,61 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
         return url;
     };
 
-    const rawUrl = getRawImageUrl(movie.thumbnail);
-    const proxyUrl = rawUrl ? `/api/images/proxy?url=${encodeURIComponent(rawUrl)}&width=300` : '';
+    const rawUrl = getRawImageUrl(targetUrl);
+    const imageWidth = aspectRatio === 'landscape' ? 480 : 300;
+    const proxyUrl = rawUrl ? `/api/images/proxy?url=${encodeURIComponent(rawUrl)}&width=${imageWidth}` : '';
+
+    const isAlreadyCached = loadedImageCache.has(proxyUrl) || loadedImageCache.has(rawUrl);
+
     const [imgSrc, setImgSrc] = useState(proxyUrl);
+    const [imgLoaded, setImgLoaded] = useState(isAlreadyCached);
+    const [imgError, setImgError] = useState(false);
+    const [isVisible, setIsVisible] = useState(isAlreadyCached);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isAlreadyCached) return;
+        const el = cardRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
+            { rootMargin: '400px' }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [isAlreadyCached]);
+
+    const progressPercent = movie.watchedTimestamp && movie.duration
+        ? (movie.watchedTimestamp / movie.duration) * 100
+        : 0;
+
+    const formatTime = (seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const remainingTime = movie.watchedTimestamp && movie.duration
+        ? movie.duration - movie.watchedTimestamp
+        : 0;
 
     useEffect(() => {
         setImgSrc(proxyUrl);
         setImgError(false);
-        setImgLoaded(false);
-    }, [proxyUrl]);
+        if (loadedImageCache.has(proxyUrl) || loadedImageCache.has(rawUrl)) {
+            setImgLoaded(true);
+        } else {
+            setImgLoaded(false);
+        }
+    }, [proxyUrl, rawUrl]);
+
+    const handleImgLoad = () => {
+        if (proxyUrl) loadedImageCache.add(proxyUrl);
+        if (rawUrl) loadedImageCache.add(rawUrl);
+        setImgLoaded(true);
+    };
 
     const handleImgError = () => {
         if (imgSrc !== rawUrl && rawUrl) {
@@ -79,24 +97,32 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
         }
     };
 
+    const aspectClass = aspectRatio === 'landscape' ? 'aspect-video' : 'aspect-[2/3]';
+
     return (
         <div ref={cardRef} className={`group/card relative flex flex-col h-full ${className}`}>
             <Link
                 to={`/watch/${movie.slug}`}
-                className={`block relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-accent/15 border border-black/5 dark:border-white/5 transition-all duration-500 ${isDragging ? 'pointer-events-none' : ''}`}
+                tabIndex={0}
+                onFocus={(e) => {
+                    e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className={`block relative ${aspectClass} rounded-xl overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-accent/15 border border-black/5 dark:border-white/5 transition-all duration-500 tv-card-focus focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${isDragging ? 'pointer-events-none' : ''}`}
                 draggable={false}
             >
                 {isVisible && !imgError ? (
                     <>
                         <div
-                            className={`absolute inset-0 bg-[var(--bg-tertiary)] transition-opacity duration-500 ${imgLoaded ? 'opacity-0' : 'opacity-100'}`}
+                            className={`absolute inset-0 bg-[var(--bg-tertiary)] transition-opacity duration-300 ${imgLoaded ? 'opacity-0' : 'opacity-100'}`}
                         />
                         <img
                             src={imgSrc || rawUrl}
                             alt={movie.title}
-                            onLoad={() => setImgLoaded(true)}
+                            loading="lazy"
+                            decoding="async"
+                            onLoad={handleImgLoad}
                             onError={handleImgError}
-                            className={`w-full h-full object-cover transition-all duration-700 group-hover/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                            className={`w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110 group-focus-within/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
                             draggable={false}
                         />
                     </>
@@ -107,9 +133,9 @@ export const MovieCard = ({ movie, className = '', isDragging = false }: MovieCa
                     </div>
                 )}
 
-                {/* Hover Play Button Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-all duration-500 flex items-center justify-center">
-                    <div className="bg-accent/90 text-white p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 hover:scale-115 transition-all duration-500 shadow-2xl shadow-accent/20 border border-accent/25">
+                {/* Hover / Focus Play Button Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-all duration-500 flex items-center justify-center">
+                    <div className="bg-accent/90 text-white p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 group-focus-within/card:translate-y-0 hover:scale-115 transition-all duration-500 shadow-2xl shadow-accent/20 border border-accent/25">
                         <Play className="w-5 h-5 text-white fill-current" />
                     </div>
                 </div>

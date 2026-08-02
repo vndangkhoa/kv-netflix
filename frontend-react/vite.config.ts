@@ -53,6 +53,10 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    target: ['es2015', 'chrome53'],
+    cssTarget: ['chrome53'],
+  },
   test: {
     globals: true,
     environment: 'jsdom',

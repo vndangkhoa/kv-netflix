@@ -205,6 +205,7 @@ export const HomeContent = () => {
                                 rowId="continueWatching"
                                 title={t.continueWatching}
                                 movies={continueWatching}
+                                cardAspect="landscape"
                                 onMoviesLoaded={handleRowMoviesLoaded}
                             />
                         )}
@@ -213,6 +214,7 @@ export const HomeContent = () => {
                                 rowId="myList"
                                 title={t.myList}
                                 movies={savedMovies}
+                                cardAspect="poster"
                                 excludeIds={getExcludeIds("myList")}
                                 onMoviesLoaded={handleRowMoviesLoaded}
                             />
@@ -224,7 +226,7 @@ export const HomeContent = () => {
                 {recommendations.length > 0 && (
                     <section>
                         {recommendations.map(rec => (
-                            <MovieRow key={rec.id} title={rec.title} category={rec.category} />
+                            <MovieRow key={rec.id} title={rec.title} category={rec.category} cardAspect="landscape" />
                         ))}
                     </section>
                 )}
@@ -236,6 +238,7 @@ export const HomeContent = () => {
                             <MovieRow
                                 title={`${t.director} ${lastWatched.director.replace(/,$/, '').trim()}`}
                                 searchQuery={lastWatched.director.replace(/,$/, '').trim()}
+                                cardAspect="poster"
                                 key={`dir-${lastWatched.id}`}
                             />
                         )}
@@ -243,6 +246,7 @@ export const HomeContent = () => {
                             <MovieRow
                                 title={`${t.castMember} ${lastWatched.cast[0].replace(/,$/, '').trim()}`}
                                 searchQuery={lastWatched.cast[0].replace(/,$/, '').trim()}
+                                cardAspect="poster"
                                 key={`act-${lastWatched.id}`}
                             />
                         )}
@@ -255,6 +259,7 @@ export const HomeContent = () => {
                         rowId="latestUpdates"
                         title={t.latestUpdates}
                         category="home"
+                        cardAspect="landscape"
                         excludeIds={getExcludeIds("latestUpdates")}
                         onMoviesLoaded={handleRowMoviesLoaded}
                     />
@@ -262,13 +267,14 @@ export const HomeContent = () => {
 
                 {/* Top 10 by Category */}
                 <section>
-                    {CATEGORIES.filter(c => c.id !== 'my-list').map(cat => (
+                    {CATEGORIES.filter(c => c.id !== 'my-list').map((cat, idx) => (
                         <MovieRow
                             key={cat.id}
                             rowId={`cat-${cat.id}`}
                             title={`Top 10 ${cat.id === 'han-quoc' ? 'K-drama' : cat.id === 'trung-quoc' ? 'C-drama' : t[cat.nameKey as keyof typeof t] || cat.nameKey}`}
                             category={cat.id}
                             limit={10}
+                            cardAspect={idx % 2 === 1 ? 'landscape' : 'poster'}
                             excludeIds={getExcludeIds(`cat-${cat.id}`)}
                             onMoviesLoaded={handleRowMoviesLoaded}
                         />

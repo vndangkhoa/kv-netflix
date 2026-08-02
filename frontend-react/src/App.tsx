@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 
+import { useWebOS } from './hooks/useWebOS';
+import { useTVNavigation } from './hooks/useTVNavigation';
+
 const Home = lazy(() => import('./pages/Home'));
 const Watch = lazy(() => import('./pages/Watch'));
 const MyList = lazy(() => import('./pages/MyList'));
@@ -16,11 +19,18 @@ function LoadingSpinner() {
   );
 }
 
+function TVController() {
+  useWebOS();
+  useTVNavigation();
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <Router>
+          <TVController />
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               <Route path="/" element={<Home />} />

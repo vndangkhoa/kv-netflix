@@ -49,14 +49,16 @@ export default function DeviceLoginPage() {
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         maxLength={6}
-                        className="w-full px-3 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl text-[var(--text-primary)] text-center text-3xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        tabIndex={0}
+                        className="w-full px-3 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl text-[var(--text-primary)] text-center text-3xl tracking-[0.5em] font-mono focus:outline-none focus:ring-4 focus:ring-accent focus-visible:scale-105 transition-all"
                         placeholder="000000"
                         autoFocus
                     />
                     <button
                         type="submit"
                         disabled={code.length < 6 || loading}
-                        className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors"
+                        tabIndex={0}
+                        className="w-full py-3 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105"
                     >
                         {loading ? t.loggingIn : t.login}
                     </button>
@@ -64,7 +66,7 @@ export default function DeviceLoginPage() {
 
                 <p className="text-center text-xs text-[var(--text-muted)] mt-6">
                     {t.noAccount}{' '}
-                    <button onClick={() => navigate('/')} className="text-cyan-500 hover:text-cyan-400 font-medium">
+                    <button onClick={() => navigate('/')} tabIndex={0} className="text-accent hover:text-accent-hover font-medium focus-visible:ring-2 focus-visible:ring-accent rounded px-1">
                         {t.backToHome}
                     </button>
                 </p>

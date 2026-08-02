@@ -4,6 +4,7 @@ import { Search, X, User, Globe, ChevronDown, Download } from 'lucide-react';
 import { CATEGORIES, GENRES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
+import { registerWebOSBackHandler } from '../hooks/useWebOS';
 import { AppDownloadModal } from './AppDownloadModal';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
@@ -130,6 +131,18 @@ const Navbar = () => {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [showMore]);
+
+    useEffect(() => {
+        return registerWebOSBackHandler(() => {
+            if (authModal) { setAuthModal(null); return true; }
+            if (showPairModal) { setShowPairModal(false); return true; }
+            if (showDownloadModal) { setShowDownloadModal(false); return true; }
+            if (searchOpen) { setSearchOpen(false); return true; }
+            if (showSuggestions) { setShowSuggestions(false); return true; }
+            if (showMore) { setShowMore(false); return true; }
+            return false;
+        });
+    }, [authModal, showPairModal, showDownloadModal, searchOpen, showSuggestions, showMore]);
 
     useEffect(() => {
         setShowMore(false);

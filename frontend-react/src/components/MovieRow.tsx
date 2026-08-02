@@ -12,6 +12,7 @@ interface MovieRowProps {
     searchQuery?: string;
     limit?: number;
     layout?: 'row' | 'grid';
+    cardAspect?: 'poster' | 'landscape';
     movies?: Movie[];
     excludeIds?: Set<string>;
     onMoviesLoaded?: (rowId: string, movies: Movie[]) => void;
@@ -45,7 +46,9 @@ function deduplicateMovies(list: Movie[], excludeIds?: Set<string>): Movie[] {
     return unique;
 }
 
-const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', movies: manualMovies, excludeIds, onMoviesLoaded }: MovieRowProps) => {
+const rowFetchCache = new Map<string, Movie[]>();
+
+const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', cardAspect = 'poster', movies: manualMovies, excludeIds, onMoviesLoaded }: MovieRowProps) => {
     const { t } = useLang();
     const [movies, setMovies] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(true);
@@ -55,6 +58,7 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
     const startX = useRef(0);
     const scrollLeft = useRef(0);
     const prevLoadedKeysRef = useRef<string>('');
+    const prevRenderedKeysRef = useRef<string>('');
 
     useEffect(() => {
         const fetchMovies = async () => {
@@ -63,9 +67,12 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                 if (limit && result.length > 0) {
                     result = result.slice(0, limit);
                 }
-                setMovies(result);
-                setLoading(false);
                 const keys = result.map(m => m.id || m.slug || m.title).join(',');
+                if (prevRenderedKeysRef.current !== keys) {
+                    prevRenderedKeysRef.current = keys;
+                    setMovies(result);
+                }
+                setLoading(false);
                 if (rowId && onMoviesLoaded && prevLoadedKeysRef.current !== keys) {
                     prevLoadedKeysRef.current = keys;
                     onMoviesLoaded(rowId, result);
@@ -83,15 +90,28 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                     endpoint = '/api/videos/home';
                 }
 
-                const res = await fetch(endpoint);
-                const data = await res.json();
-                let result = deduplicateMovies(data || [], excludeIds);
+                let data: Movie[];
+                if (rowFetchCache.has(endpoint)) {
+                    data = rowFetchCache.get(endpoint)!;
+                } else {
+                    const res = await fetch(endpoint);
+                    data = (await res.json()) || [];
+                    if (Array.isArray(data) && data.length > 0) {
+                        rowFetchCache.set(endpoint, data);
+                    }
+                }
+
+                let result = deduplicateMovies(data, excludeIds);
 
                 if (limit && result.length > 0) {
                     result = result.slice(0, limit);
                 }
-                setMovies(result);
+
                 const keys = result.map(m => m.id || m.slug || m.title).join(',');
+                if (prevRenderedKeysRef.current !== keys) {
+                    prevRenderedKeysRef.current = keys;
+                    setMovies(result);
+                }
                 if (rowId && onMoviesLoaded && prevLoadedKeysRef.current !== keys) {
                     prevLoadedKeysRef.current = keys;
                     onMoviesLoaded(rowId, result);
@@ -113,6 +133,18 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
         }
     };
 
+    const cardWidthClass = cardAspect === 'landscape'
+        ? 'w-[200px] sm:w-[240px] md:w-[280px] lg:w-[320px] xl:w-[360px]'
+        : 'w-[115px] sm:w-[140px] md:w-[165px] lg:w-[190px] xl:w-[215px]';
+
+    const skeletonWidthClass = cardAspect === 'landscape'
+        ? 'min-w-[200px] sm:min-w-[240px] md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] aspect-video'
+        : 'min-w-[115px] sm:min-w-[140px] md:min-w-[165px] lg:min-w-[190px] xl:min-w-[215px] aspect-[2/3]';
+
+    const gridColsClass = cardAspect === 'landscape'
+        ? 'grid-cols-2 min-[480px]:grid-cols-3 lg:grid-cols-4'
+        : 'grid-cols-3 min-[480px]:grid-cols-4 lg:grid-cols-6';
+
     if (loading) return (
         <div className="mb-8 space-y-4">
             <div className="h-6 w-48 bg-[var(--bg-elevated)] rounded-lg animate-pulse" />
@@ -121,14 +153,14 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                     {[...Array(6)].map((_, i) => (
                         <div 
                             key={i} 
-                            className="min-w-[115px] sm:min-w-[140px] md:min-w-[165px] lg:min-w-[190px] xl:min-w-[215px] aspect-[2/3] bg-[var(--bg-elevated)] rounded-xl animate-pulse" 
+                            className={`${skeletonWidthClass} bg-[var(--bg-elevated)] rounded-xl animate-pulse`} 
                         />
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-3 min-[480px]:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-4">
+                <div className={`grid ${gridColsClass} gap-2 md:gap-4`}>
                     {[...Array(12)].map((_, i) => (
-                        <div key={i} className="aspect-[2/3] bg-[var(--bg-elevated)] rounded-lg animate-pulse" />
+                        <div key={i} className={`${cardAspect === 'landscape' ? 'aspect-video' : 'aspect-[2/3]'} bg-[var(--bg-elevated)] rounded-lg animate-pulse`} />
                     ))}
                 </div>
             )}
@@ -179,7 +211,8 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                 {category && (
                     <Link 
                         to={`/?category=${category}`} 
-                        className="text-[9px] font-bold text-[var(--text-dim)] hover:text-accent ml-1.5 transition-colors uppercase tracking-widest"
+                        tabIndex={0}
+                        className="text-[9px] font-bold text-[var(--text-dim)] hover:text-accent focus-visible:text-accent focus-visible:ring-2 focus-visible:ring-accent ml-1.5 px-1 py-0.5 rounded transition-colors uppercase tracking-widest"
                     >
                         {t.viewAll}
                     </Link>
@@ -211,11 +244,12 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                         {movies.map((movie) => (
                             <div 
                                 key={movie.id} 
-                                className="w-[115px] sm:w-[140px] md:w-[165px] lg:w-[190px] xl:w-[215px] flex-shrink-0 snap-start"
+                                className={`${cardWidthClass} flex-shrink-0 snap-start`}
                             >
                                 <MovieCard
                                     movie={movie}
                                     isDragging={isDragging}
+                                    aspectRatio={cardAspect}
                                 />
                             </div>
                         ))}
@@ -232,9 +266,9 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-3 min-[480px]:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-4">
+                <div className={`grid ${gridColsClass} gap-2 md:gap-4`}>
                     {movies.map((movie) => (
-                        <MovieCard key={movie.id} movie={movie} />
+                        <MovieCard key={movie.id} movie={movie} aspectRatio={cardAspect} />
                     ))}
                 </div>
             )}

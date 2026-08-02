@@ -57,13 +57,15 @@ export default function LoginPage({ onClose, onSwitchToRegister, onSwitchToReset
             <div className="flex gap-1 bg-[var(--bg-tertiary)] rounded-lg p-1 mb-4">
                 <button
                     onClick={() => { setMode('password'); setError(''); }}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === 'password' ? 'bg-cyan-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                    tabIndex={0}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all focus-visible:ring-2 focus-visible:ring-accent ${mode === 'password' ? 'bg-accent text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
                 >
                     {t.email}
                 </button>
                 <button
                     onClick={() => { setMode('code'); setError(''); }}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === 'code' ? 'bg-cyan-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                    tabIndex={0}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all focus-visible:ring-2 focus-visible:ring-accent ${mode === 'code' ? 'bg-accent text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
                 >
                     {t.loginWithCode}
                 </button>
@@ -84,14 +86,15 @@ export default function LoginPage({ onClose, onSwitchToRegister, onSwitchToReset
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                            tabIndex={0}
+                            className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-4 focus:ring-accent focus-visible:scale-105 transition-all"
                             placeholder="email@example.com"
                         />
                     </div>
                     <div>
                         <div className="flex items-center justify-between mb-1">
                             <label className="block text-xs font-medium text-[var(--text-muted)]">{t.password}</label>
-                            <button type="button" onClick={onSwitchToReset} className="text-xs text-cyan-500 hover:text-cyan-400 transition-colors">
+                            <button type="button" onClick={onSwitchToReset} tabIndex={0} className="text-xs text-accent hover:text-accent-hover focus-visible:ring-2 focus-visible:ring-accent px-1 rounded transition-colors">
                                 {t.forgotPassword}
                             </button>
                         </div>
@@ -101,14 +104,16 @@ export default function LoginPage({ onClose, onSwitchToRegister, onSwitchToReset
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             minLength={6}
-                            className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                            tabIndex={0}
+                            className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-4 focus:ring-accent focus-visible:scale-105 transition-all"
                             placeholder="••••••"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors mt-1"
+                        tabIndex={0}
+                        className="w-full py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-all focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 mt-1"
                     >
                         {loading ? t.loggingIn : t.login}
                     </button>
@@ -121,14 +126,16 @@ export default function LoginPage({ onClose, onSwitchToRegister, onSwitchToReset
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         maxLength={6}
-                        className="w-full px-3 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        tabIndex={0}
+                        className="w-full px-3 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-4 focus:ring-accent focus-visible:scale-105 transition-all"
                         placeholder="000000"
                         autoFocus
                     />
                     <button
                         type="submit"
                         disabled={code.length < 6 || loading}
-                        className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+                        tabIndex={0}
+                        className="w-full py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-all focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105"
                     >
                         {loading ? t.loggingIn : t.login}
                     </button>
@@ -137,7 +144,7 @@ export default function LoginPage({ onClose, onSwitchToRegister, onSwitchToReset
 
             <p className="text-center text-xs text-[var(--text-muted)] mt-4">
                 {t.noAccount}{' '}
-                <button onClick={onSwitchToRegister} className="text-cyan-500 hover:text-cyan-400 font-medium">
+                <button onClick={onSwitchToRegister} tabIndex={0} className="text-accent hover:text-accent-hover font-medium focus-visible:ring-2 focus-visible:ring-accent rounded px-1">
                     {t.register}
                 </button>
             </p>

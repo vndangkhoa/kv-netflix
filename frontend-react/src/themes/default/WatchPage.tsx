@@ -10,6 +10,7 @@ import { useLang } from '../../context/LanguageContext';
 import { useMyList } from '../../hooks/useMyList';
 import { useAuth } from '../../context/AuthContext';
 import { syncAPI } from '../../api/client';
+import { registerWebOSBackHandler, WEBOS_KEY_CODES } from '../../hooks/useWebOS';
 
 function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
     const [count, setCount] = useState(10);
@@ -250,6 +251,58 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         };
     }, []);
 
+    // WebOS TV Remote Media Keys & Back Button integration
+    useEffect(() => {
+        const handleTVMediaKey = (e: KeyboardEvent) => {
+            const video = videoRef.current;
+            const plyr = plyrRef.current;
+            if (!video && !plyr) return;
+
+            switch (e.keyCode) {
+                case WEBOS_KEY_CODES.PLAY:
+                    if (plyr) plyr.play(); else video?.play();
+                    break;
+                case WEBOS_KEY_CODES.PAUSE:
+                    if (plyr) plyr.pause(); else video?.pause();
+                    break;
+                case WEBOS_KEY_CODES.PLAY_PAUSE:
+                    if (plyr) {
+                        if (plyr.playing) plyr.pause(); else plyr.play();
+                    } else if (video) {
+                        if (video.paused) video.play(); else video.pause();
+                    }
+                    break;
+                case WEBOS_KEY_CODES.FAST_FORWARD:
+                    if (plyr) plyr.forward(10); else if (video) video.currentTime += 10;
+                    break;
+                case WEBOS_KEY_CODES.REWIND:
+                    if (plyr) plyr.rewind(10); else if (video) video.currentTime -= 10;
+                    break;
+                case WEBOS_KEY_CODES.STOP:
+                    if (plyr) { plyr.stop(); } else if (video) { video.pause(); video.currentTime = 0; }
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleTVMediaKey);
+        return () => window.removeEventListener('keydown', handleTVMediaKey);
+    }, [videoRef]);
+
+    useEffect(() => {
+        return registerWebOSBackHandler(() => {
+            if (episodeEnded) {
+                dismissEndScreen();
+                return true;
+            }
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+                return true;
+            }
+            navigate('/');
+            return true;
+        });
+    }, [episodeEnded, dismissEndScreen, navigate]);
+
     // Do NOT call navigate() inside useEffect — it causes WatchPage to unmount and remount,
     // which destroys useWatchMovie's internal state (HLS instance, event listeners).
     // Let the URL update naturally when React Router detects route changes.
@@ -321,7 +374,8 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             <div className="fixed top-0 left-0 right-0 z-50 p-4 bg-gradient-to-b from-[var(--bg-primary)]/80 to-transparent pointer-events-none flex items-center justify-between">
                 <button
                     onClick={() => navigate('/')}
-                    className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)]/80 hover:bg-[var(--bg-elevated)] backdrop-blur-md rounded-full transition-all group border border-[var(--border-primary)] shadow-lg"
+                    tabIndex={0}
+                    className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)]/80 hover:bg-[var(--bg-elevated)] backdrop-blur-md rounded-full transition-all group border border-[var(--border-primary)] shadow-lg focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105"
                 >
                     <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)] group-hover:-translate-x-1 transition-transform" />
                     <span className="font-medium text-sm text-[var(--text-primary)]">{t.backToHome}</span>
@@ -506,7 +560,8 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     <div className="flex items-center gap-3 mb-5">
                         <button
                             onClick={handleToggleSave}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all border ${
+                            tabIndex={0}
+                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all border focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${
                                 isMovieSaved
                                     ? 'bg-accent-bg text-accent border-accent/30'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] border-[var(--border-subtle)]'
@@ -535,8 +590,9 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                         {serverNames.map(server => (
                                             <button
                                                 key={server}
+                                                tabIndex={0}
                                                 onClick={() => setSelectedServer(server)}
-                                                className={`px-3 py-1 text-xs font-bold rounded-full transition-all border ${selectedServer === server
+                                                className={`px-3 py-1 text-xs font-bold rounded-full transition-all border focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${selectedServer === server
                                                     ? 'bg-accent text-white border-accent'
                                                     : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]'
                                                     }`}
@@ -554,8 +610,9 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                             {visibleEpisodes.map((ep) => (
                                 <button
                                     key={`${ep.number}-${selectedServer}`}
+                                    tabIndex={0}
                                     onClick={() => handleEpisodeClick(ep.number)}
-                                    className={`group relative py-2 rounded-lg border transition-all duration-300 ${currentEpisode === ep.number
+                                    className={`group relative py-2 rounded-lg border transition-all duration-300 focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${currentEpisode === ep.number
                                         ? 'border-accent bg-accent-bg'
                                         : 'border-transparent bg-[var(--bg-tertiary)] hover:bg-[var(--bg-elevated)] hover:border-[var(--border-primary)]'
                                         }`}
@@ -578,7 +635,8 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                         {currentServerEpisodes.length > 20 && (
                             <button
                                 onClick={() => setExpanded(!expanded)}
-                                className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mt-4 mx-auto"
+                                tabIndex={0}
+                                className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-accent transition-colors mt-4 mx-auto p-1 rounded-lg"
                             >
                                 {expanded ? (
                                     <>Show Less <ChevronUp className="w-4 h-4" /></>
