@@ -62,6 +62,8 @@ release/
 *.apk
 !frontend-react/public/streamflow-tv.apk
 *.zip
+*.keystore
+*.jks
 
 # Environment and IDE
 .agent/
