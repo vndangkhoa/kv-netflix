@@ -8,7 +8,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.kvnetflix.mobile"
+        applicationId = "com.streamflix.app"
         minSdk = 23
         targetSdk = 35
         versionCode = 4
@@ -16,10 +16,32 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val ksFile = file("${project.rootDir}/../release.keystore")
+            if (ksFile.exists()) {
+                storeFile = ksFile
+                storePassword = "kvnetflixsecret"
+                keyAlias = "kvnetflix"
+                keyPassword = "kvnetflixsecret"
+                enableV1Signing = true
+                enableV2Signing = true
+            } else {
+                val debugConfig = signingConfigs.getByName("debug")
+                storeFile = debugConfig.storeFile
+                storePassword = debugConfig.storePassword
+                keyAlias = debugConfig.keyAlias
+                keyPassword = debugConfig.keyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")

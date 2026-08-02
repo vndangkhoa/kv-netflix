@@ -51,7 +51,9 @@ class UpdateManager(private val context: Context) {
 
     suspend fun downloadAndInstall(release: ReleaseInfo, onProgress: (Float) -> Unit) {
         withContext(Dispatchers.IO) {
-            val apkAsset = release.assets.find { it.name.endsWith(".apk", ignoreCase = true) }
+            val apkAsset = release.assets.find { it.name.contains("tv", ignoreCase = true) && it.name.endsWith(".apk", ignoreCase = true) }
+                ?: release.assets.find { !it.name.contains("mobile", ignoreCase = true) && it.name.endsWith(".apk", ignoreCase = true) }
+                ?: release.assets.find { it.name.endsWith(".apk", ignoreCase = true) }
             val downloadUrl = apkAsset?.downloadUrl ?: throw Exception("No APK asset found in release")
 
             val destination = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "kv-netflix-update.apk")

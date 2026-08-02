@@ -51,6 +51,7 @@ class UpdateManager(private val context: Context) {
         withContext(Dispatchers.IO) {
             // Find mobile apk asset first, fallback to any apk asset
             val apkAsset = release.assets.find { it.name.contains("mobile", ignoreCase = true) && it.name.endsWith(".apk", ignoreCase = true) }
+                ?: release.assets.find { !it.name.contains("tv", ignoreCase = true) && it.name.endsWith(".apk", ignoreCase = true) }
                 ?: release.assets.find { it.name.endsWith(".apk", ignoreCase = true) }
             val downloadUrl = apkAsset?.downloadUrl ?: throw Exception("No APK asset found in release")
 
