@@ -29,13 +29,13 @@ jobs:
       - name: Grant execute permission
         run: chmod +x android-tv/gradlew
       
-      - name: Build Debug APK
+      - name: Build Release APK
         run: |
           cd android-tv
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
       
       - name: Rename APK
-        run: mv android-tv/app/build/outputs/apk/debug/app-debug.apk kv-netflix-tv-${{ github.ref_name }}.apk
+        run: mv android-tv/app/build/outputs/apk/release/app-release.apk kv-netflix-tv-${{ github.ref_name }}.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -66,10 +66,10 @@ jobs:
       - name: Build Mobile APK
         run: |
           cd android-app
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
       
       - name: Rename APK
-        run: mv android-app/app/build/outputs/apk/debug/app-debug.apk kv-netflix-mobile-${{ github.ref_name }}.apk
+        run: mv android-app/app/build/outputs/apk/release/app-release.apk kv-netflix-mobile-${{ github.ref_name }}.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
