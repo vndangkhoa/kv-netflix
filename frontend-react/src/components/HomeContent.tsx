@@ -205,7 +205,7 @@ export const HomeContent = () => {
                                 rowId="continueWatching"
                                 title={t.continueWatching}
                                 movies={continueWatching}
-                                cardAspect="landscape"
+                                cardAspect="poster"
                                 onMoviesLoaded={handleRowMoviesLoaded}
                             />
                         )}
@@ -226,7 +226,7 @@ export const HomeContent = () => {
                 {recommendations.length > 0 && (
                     <section>
                         {recommendations.map(rec => (
-                            <MovieRow key={rec.id} title={rec.title} category={rec.category} cardAspect="landscape" />
+                            <MovieRow key={rec.id} title={rec.title} category={rec.category} cardAspect="poster" />
                         ))}
                     </section>
                 )}
@@ -268,16 +268,16 @@ export const HomeContent = () => {
                 {/* Top 10 by Category */}
                 <section>
                     {CATEGORIES.filter(c => c.id !== 'my-list').map((cat, idx) => (
-                        <MovieRow
-                            key={cat.id}
-                            rowId={`cat-${cat.id}`}
-                            title={`Top 10 ${cat.id === 'han-quoc' ? 'K-drama' : cat.id === 'trung-quoc' ? 'C-drama' : t[cat.nameKey as keyof typeof t] || cat.nameKey}`}
-                            category={cat.id}
-                            limit={10}
-                            cardAspect={idx % 2 === 1 ? 'landscape' : 'poster'}
-                            excludeIds={getExcludeIds(`cat-${cat.id}`)}
-                            onMoviesLoaded={handleRowMoviesLoaded}
-                        />
+                            <MovieRow
+                                key={cat.id}
+                                rowId={`cat-${cat.id}`}
+                                title={`Top 10 ${cat.id === 'han-quoc' ? 'K-drama' : cat.id === 'trung-quoc' ? 'C-drama' : t[cat.nameKey as keyof typeof t] || cat.nameKey}`}
+                                category={cat.id}
+                                limit={10}
+                                cardAspect="poster"
+                                excludeIds={getExcludeIds(`cat-${cat.id}`)}
+                                onMoviesLoaded={handleRowMoviesLoaded}
+                            />
                     ))}
                 </section>
 
