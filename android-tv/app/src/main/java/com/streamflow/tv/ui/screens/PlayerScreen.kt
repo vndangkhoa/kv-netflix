@@ -9,17 +9,40 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,8 +51,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -37,6 +60,7 @@ import androidx.tv.material3.Text
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.PlayerViewModel
 import java.io.ByteArrayInputStream
+import kotlinx.coroutines.delay
 
 private val AD_BLOCK_DOMAINS = listOf(
     "googleads.g.doubleclick.net",
@@ -166,6 +190,100 @@ private const val AUTO_PLAY_JS = """
 })();
 """
 
+private fun formatTimeMs(millis: Long): String {
+    if (millis <= 0) return "00:00"
+    val totalSeconds = millis / 1000
+    val seconds = totalSeconds % 60
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
+    return if (hours > 0) {
+        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
+private fun TvPlayerControlButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    text: String? = null,
+    isPrimary: Boolean = false,
+    focusRequester: FocusRequester? = null
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(targetValue = if (isFocused) 1.22f else 1.0f, label = "button_scale")
+
+    val bgBrush = if (isFocused) {
+        Brush.radialGradient(
+            colors = listOf(Color(0xFFE50914), Color(0xFFB20710))
+        )
+    } else if (isPrimary) {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xDD333333), Color(0xDD222222))
+        )
+    } else {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xAA111111), Color(0xAA111111))
+        )
+    }
+
+    val borderStroke = if (isFocused) {
+        BorderStroke(3.dp, Color.White)
+    } else {
+        BorderStroke(1.dp, Color(0x44FFFFFF))
+    }
+
+    Surface(
+        modifier = modifier
+            .scale(scale)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(32.dp),
+        color = Color.Transparent,
+        border = borderStroke
+    ) {
+        Box(
+            modifier = Modifier
+                .background(bgBrush)
+                .padding(
+                    horizontal = if (text != null && icon != null) 16.dp else if (isPrimary) 20.dp else 14.dp,
+                    vertical = if (isPrimary) 16.dp else 12.dp
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = text ?: "Control",
+                        tint = if (isFocused) Color.White else Color(0xDDFFFFFF),
+                        modifier = Modifier.size(if (isPrimary) 36.dp else 26.dp)
+                    )
+                }
+                if (icon != null && text != null) {
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (text != null) {
+                    Text(
+                        text = text,
+                        style = StreamFlowTheme.typography.labelMedium.copy(
+                            color = if (isFocused) Color.White else Color(0xDDFFFFFF),
+                            fontWeight = if (isFocused) FontWeight.Bold else FontWeight.Medium
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(UnstableApi::class)
 @kotlin.OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -180,6 +298,13 @@ fun PlayerScreen(
     val context = LocalContext.current
     val colors = StreamFlowTheme.colors
     var isFallbackToEmbed by remember { mutableStateOf(false) }
+
+    // Keep screen awake while in PlayerScreen
+    DisposableEffect(Unit) {
+        val activity = context as? android.app.Activity
+        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { }
+    }
 
     LaunchedEffect(slug, episode, server) {
         isFallbackToEmbed = false
@@ -246,7 +371,21 @@ fun PlayerScreen(
         }
     }
 
-    // Configure ExoPlayer media source with retry and optimized settings
+    // Player position & play state tracking for overlay
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(0L) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+            duration = exoPlayer.duration.coerceAtLeast(0L)
+            isPlaying = exoPlayer.isPlaying
+            delay(500)
+        }
+    }
+
+    // Configure ExoPlayer media source with retry
     var exoRetryCount by remember { mutableIntStateOf(0) }
     val maxRetries = 3
 
@@ -305,12 +444,46 @@ fun PlayerScreen(
         }
     }
 
-    val focusRequester = remember { FocusRequester() }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var showControls by remember { mutableStateOf(true) }
+    var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val playButtonFocusRequester = remember { FocusRequester() }
+
+    // Auto-hide controls overlay after inactivity
+    LaunchedEffect(showControls, lastInteraction) {
+        if (showControls) {
+            delay(4500)
+            showControls = false
+        }
+    }
+
+    // Request initial focus on play button when controls appear
+    LaunchedEffect(showControls) {
+        if (showControls) {
+            delay(100)
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (e: Exception) { }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    lastInteraction = System.currentTimeMillis()
+                    if (!showControls) {
+                        showControls = true
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
     ) {
         val currentSource = uiState.source
         val shouldUseEmbed = currentSource?.isEmbed == true || isFallbackToEmbed
@@ -406,32 +579,11 @@ fun PlayerScreen(
                             }
                         }
 
-                        // Allow WebView to capture TV remote D-Pad OK key
-                        setOnKeyListener { v, keyCode, event ->
-                            if (event.action == KeyEvent.ACTION_DOWN && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
-                                (v as? WebView)?.evaluateJavascript(
-                                    """
-                                    (function() {
-                                        var v = document.querySelector('video');
-                                        if (v) {
-                                            if (v.paused) v.play(); else v.pause();
-                                        }
-                                    })();
-                                    """.trimIndent(), null
-                                )
-                                true
-                            } else {
-                                false
-                            }
-                        }
-
+                        webViewRef = this
                         loadUrl(currentSource.streamUrl)
                     }
                 },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .focusRequester(focusRequester)
-                    .focusable()
+                modifier = Modifier.fillMaxSize()
             )
         } else if (currentSource != null) {
             // ExoPlayer Native Player View
@@ -439,24 +591,183 @@ fun PlayerScreen(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = forwardingPlayer
-                        useController = true
-                        setShowNextButton(true)
-                        setShowPreviousButton(true)
-                        controllerShowTimeoutMs = 3500
+                        useController = false
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
                     }
                 },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // TV Overlay Controls with D-Pad focus feedback
+        AnimatedVisibility(
+            visible = showControls && !uiState.isLoading && uiState.error == null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .focusRequester(focusRequester)
-                    .focusable()
-            )
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xCC000000),
+                                Color(0x44000000),
+                                Color(0xEE000000)
+                            )
+                        )
+                    )
+                    .padding(32.dp)
+            ) {
+                // Top Bar: Back button & Title info
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopStart),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TvPlayerControlButton(
+                        onClick = { (context as? android.app.Activity)?.finish() },
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        text = "Back"
+                    )
 
-            LaunchedEffect(Unit) {
-                focusRequester.requestFocus()
+                    Spacer(Modifier.width(20.dp))
+
+                    Column {
+                        Text(
+                            text = uiState.movie?.title ?: "StreamFlow Player",
+                            style = StreamFlowTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        val epInfo = "Episode ${uiState.currentEpisode}" +
+                                if (uiState.selectedServer.isNotBlank()) " • ${uiState.selectedServer}" else ""
+                        Text(
+                            text = epInfo,
+                            style = StreamFlowTheme.typography.bodyMedium,
+                            color = Color(0xCCFFFFFF)
+                        )
+                    }
+                }
+
+                // Center Bar: Playback Controls (Prev, Rewind, Play/Pause, FastForward, Next)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Previous Episode Button
+                    TvPlayerControlButton(
+                        onClick = {
+                            if (uiState.currentEpisode > 1) {
+                                viewModel.changeEpisode(uiState.currentEpisode - 1)
+                            }
+                        },
+                        icon = Icons.Default.SkipPrevious
+                    )
+
+                    // Rewind 10s Button
+                    TvPlayerControlButton(
+                        onClick = {
+                            if (!shouldUseEmbed) {
+                                exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0))
+                            } else {
+                                webViewRef?.evaluateJavascript(
+                                    "(function(){ var v=document.querySelector('video'); if(v) v.currentTime=Math.max(0, v.currentTime-10); })();", null
+                                )
+                            }
+                        },
+                        icon = Icons.Default.FastRewind
+                    )
+
+                    // Play / Pause Button (Primary Focus Target)
+                    TvPlayerControlButton(
+                        onClick = {
+                            if (!shouldUseEmbed) {
+                                if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                                isPlaying = exoPlayer.isPlaying
+                            } else {
+                                isPlaying = !isPlaying
+                                webViewRef?.evaluateJavascript(
+                                    "(function(){ var v=document.querySelector('video'); if(v){ if(v.paused) v.play(); else v.pause(); } })();", null
+                                )
+                            }
+                        },
+                        icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        isPrimary = true,
+                        focusRequester = playButtonFocusRequester
+                    )
+
+                    // Fast Forward 10s Button
+                    TvPlayerControlButton(
+                        onClick = {
+                            if (!shouldUseEmbed) {
+                                exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(exoPlayer.duration))
+                            } else {
+                                webViewRef?.evaluateJavascript(
+                                    "(function(){ var v=document.querySelector('video'); if(v) v.currentTime += 10; })();", null
+                                )
+                            }
+                        },
+                        icon = Icons.Default.FastForward
+                    )
+
+                    // Next Episode Button
+                    TvPlayerControlButton(
+                        onClick = {
+                            val eps = uiState.movie?.episodes ?: emptyList()
+                            val maxEp = if (eps.isNotEmpty()) eps.maxOf { it.number } else uiState.currentEpisode + 1
+                            if (uiState.currentEpisode < maxEp) {
+                                viewModel.changeEpisode(uiState.currentEpisode + 1)
+                            }
+                        },
+                        icon = Icons.Default.SkipNext
+                    )
+                }
+
+                // Bottom Bar: Progress Indicator & Duration
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 8.dp)
+                ) {
+                    val progressFloat = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = formatTimeMs(currentPosition),
+                            style = StreamFlowTheme.typography.bodyMedium,
+                            color = Color.White
+                        )
+                        Text(
+                            text = formatTimeMs(duration),
+                            style = StreamFlowTheme.typography.bodyMedium,
+                            color = Color(0xAAFFFFFF)
+                        )
+                    }
+
+                    Spacer(Modifier.height(6.dp))
+
+                    LinearProgressIndicator(
+                        progress = { progressFloat },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp),
+                        color = Color(0xFFE50914),
+                        trackColor = Color(0x44FFFFFF)
+                    )
+                }
             }
         }
     }

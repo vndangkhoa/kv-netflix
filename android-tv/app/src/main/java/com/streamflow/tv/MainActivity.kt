@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("MainActivity", "onCreate started")
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        Log.d("MainActivity", "onCreate started - FLAG_KEEP_SCREEN_ON set")
         setContent {
             StreamFlowTvApp()
         }

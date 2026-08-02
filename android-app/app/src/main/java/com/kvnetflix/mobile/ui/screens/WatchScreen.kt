@@ -196,8 +196,16 @@ fun WatchScreen(
     val uiState by viewModel.uiState.collectAsState()
     val colors = KvTheme.colors
     var isFullscreen by remember { mutableStateOf(false) }
+    var isControlsVisible by remember { mutableStateOf(true) }
     val activity = LocalContext.current as? Activity
     val context = LocalContext.current
+
+    LaunchedEffect(isControlsVisible) {
+        if (isControlsVisible) {
+            kotlinx.coroutines.delay(4000)
+            isControlsVisible = false
+        }
+    }
 
     DisposableEffect(context) {
         val orientationEventListener = object : OrientationEventListener(context) {
@@ -403,91 +411,89 @@ fun WatchScreen(
                             onDispose { player.release() }
                         }
 
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable { isControlsVisible = !isControlsVisible }
+                        ) {
                             AndroidView(
                                 factory = { ctx ->
                                     PlayerView(ctx).apply {
                                         this.player = player
                                         useController = true
                                         keepScreenOn = true
+                                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                                            isControlsVisible = (visibility == android.view.View.VISIBLE)
+                                        })
                                     }
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
 
-                            // Overlay buttons
-                            Box(
+                            // Overlay buttons (hidden when movie controls hide or during PiP mode)
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = isControlsVisible && activity?.isInPictureInPictureMode != true,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .padding(8.dp)
                                     .fillMaxWidth()
                             ) {
-                                // Back button (left)
-                                if (!isFullscreen) {
-                                    IconButton(
-                                        onClick = onBack,
-                                        modifier = Modifier
-                                            .align(Alignment.TopStart)
-                                            .size(40.dp)
-                                            .background(
-                                                Color.Black.copy(alpha = 0.6f),
-                                                RoundedCornerShape(20.dp)
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    // Back button (left)
+                                    if (!isFullscreen) {
+                                        IconButton(
+                                            onClick = onBack,
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .size(40.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ArrowBack,
+                                                "Back",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(24.dp)
                                             )
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowBack,
-                                            "Back",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-
-                                // Fullscreen + PiP buttons (right)
-                                Row(
-                                    modifier = Modifier.align(Alignment.TopEnd),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    IconButton(
-                                        onClick = onEnterPip,
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(
-                                                Color.Black.copy(alpha = 0.6f),
-                                                RoundedCornerShape(20.dp)
-                                            )
-                                    ) {
-                                        Icon(
-                                            Icons.Default.PictureInPicture,
-                                            "PiP",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                        }
                                     }
 
-                                    IconButton(
-                                        onClick = {
-                                            isFullscreen = !isFullscreen
-                                            activity?.requestedOrientation = if (isFullscreen) {
-                                                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                            } else {
-                                                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(
-                                                Color.Black.copy(alpha = 0.6f),
-                                                RoundedCornerShape(20.dp)
-                                            )
+                                    // Fullscreen + PiP buttons (right)
+                                    Row(
+                                        modifier = Modifier.align(Alignment.TopEnd),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        Icon(
-                                            if (isFullscreen) Icons.Default.FullscreenExit
-                                            else Icons.Default.Fullscreen,
-                                            "Fullscreen",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                        IconButton(
+                                            onClick = onEnterPip,
+                                            modifier = Modifier.size(40.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.PictureInPicture,
+                                                "PiP",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                isFullscreen = !isFullscreen
+                                                activity?.requestedOrientation = if (isFullscreen) {
+                                                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                                } else {
+                                                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                                }
+                                            },
+                                            modifier = Modifier.size(40.dp)
+                                        ) {
+                                            Icon(
+                                                if (isFullscreen) Icons.Default.FullscreenExit
+                                                else Icons.Default.Fullscreen,
+                                                "Fullscreen",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
