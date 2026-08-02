@@ -1,29 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@custom-variant dark (&:is(.dark *));
-
-@theme {
-  --color-bg-primary: var(--bg-primary);
-  --color-bg-secondary: var(--bg-secondary);
-  --color-bg-tertiary: var(--bg-tertiary);
-  --color-bg-elevated: var(--bg-elevated);
-  --color-bg-overlay: var(--bg-overlay);
-  --color-bg-badge: var(--bg-badge);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-muted: var(--text-muted);
-  --color-text-dim: var(--text-dim);
-  --color-text-on-image: var(--text-on-image);
-  --color-text-on-image-dim: var(--text-on-image-dim);
-  --color-border-primary: var(--border-primary);
-  --color-border-subtle: var(--border-subtle);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-bg: var(--accent-bg);
-  --color-accent-bg-hover: var(--accent-bg-hover);
-}
-
-:root {
+:root, .dark, html {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -31,11 +10,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: light dark;
-}
-
-/* Dark theme (default) */
-.dark, :root {
+  color-scheme: dark;
   --bg-primary: #0a0a0a;
   --bg-secondary: #141414;
   --bg-tertiary: #1a1a1a;
