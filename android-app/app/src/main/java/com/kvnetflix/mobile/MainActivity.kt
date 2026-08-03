@@ -112,11 +112,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val pipEnabled = currentRoute?.contains("watch/") == true &&
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-                    packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
-
                 val selectedTabIndex = when {
+                    currentRoute == Routes.SETTINGS -> 4
                     currentRoute == Routes.MY_LIST -> 3
                     currentRoute == Routes.HOME -> 0
                     currentRoute?.startsWith("home") == true -> {
@@ -148,6 +145,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 searchViewModel = searchViewModel,
                                 onMovieClick = onMovieClickNav,
+                                onSettingsClick = {
+                                    navController.navigate(Routes.SETTINGS)
+                                },
                                 onAuthClick = {
                                     if (isAuthenticated) navController.navigate(Routes.MY_LIST)
                                     else navController.navigate(Routes.LOGIN)
@@ -176,6 +176,7 @@ class MainActivity : ComponentActivity() {
                                             myListViewModel.loadExplore()
                                             navController.navigate(Routes.MY_LIST)
                                         }
+                                        "settings" -> navController.navigate(Routes.SETTINGS)
                                         else -> navController.navigate(Routes.homeRoute(tab))
                                     }
                                 }

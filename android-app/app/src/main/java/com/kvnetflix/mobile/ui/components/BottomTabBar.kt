@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -59,6 +60,12 @@ fun BottomTabBar(
             selected = isSelected(3),
             icon = { Icon(Icons.Default.FavoriteBorder, "My List", modifier = Modifier.size(22.dp)) },
             onClick = { onTabSelected("my-list") },
+            accentColor = colors.accent
+        )
+        TabIcon(
+            selected = isSelected(4),
+            icon = { Icon(Icons.Default.Settings, "Settings", modifier = Modifier.size(22.dp)) },
+            onClick = { onTabSelected("settings") },
             accentColor = colors.accent
         )
     }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +40,7 @@ fun Navbar(
     onAuthClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onHomeClick: () -> Unit,
+    onSettingsClick: () -> Unit = {},
     scrollState: androidx.compose.foundation.ScrollState? = null
 ) {
     val colors = KvTheme.colors
@@ -201,56 +203,72 @@ fun Navbar(
                 }
 
                 if (!isTyping) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colors.bgTertiary)
-                        .clickable(onClick = onLanguageToggle),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (language == "vi") "VI" else "EN",
-                        color = colors.textSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (isAuthenticated) {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .background(colors.bgTertiary)
-                            .clickable(onClick = onAuthClick),
+                            .clickable(onClick = onLanguageToggle),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (language == "vi") "VI" else "EN",
+                            color = colors.textSecondary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(colors.bgTertiary)
+                            .clickable(onClick = onSettingsClick),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.Person,
-                            contentDescription = "Account",
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
                             tint = colors.textSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(colors.accent)
-                            .clickable(onClick = onAuthClick)
-                            .padding(horizontal = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Sign In",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+
+                    if (isAuthenticated) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(colors.bgTertiary)
+                                .clickable(onClick = onAuthClick),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Account",
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(colors.accent)
+                                .clickable(onClick = onAuthClick)
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Sign In",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
-                }
                 }
             }
         }
