@@ -147,7 +147,7 @@ class PlayerViewModel : ViewModel() {
 
             if (ep != null && ep.url.isNotBlank()) {
                 val realUrl = extractRealStreamUrl(ep.url)
-                val isDirectHls = realUrl.contains(".m3u8", ignoreCase = true)
+                val isDirectHls = realUrl.contains(".m3u8", ignoreCase = true) && !realUrl.contains("embed.php", ignoreCase = true)
 
                 if (isDirectHls) {
                     val proxiedUrl = proxyUrl(realUrl)
@@ -173,23 +173,36 @@ class PlayerViewModel : ViewModel() {
 
                     if (extractedSource != null && extractedSource.streamUrl.isNotBlank()) {
                         val streamUrl = extractRealStreamUrl(extractedSource.streamUrl)
-                        val isHls = streamUrl.contains(".m3u8", ignoreCase = true)
-                        val proxiedUrl = if (isHls || streamUrl.contains("phimmoichill") || streamUrl.contains("ophim") || streamUrl.contains("streamc.xyz")) {
-                            proxyUrl(streamUrl)
+                        val isHls = streamUrl.contains(".m3u8", ignoreCase = true) && 
+                                    !streamUrl.contains("embed.php", ignoreCase = true) && 
+                                    extractedSource.formatId != "embed"
+
+                        if (isHls) {
+                            val proxiedUrl = proxyUrl(streamUrl)
+                            android.util.Log.d("PlayerViewModel", "Extracted HLS stream (proxied): $proxiedUrl")
+                            _uiState.value = _uiState.value.copy(
+                                source = VideoSource(
+                                    streamUrl = proxiedUrl,
+                                    resolution = extractedSource.resolution.ifEmpty { "HD" },
+                                    formatId = extractedSource.formatId,
+                                    isEmbed = false
+                                ),
+                                isLoading = false,
+                                retryCount = 0
+                            )
                         } else {
-                            streamUrl
+                            android.util.Log.d("PlayerViewModel", "Extracted Embed stream: ${extractedSource.streamUrl}")
+                            _uiState.value = _uiState.value.copy(
+                                source = VideoSource(
+                                    streamUrl = extractedSource.streamUrl,
+                                    resolution = "Embed",
+                                    formatId = "embed",
+                                    isEmbed = true
+                                ),
+                                isLoading = false,
+                                retryCount = 0
+                            )
                         }
-                        android.util.Log.d("PlayerViewModel", "Extracted stream (proxied): $proxiedUrl")
-                        _uiState.value = _uiState.value.copy(
-                            source = VideoSource(
-                                streamUrl = proxiedUrl,
-                                resolution = extractedSource.resolution.ifEmpty { "HD" },
-                                formatId = extractedSource.formatId,
-                                isEmbed = false
-                            ),
-                            isLoading = false,
-                            retryCount = 0
-                        )
                     } else {
                         // WebView embed player fallback
                         _uiState.value = _uiState.value.copy(
