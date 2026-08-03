@@ -76,6 +76,21 @@ class PlayerViewModel : ViewModel() {
         return "$base/api/stream?url=$encoded"
     }
 
+    private fun extractRealStreamUrl(rawUrl: String): String {
+        try {
+            if (rawUrl.contains("?url=") || rawUrl.contains("&url=")) {
+                val uri = android.net.Uri.parse(rawUrl)
+                val paramUrl = uri.getQueryParameter("url")
+                if (!paramUrl.isNullOrBlank() && (paramUrl.startsWith("http://") || paramUrl.startsWith("https://"))) {
+                    return paramUrl
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("PlayerViewModel", "Error extracting query url parameter", e)
+        }
+        return rawUrl
+    }
+
     private suspend fun loadStream(movie: MovieDetail, episode: Int, server: String = "") {
         try {
             val episodes = movie.episodes ?: emptyList()
@@ -90,9 +105,11 @@ class PlayerViewModel : ViewModel() {
             android.util.Log.d("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$server. Episode: $ep")
 
             if (ep != null && ep.url.isNotBlank()) {
-                val isDirectHls = ep.url.contains(".m3u8", ignoreCase = true) || ep.url.contains("index.m3u8", ignoreCase = true)
+                val realUrl = extractRealStreamUrl(ep.url)
+                val isDirectHls = realUrl.contains(".m3u8", ignoreCase = true)
+
                 if (isDirectHls) {
-                    val proxiedUrl = proxyUrl(ep.url)
+                    val proxiedUrl = proxyUrl(realUrl)
                     android.util.Log.d("PlayerViewModel", "Direct HLS URL (proxied): $proxiedUrl")
                     _uiState.value = _uiState.value.copy(
                         source = VideoSource(
@@ -108,13 +125,13 @@ class PlayerViewModel : ViewModel() {
                     android.util.Log.d("PlayerViewModel", "Extracting or embedding from URL: ${ep.url}")
                     var extractedSource: VideoSource? = null
                     try {
-                        extractedSource = repository.extractVideo(ep.url)
+                        extractedSource = repository.extractVideo(realUrl)
                     } catch (e: Exception) {
                         android.util.Log.w("PlayerViewModel", "Extraction error, using WebView embed: ${e.message}")
                     }
 
                     if (extractedSource != null && extractedSource.streamUrl.isNotBlank()) {
-                        val streamUrl = extractedSource.streamUrl
+                        val streamUrl = extractRealStreamUrl(extractedSource.streamUrl)
                         val isHls = streamUrl.contains(".m3u8", ignoreCase = true)
                         val proxiedUrl = if (isHls || streamUrl.contains("phimmoichill") || streamUrl.contains("ophim") || streamUrl.contains("streamc.xyz")) {
                             proxyUrl(streamUrl)
@@ -166,27 +183,14 @@ class PlayerViewModel : ViewModel() {
         val episode = _uiState.value.currentEpisode
         val server = _uiState.value.selectedServer
         val retryCount = _uiState.value.retryCount
-        if (retryCount < 3) {
-            android.util.Log.d("PlayerViewModel", "Retrying stream (attempt ${retryCount + 1})")
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                source = null,
-                error = null,
-                retryCount = retryCount + 1
-            )
-            viewModelScope.launch {
-                loadStream(movie, episode, server)
-            }
-        } else {
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                source = null,
-                error = null,
-                retryCount = 0
-            )
-            viewModelScope.launch {
-                loadStream(movie, episode, server)
-            }
+        _uiState.value = _uiState.value.copy(
+            isLoading = true,
+            source = null,
+            error = null,
+            retryCount = retryCount + 1
+        )
+        viewModelScope.launch {
+            loadStream(movie, episode, server)
         }
     }
 }
