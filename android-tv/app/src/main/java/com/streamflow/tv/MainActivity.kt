@@ -18,11 +18,9 @@ import androidx.navigation.navArgument
 import com.streamflow.tv.data.api.ApiClient
 import com.streamflow.tv.data.repository.UserDataRepository
 import com.streamflow.tv.ui.components.SideNavRail
-import com.streamflow.tv.ui.components.UpdateDialog
 import com.streamflow.tv.ui.screens.*
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.ui.theme.StreamFlowTvTheme
-import com.streamflow.tv.viewmodel.UpdateViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -42,13 +40,12 @@ fun StreamFlowTvApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val userRepo = remember { UserDataRepository(context) }
-    val updateViewModel = remember { UpdateViewModel(context) }
     val navController = rememberNavController()
 
     var currentTheme by remember { mutableStateOf("default") }
     var selectedNavId by remember { mutableStateOf("home") }
 
-    // Load persisted settings & check for updates on app launch
+    // Load persisted settings on app launch
     LaunchedEffect(Unit) {
         try {
             currentTheme = userRepo.theme.first()
@@ -62,9 +59,6 @@ fun StreamFlowTvApp() {
                 userRepo.syncWithRemote()
             }
             Log.d("StreamFlowTvApp", "Settings loaded: theme=$currentTheme, url=$serverUrl, hasToken=${!token.isNullOrBlank()}")
-
-            // Check for updates on startup
-            updateViewModel.checkUpdate()
         } catch (e: Exception) {
             Log.e("StreamFlowTvApp", "Error loading settings", e)
         }
@@ -196,9 +190,6 @@ fun StreamFlowTvApp() {
                         }
                     }
                 }
-
-                // Global In-App Update Dialog
-                UpdateDialog(updateViewModel = updateViewModel)
             }
         }
     }

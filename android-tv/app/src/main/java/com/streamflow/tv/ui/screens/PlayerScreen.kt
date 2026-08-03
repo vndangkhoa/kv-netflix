@@ -15,8 +15,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,7 +27,6 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +52,8 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.streamflow.tv.ui.theme.StreamFlowTheme
@@ -203,6 +202,7 @@ private fun formatTimeMs(millis: Long): String {
     }
 }
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun TvPlayerControlButton(
     onClick: () -> Unit,
@@ -235,16 +235,21 @@ private fun TvPlayerControlButton(
         BorderStroke(1.dp, Color(0x44FFFFFF))
     }
 
-    Surface(
+    androidx.tv.material3.Surface(
+        onClick = onClick,
         modifier = modifier
             .scale(scale)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusable()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(32.dp),
-        color = Color.Transparent,
-        border = borderStroke
+            .onFocusChanged { isFocused = it.isFocused },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(32.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(border = borderStroke),
+            focusedBorder = Border(border = BorderStroke(3.dp, Color.White))
+        )
     ) {
         Box(
             modifier = Modifier
@@ -280,6 +285,101 @@ private fun TvPlayerControlButton(
                     )
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TvSeekBar(
+    currentPosition: Long,
+    duration: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val progressFloat = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+    val scale by animateFloatAsState(targetValue = if (isFocused) 1.02f else 1.0f, label = "seek_scale")
+
+    androidx.tv.material3.Surface(
+        onClick = { },
+        modifier = modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .onFocusChanged { isFocused = it.isFocused }
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown && isFocused) {
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            val newPos = (currentPosition - 10_000L).coerceAtLeast(0L)
+                            onSeek(newPos)
+                            true
+                        }
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            val targetDuration = if (duration > 0) duration else currentPosition + 60_000L
+                            val newPos = (currentPosition + 10_000L).coerceAtMost(targetDuration)
+                            onSeek(newPos)
+                            true
+                        }
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border.None,
+            focusedBorder = Border(border = BorderStroke(2.dp, Color.White))
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp, horizontal = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatTimeMs(currentPosition),
+                    style = StreamFlowTheme.typography.bodyMedium.copy(
+                        fontWeight = if (isFocused) FontWeight.Bold else FontWeight.Normal
+                    ),
+                    color = if (isFocused) Color.White else Color(0xDDFFFFFF)
+                )
+                if (isFocused) {
+                    Text(
+                        text = "◄ D-Pad Left/Right to Seek ►",
+                        style = StreamFlowTheme.typography.labelSmall.copy(
+                            color = Color(0xFFE50914),
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+                Text(
+                    text = formatTimeMs(duration),
+                    style = StreamFlowTheme.typography.bodyMedium,
+                    color = Color(0xAAFFFFFF)
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            LinearProgressIndicator(
+                progress = { progressFloat },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (isFocused) 10.dp else 6.dp),
+                color = if (isFocused) Color(0xFFE50914) else Color(0xCC06B6D4),
+                trackColor = Color(0x44FFFFFF)
+            )
         }
     }
 }
@@ -449,10 +549,39 @@ fun PlayerScreen(
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val playButtonFocusRequester = remember { FocusRequester() }
 
+    fun togglePlayPause() {
+        val currentSource = uiState.source
+        val shouldUseEmbed = currentSource?.isEmbed == true || isFallbackToEmbed
+        if (!shouldUseEmbed) {
+            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+            isPlaying = exoPlayer.isPlaying
+        } else {
+            isPlaying = !isPlaying
+            webViewRef?.evaluateJavascript(
+                "(function(){ var v=document.querySelector('video'); if(v){ if(v.paused) v.play(); else v.pause(); } })();", null
+            )
+        }
+    }
+
+    fun seekToPosition(newPos: Long) {
+        val currentSource = uiState.source
+        val shouldUseEmbed = currentSource?.isEmbed == true || isFallbackToEmbed
+        if (!shouldUseEmbed) {
+            exoPlayer.seekTo(newPos)
+            currentPosition = newPos
+        } else {
+            val seconds = newPos / 1000
+            webViewRef?.evaluateJavascript(
+                "(function(){ var v=document.querySelector('video'); if(v) v.currentTime = $seconds; })();", null
+            )
+            currentPosition = newPos
+        }
+    }
+
     // Auto-hide controls overlay after inactivity
     LaunchedEffect(showControls, lastInteraction) {
         if (showControls) {
-            delay(4500)
+            delay(5000)
             showControls = false
         }
     }
@@ -460,7 +589,7 @@ fun PlayerScreen(
     // Request initial focus on play button when controls appear
     LaunchedEffect(showControls) {
         if (showControls) {
-            delay(100)
+            delay(120)
             try {
                 playButtonFocusRequester.requestFocus()
             } catch (e: Exception) { }
@@ -474,11 +603,60 @@ fun PlayerScreen(
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     lastInteraction = System.currentTimeMillis()
-                    if (!showControls) {
-                        showControls = true
-                        true
-                    } else {
-                        false
+                    val keyCode = keyEvent.nativeKeyEvent.keyCode
+
+                    when (keyCode) {
+                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                            togglePlayPause()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                            if (!exoPlayer.isPlaying) togglePlayPause()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                            if (exoPlayer.isPlaying) togglePlayPause()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                            seekToPosition(currentPosition + 10_000L)
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                            seekToPosition((currentPosition - 10_000L).coerceAtLeast(0L))
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                            val eps = uiState.movie?.episodes ?: emptyList()
+                            val maxEp = if (eps.isNotEmpty()) eps.maxOf { it.number } else uiState.currentEpisode + 1
+                            if (uiState.currentEpisode < maxEp) {
+                                viewModel.changeEpisode(uiState.currentEpisode + 1)
+                            }
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                            if (uiState.currentEpisode > 1) {
+                                viewModel.changeEpisode(uiState.currentEpisode - 1)
+                            }
+                            true
+                        }
+                        KeyEvent.KEYCODE_BACK -> {
+                            if (showControls) {
+                                showControls = false
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        else -> {
+                            // On OK (DPAD_CENTER / ENTER) or any arrow key press when controls are hidden, wake controls and request focus!
+                            if (!showControls) {
+                                showControls = true
+                                true
+                            } else {
+                                false
+                            }
+                        }
                     }
                 } else {
                     false
@@ -536,10 +714,12 @@ fun PlayerScreen(
                 }
             }
         } else if (shouldUseEmbed && currentSource != null) {
-            // Android TV WebView Embed Player Component
+            // Android TV WebView Embed Player Component (Focusable = false so Compose receives all D-Pad input)
             AndroidView(
                 factory = { ctx ->
                     WebView(ctx).apply {
+                        isFocusable = false
+                        isFocusableInTouchMode = false
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
@@ -586,12 +766,14 @@ fun PlayerScreen(
                 modifier = Modifier.fillMaxSize()
             )
         } else if (currentSource != null) {
-            // ExoPlayer Native Player View
+            // ExoPlayer Native Player View (Focusable = false so Compose receives all D-Pad input)
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = forwardingPlayer
                         useController = false
+                        isFocusable = false
+                        isFocusableInTouchMode = false
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
@@ -602,7 +784,7 @@ fun PlayerScreen(
             )
         }
 
-        // TV Overlay Controls with D-Pad focus feedback
+        // TV Overlay Controls with D-Pad focus feedback & navigation
         AnimatedVisibility(
             visible = showControls && !uiState.isLoading && uiState.error == null,
             enter = fadeIn(),
@@ -676,29 +858,15 @@ fun PlayerScreen(
                     // Rewind 10s Button
                     TvPlayerControlButton(
                         onClick = {
-                            if (!shouldUseEmbed) {
-                                exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0))
-                            } else {
-                                webViewRef?.evaluateJavascript(
-                                    "(function(){ var v=document.querySelector('video'); if(v) v.currentTime=Math.max(0, v.currentTime-10); })();", null
-                                )
-                            }
+                            seekToPosition((currentPosition - 10_000L).coerceAtLeast(0L))
                         },
                         icon = Icons.Default.FastRewind
                     )
 
-                    // Play / Pause Button (Primary Focus Target)
+                    // Play / Pause Button (Primary Focus Target on OK / Wake)
                     TvPlayerControlButton(
                         onClick = {
-                            if (!shouldUseEmbed) {
-                                if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
-                                isPlaying = exoPlayer.isPlaying
-                            } else {
-                                isPlaying = !isPlaying
-                                webViewRef?.evaluateJavascript(
-                                    "(function(){ var v=document.querySelector('video'); if(v){ if(v.paused) v.play(); else v.pause(); } })();", null
-                                )
-                            }
+                            togglePlayPause()
                         },
                         icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         isPrimary = true,
@@ -708,13 +876,8 @@ fun PlayerScreen(
                     // Fast Forward 10s Button
                     TvPlayerControlButton(
                         onClick = {
-                            if (!shouldUseEmbed) {
-                                exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(exoPlayer.duration))
-                            } else {
-                                webViewRef?.evaluateJavascript(
-                                    "(function(){ var v=document.querySelector('video'); if(v) v.currentTime += 10; })();", null
-                                )
-                            }
+                            val targetDur = if (duration > 0) duration else currentPosition + 60_000L
+                            seekToPosition((currentPosition + 10_000L).coerceAtMost(targetDur))
                         },
                         icon = Icons.Default.FastForward
                     )
@@ -732,40 +895,17 @@ fun PlayerScreen(
                     )
                 }
 
-                // Bottom Bar: Progress Indicator & Duration
+                // Bottom Bar: D-Pad Focusable Seek / Progress Bar
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 8.dp)
                 ) {
-                    val progressFloat = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = formatTimeMs(currentPosition),
-                            style = StreamFlowTheme.typography.bodyMedium,
-                            color = Color.White
-                        )
-                        Text(
-                            text = formatTimeMs(duration),
-                            style = StreamFlowTheme.typography.bodyMedium,
-                            color = Color(0xAAFFFFFF)
-                        )
-                    }
-
-                    Spacer(Modifier.height(6.dp))
-
-                    LinearProgressIndicator(
-                        progress = { progressFloat },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp),
-                        color = Color(0xFFE50914),
-                        trackColor = Color(0x44FFFFFF)
+                    TvSeekBar(
+                        currentPosition = currentPosition,
+                        duration = duration,
+                        onSeek = { newPos -> seekToPosition(newPos) }
                     )
                 }
             }
