@@ -34,12 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -158,6 +160,14 @@ private const val AD_BLOCK_JS = """
                 }
             });
 
+            // Auto-click resume modal if present in embed iframe
+            try {
+                var resumeBtn = Array.from(document.querySelectorAll('button, a, div, span')).find(function(el) {
+                    return el.textContent && (el.textContent.includes('Tiếp tục') || el.textContent.includes('Xem từ đầu'));
+                });
+                if (resumeBtn) { resumeBtn.click(); }
+            } catch(e) {}
+
             var v = document.querySelector('video');
             if (v) {
                 v.style.position = 'fixed';
@@ -185,8 +195,12 @@ private const val AD_BLOCK_JS = """
 private const val AUTO_PLAY_JS = """
 (function() {
     try {
+        var resumeBtn = Array.from(document.querySelectorAll('button, a, div, span')).find(function(el) {
+            return el.textContent && (el.textContent.includes('Tiếp tục') || el.textContent.includes('Xem từ đầu'));
+        });
+        if (resumeBtn) { resumeBtn.click(); }
         var v = document.querySelector('video');
-        if (v) { v.play(); }
+        if (v) { v.play().catch(function(){}); }
     } catch(e) {}
 })();
 """
@@ -297,7 +311,8 @@ private fun TvSeekBar(
     currentPosition: Long,
     duration: Long,
     onSeek: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val progressFloat = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
@@ -308,6 +323,7 @@ private fun TvSeekBar(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { isFocused = it.isFocused }
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown && isFocused) {
@@ -565,6 +581,12 @@ fun PlayerScreen(
     }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val playButtonFocusRequester = remember { FocusRequester() }
+    val backButtonFocusRequester = remember { FocusRequester() }
+    val prevEpFocusRequester = remember { FocusRequester() }
+    val rewindFocusRequester = remember { FocusRequester() }
+    val fastForwardFocusRequester = remember { FocusRequester() }
+    val nextEpFocusRequester = remember { FocusRequester() }
+    val seekBarFocusRequester = remember { FocusRequester() }
 
     fun togglePlayPause() {
         val currentSource = uiState.source
@@ -603,74 +625,71 @@ fun PlayerScreen(
         }
     }
 
-    val rootFocusRequester = remember { FocusRequester() }
-
     LaunchedEffect(showControls) {
-        delay(100)
-        try {
-            if (showControls) {
-                playButtonFocusRequester.requestFocus()
-            } else {
-                rootFocusRequester.requestFocus()
+        if (showControls) {
+            repeat(4) {
+                delay(120)
+                try {
+                    playButtonFocusRequester.requestFocus()
+                } catch (e: Exception) { }
             }
-        } catch (e: Exception) { }
+        }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .focusRequester(rootFocusRequester)
-            .focusable()
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     lastInteraction = System.currentTimeMillis()
                     val keyCode = keyEvent.nativeKeyEvent.keyCode
 
-                    when (keyCode) {
-                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                            togglePlayPause()
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                            if (!exoPlayer.isPlaying) togglePlayPause()
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                            if (exoPlayer.isPlaying) togglePlayPause()
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                            seekToPosition(currentPosition + 10_000L)
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                            seekToPosition((currentPosition - 10_000L).coerceAtLeast(0L))
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                            val eps = uiState.movie?.episodes ?: emptyList()
-                            val maxEp = if (eps.isNotEmpty()) eps.maxOf { it.number } else uiState.currentEpisode + 1
-                            if (uiState.currentEpisode < maxEp) {
-                                viewModel.changeEpisode(uiState.currentEpisode + 1)
-                            }
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                            if (uiState.currentEpisode > 1) {
-                                viewModel.changeEpisode(uiState.currentEpisode - 1)
-                            }
-                            true
-                        }
-                        KeyEvent.KEYCODE_BACK -> {
-                            showControls = !showControls
-                            true
-                        }
-                        else -> {
-                            if (!showControls) {
-                                showControls = true
+                    if (!showControls) {
+                        showControls = true
+                        try { playButtonFocusRequester.requestFocus() } catch (e: Exception) { }
+                        true
+                    } else {
+                        when (keyCode) {
+                            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                                togglePlayPause()
                                 true
-                            } else {
+                            }
+                            KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                                if (!exoPlayer.isPlaying) togglePlayPause()
+                                true
+                            }
+                            KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                                if (exoPlayer.isPlaying) togglePlayPause()
+                                true
+                            }
+                            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                                seekToPosition(currentPosition + 10_000L)
+                                true
+                            }
+                            KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                                seekToPosition((currentPosition - 10_000L).coerceAtLeast(0L))
+                                true
+                            }
+                            KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                                val eps = uiState.movie?.episodes ?: emptyList()
+                                val maxEp = if (eps.isNotEmpty()) eps.maxOf { it.number } else uiState.currentEpisode + 1
+                                if (uiState.currentEpisode < maxEp) {
+                                    viewModel.changeEpisode(uiState.currentEpisode + 1)
+                                }
+                                true
+                            }
+                            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                                if (uiState.currentEpisode > 1) {
+                                    viewModel.changeEpisode(uiState.currentEpisode - 1)
+                                }
+                                true
+                            }
+                            KeyEvent.KEYCODE_BACK -> {
+                                showControls = false
+                                true
+                            }
+                            else -> {
                                 false
                             }
                         }
@@ -832,7 +851,12 @@ fun PlayerScreen(
                     TvPlayerControlButton(
                         onClick = { (context as? android.app.Activity)?.finish() },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        text = "Back"
+                        text = "Back",
+                        focusRequester = backButtonFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            down = playButtonFocusRequester
+                            right = playButtonFocusRequester
+                        }
                     )
 
                     Spacer(Modifier.width(20.dp))
@@ -869,7 +893,13 @@ fun PlayerScreen(
                                 viewModel.changeEpisode(uiState.currentEpisode - 1)
                             }
                         },
-                        icon = Icons.Default.SkipPrevious
+                        icon = Icons.Default.SkipPrevious,
+                        focusRequester = prevEpFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            right = rewindFocusRequester
+                            up = backButtonFocusRequester
+                            down = seekBarFocusRequester
+                        }
                     )
 
                     // Rewind 10s Button
@@ -877,7 +907,14 @@ fun PlayerScreen(
                         onClick = {
                             seekToPosition((currentPosition - 10_000L).coerceAtLeast(0L))
                         },
-                        icon = Icons.Default.FastRewind
+                        icon = Icons.Default.FastRewind,
+                        focusRequester = rewindFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            left = prevEpFocusRequester
+                            right = playButtonFocusRequester
+                            up = backButtonFocusRequester
+                            down = seekBarFocusRequester
+                        }
                     )
 
                     // Play / Pause Button (Primary Focus Target on OK / Wake)
@@ -887,7 +924,13 @@ fun PlayerScreen(
                         },
                         icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         isPrimary = true,
-                        focusRequester = playButtonFocusRequester
+                        focusRequester = playButtonFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            left = rewindFocusRequester
+                            right = fastForwardFocusRequester
+                            up = backButtonFocusRequester
+                            down = seekBarFocusRequester
+                        }
                     )
 
                     // Fast Forward 10s Button
@@ -896,7 +939,14 @@ fun PlayerScreen(
                             val targetDur = if (duration > 0) duration else currentPosition + 60_000L
                             seekToPosition((currentPosition + 10_000L).coerceAtMost(targetDur))
                         },
-                        icon = Icons.Default.FastForward
+                        icon = Icons.Default.FastForward,
+                        focusRequester = fastForwardFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            left = playButtonFocusRequester
+                            right = nextEpFocusRequester
+                            up = backButtonFocusRequester
+                            down = seekBarFocusRequester
+                        }
                     )
 
                     // Next Episode Button
@@ -908,7 +958,13 @@ fun PlayerScreen(
                                 viewModel.changeEpisode(uiState.currentEpisode + 1)
                             }
                         },
-                        icon = Icons.Default.SkipNext
+                        icon = Icons.Default.SkipNext,
+                        focusRequester = nextEpFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            left = fastForwardFocusRequester
+                            up = backButtonFocusRequester
+                            down = seekBarFocusRequester
+                        }
                     )
                 }
 
@@ -922,7 +978,11 @@ fun PlayerScreen(
                     TvSeekBar(
                         currentPosition = currentPosition,
                         duration = duration,
-                        onSeek = { newPos -> seekToPosition(newPos) }
+                        onSeek = { newPos -> seekToPosition(newPos) },
+                        focusRequester = seekBarFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            up = playButtonFocusRequester
+                        }
                     )
                 }
             }
