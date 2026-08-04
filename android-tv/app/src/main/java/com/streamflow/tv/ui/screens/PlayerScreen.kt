@@ -877,7 +877,7 @@ fun PlayerScreen(
                     )
                     .padding(32.dp)
             ) {
-                // Top Bar: Back button, Exit button & Title info
+                // Top Bar: Back button (exits player back to movie selection page) & Title info
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -885,26 +885,13 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TvPlayerControlButton(
-                        onClick = { showControls = false },
+                        onClick = { (context as? android.app.Activity)?.finish() },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         text = "Back",
                         focusRequester = backButtonFocusRequester,
                         modifier = Modifier.focusProperties {
-                            right = exitButtonFocusRequester
                             down = playButtonFocusRequester
-                        }
-                    )
-
-                    Spacer(Modifier.width(12.dp))
-
-                    TvPlayerControlButton(
-                        onClick = { (context as? android.app.Activity)?.finish() },
-                        icon = Icons.Default.Close,
-                        text = "Exit",
-                        focusRequester = exitButtonFocusRequester,
-                        modifier = Modifier.focusProperties {
-                            left = backButtonFocusRequester
-                            down = playButtonFocusRequester
+                            right = playButtonFocusRequester
                         }
                     )
 
