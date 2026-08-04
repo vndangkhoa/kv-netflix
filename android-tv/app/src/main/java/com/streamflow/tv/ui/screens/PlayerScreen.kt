@@ -61,6 +61,7 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.streamflow.tv.ui.navigation.LocalNavController
 import com.streamflow.tv.ui.theme.StreamFlowTheme
 import com.streamflow.tv.viewmodel.PlayerViewModel
 import java.io.ByteArrayInputStream
@@ -254,9 +255,9 @@ private fun TvPlayerControlButton(
 
     androidx.tv.material3.Surface(
         onClick = onClick,
-        modifier = modifier
+        modifier = (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(modifier)
             .scale(scale)
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { isFocused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(32.dp)),
         colors = ClickableSurfaceDefaults.colors(
@@ -577,6 +578,14 @@ fun PlayerScreen(
     val nextEpFocusRequester = remember { FocusRequester() }
     val seekBarFocusRequester = remember { FocusRequester() }
 
+    val navController = LocalNavController.current
+    val onGoBack = {
+        val popped = navController?.popBackStack() ?: false
+        if (!popped) {
+            (context as? android.app.Activity)?.finish()
+        }
+    }
+
     DisposableEffect(mainActivity, showControls) {
         mainActivity?.onPlayerKeyAction = { keyEvent ->
             val keyCode = keyEvent.keyCode
@@ -587,13 +596,17 @@ fun PlayerScreen(
                                 keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
                                 keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER ||
                                 keyCode == android.view.KeyEvent.KEYCODE_SPACE ||
-                                keyCode == android.view.KeyEvent.KEYCODE_BACK ||
                                 keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP ||
                                 keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN ||
                                 keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT ||
                                 keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT
 
-                if (isWakeKey) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                    if (isActionDown) {
+                        onGoBack()
+                    }
+                    true
+                } else if (isWakeKey) {
                     if (isActionDown) {
                         showControls = true
                         try { playButtonFocusRequester.requestFocus() } catch (e: Exception) { }
@@ -605,7 +618,7 @@ fun PlayerScreen(
             } else {
                 if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
                     if (isActionDown) {
-                        showControls = false
+                        onGoBack()
                     }
                     true
                 } else {
@@ -657,12 +670,10 @@ fun PlayerScreen(
 
     LaunchedEffect(showControls) {
         if (showControls) {
-            repeat(4) {
-                delay(120)
-                try {
-                    playButtonFocusRequester.requestFocus()
-                } catch (e: Exception) { }
-            }
+            delay(100)
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (e: Exception) { }
         } else {
             try {
                 rootFocusRequester.requestFocus()
@@ -885,7 +896,7 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TvPlayerControlButton(
-                        onClick = { (context as? android.app.Activity)?.finish() },
+                        onClick = { onGoBack() },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         text = "Back",
                         focusRequester = backButtonFocusRequester,
