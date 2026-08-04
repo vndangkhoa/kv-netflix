@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
@@ -572,7 +573,8 @@ fun PlayerScreen(
                 showControls = true
                 true
             } else {
-                false
+                showControls = false
+                true
             }
         }
         onDispose {
@@ -580,8 +582,10 @@ fun PlayerScreen(
         }
     }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val rootFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
     val backButtonFocusRequester = remember { FocusRequester() }
+    val exitButtonFocusRequester = remember { FocusRequester() }
     val prevEpFocusRequester = remember { FocusRequester() }
     val rewindFocusRequester = remember { FocusRequester() }
     val fastForwardFocusRequester = remember { FocusRequester() }
@@ -633,6 +637,10 @@ fun PlayerScreen(
                     playButtonFocusRequester.requestFocus()
                 } catch (e: Exception) { }
             }
+        } else {
+            try {
+                rootFocusRequester.requestFocus()
+            } catch (e: Exception) { }
         }
     }
 
@@ -640,6 +648,8 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .focusRequester(rootFocusRequester)
+            .focusable(enabled = !showControls)
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     lastInteraction = System.currentTimeMillis()
@@ -841,7 +851,7 @@ fun PlayerScreen(
                     )
                     .padding(32.dp)
             ) {
-                // Top Bar: Back button & Title info
+                // Top Bar: Back button, Exit button & Title info
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -849,13 +859,26 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TvPlayerControlButton(
-                        onClick = { (context as? android.app.Activity)?.finish() },
+                        onClick = { showControls = false },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         text = "Back",
                         focusRequester = backButtonFocusRequester,
                         modifier = Modifier.focusProperties {
+                            right = exitButtonFocusRequester
                             down = playButtonFocusRequester
-                            right = playButtonFocusRequester
+                        }
+                    )
+
+                    Spacer(Modifier.width(12.dp))
+
+                    TvPlayerControlButton(
+                        onClick = { (context as? android.app.Activity)?.finish() },
+                        icon = Icons.Default.Close,
+                        text = "Exit",
+                        focusRequester = exitButtonFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            left = backButtonFocusRequester
+                            down = playButtonFocusRequester
                         }
                     )
 
