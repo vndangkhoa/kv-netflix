@@ -2,6 +2,7 @@ package com.streamflow.tv.ui.screens
 
 import android.view.KeyEvent
 import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -13,6 +14,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -392,6 +394,7 @@ fun PlayerScreen(
     episode: Int = 1,
     server: String? = null,
     userDataRepository: com.streamflow.tv.data.repository.UserDataRepository? = null,
+    mainActivity: com.streamflow.tv.MainActivity? = null,
     viewModel: PlayerViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -546,6 +549,20 @@ fun PlayerScreen(
 
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var showControls by remember { mutableStateOf(true) }
+
+    DisposableEffect(mainActivity, showControls) {
+        mainActivity?.onPlayerBackPress = {
+            if (!showControls) {
+                showControls = true
+                true
+            } else {
+                false
+            }
+        }
+        onDispose {
+            mainActivity?.onPlayerBackPress = null
+        }
+    }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val playButtonFocusRequester = remember { FocusRequester() }
 
@@ -586,20 +603,25 @@ fun PlayerScreen(
         }
     }
 
-    // Request initial focus on play button when controls appear
+    val rootFocusRequester = remember { FocusRequester() }
+
     LaunchedEffect(showControls) {
-        if (showControls) {
-            delay(120)
-            try {
+        delay(100)
+        try {
+            if (showControls) {
                 playButtonFocusRequester.requestFocus()
-            } catch (e: Exception) { }
-        }
+            } else {
+                rootFocusRequester.requestFocus()
+            }
+        } catch (e: Exception) { }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .focusRequester(rootFocusRequester)
+            .focusable()
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     lastInteraction = System.currentTimeMillis()
@@ -641,15 +663,10 @@ fun PlayerScreen(
                             true
                         }
                         KeyEvent.KEYCODE_BACK -> {
-                            if (showControls) {
-                                showControls = false
-                                true
-                            } else {
-                                false
-                            }
+                            showControls = !showControls
+                            true
                         }
                         else -> {
-                            // On OK (DPAD_CENTER / ENTER) or any arrow key press when controls are hidden, wake controls and request focus!
                             if (!showControls) {
                                 showControls = true
                                 true

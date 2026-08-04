@@ -3,6 +3,7 @@ package com.kvnetflix.mobile.ui.screens
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.OrientationEventListener
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -199,6 +200,15 @@ fun WatchScreen(
     var isControlsVisible by remember { mutableStateOf(true) }
     val activity = LocalContext.current as? Activity
     val context = LocalContext.current
+
+    BackHandler(enabled = isFullscreen) {
+        if (!isControlsVisible) {
+            isControlsVisible = true
+        } else {
+            isFullscreen = false
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {

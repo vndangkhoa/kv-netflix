@@ -2,6 +2,7 @@ package com.streamflow.tv
 
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -25,22 +27,54 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    var onPlayerBackPress: (() -> Boolean)? = null
+    private var navController: NavController? = null
+    private var isBackConsumedOnDown = false
+
+    fun registerNavController(controller: NavController) {
+        navController = controller
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Log.d("MainActivity", "onCreate started - FLAG_KEEP_SCREEN_ON set")
         setContent {
-            StreamFlowTvApp()
+            StreamFlowTvApp(mainActivity = this)
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+            val currentRoute = navController?.currentDestination?.route
+            if (currentRoute?.startsWith("player") == true) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    val handled = onPlayerBackPress?.invoke() ?: false
+                    isBackConsumedOnDown = handled
+                    if (handled) return true
+                } else if (event.action == KeyEvent.ACTION_UP) {
+                    if (isBackConsumedOnDown) {
+                        isBackConsumedOnDown = false
+                        return true
+                    }
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 }
 
 @Composable
-fun StreamFlowTvApp() {
+fun StreamFlowTvApp(mainActivity: MainActivity? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val userRepo = remember { UserDataRepository(context) }
     val navController = rememberNavController()
+
+    LaunchedEffect(navController) {
+        mainActivity?.registerNavController(navController)
+    }
 
     var currentTheme by remember { mutableStateOf("default") }
     var selectedNavId by remember { mutableStateOf("home") }
@@ -155,7 +189,8 @@ fun StreamFlowTvApp() {
                                     slug = slug,
                                     episode = episode,
                                     server = server,
-                                    userDataRepository = userRepo
+                                    userDataRepository = userRepo,
+                                    mainActivity = mainActivity
                                 )
                             }
 
