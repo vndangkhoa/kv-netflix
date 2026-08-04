@@ -28,9 +28,8 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    var onPlayerBackPress: (() -> Boolean)? = null
+    var onPlayerKeyAction: ((KeyEvent) -> Boolean)? = null
     private var navController: NavController? = null
-    private var isBackConsumedOnDown = false
 
     fun registerNavController(controller: NavController) {
         navController = controller
@@ -46,20 +45,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-            val currentRoute = navController?.currentDestination?.route
-            if (currentRoute?.startsWith("player") == true) {
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    val handled = onPlayerBackPress?.invoke() ?: false
-                    isBackConsumedOnDown = handled
-                    if (handled) return true
-                } else if (event.action == KeyEvent.ACTION_UP) {
-                    if (isBackConsumedOnDown) {
-                        isBackConsumedOnDown = false
-                        return true
-                    }
-                }
-            }
+        val currentRoute = navController?.currentDestination?.route
+        if (currentRoute?.startsWith("player") == true) {
+            val handled = onPlayerKeyAction?.invoke(event) ?: false
+            if (handled) return true
         }
         return super.dispatchKeyEvent(event)
     }

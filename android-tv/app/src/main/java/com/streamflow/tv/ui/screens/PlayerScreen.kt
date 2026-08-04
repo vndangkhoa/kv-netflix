@@ -566,21 +566,6 @@ fun PlayerScreen(
 
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var showControls by remember { mutableStateOf(true) }
-
-    DisposableEffect(mainActivity, showControls) {
-        mainActivity?.onPlayerBackPress = {
-            if (!showControls) {
-                showControls = true
-                true
-            } else {
-                showControls = false
-                true
-            }
-        }
-        onDispose {
-            mainActivity?.onPlayerBackPress = null
-        }
-    }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val rootFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
@@ -591,6 +576,47 @@ fun PlayerScreen(
     val fastForwardFocusRequester = remember { FocusRequester() }
     val nextEpFocusRequester = remember { FocusRequester() }
     val seekBarFocusRequester = remember { FocusRequester() }
+
+    DisposableEffect(mainActivity, showControls) {
+        mainActivity?.onPlayerKeyAction = { keyEvent ->
+            val keyCode = keyEvent.keyCode
+            val isActionDown = keyEvent.action == android.view.KeyEvent.ACTION_DOWN
+
+            if (!showControls) {
+                val isWakeKey = keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                                keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+                                keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                                keyCode == android.view.KeyEvent.KEYCODE_SPACE ||
+                                keyCode == android.view.KeyEvent.KEYCODE_BACK ||
+                                keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP ||
+                                keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN ||
+                                keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT ||
+                                keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+
+                if (isWakeKey) {
+                    if (isActionDown) {
+                        showControls = true
+                        try { playButtonFocusRequester.requestFocus() } catch (e: Exception) { }
+                    }
+                    true
+                } else {
+                    false
+                }
+            } else {
+                if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                    if (isActionDown) {
+                        showControls = false
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+        onDispose {
+            mainActivity?.onPlayerKeyAction = null
+        }
+    }
 
     fun togglePlayPause() {
         val currentSource = uiState.source
