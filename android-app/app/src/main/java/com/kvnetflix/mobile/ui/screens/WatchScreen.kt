@@ -8,10 +8,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import com.kvnetflix.mobile.ui.components.MovieRow
 import com.kvnetflix.mobile.util.Constants
 import com.kvnetflix.mobile.util.stripHtml
@@ -22,11 +25,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -417,91 +422,371 @@ fun WatchScreen(
                             }
                         }
 
-                        DisposableEffect(Unit) {
-                            onDispose { player.release() }
+                        var isPlaying by remember { mutableStateOf(false) }
+                        var isBuffering by remember { mutableStateOf(false) }
+                        var positionMs by remember { mutableLongStateOf(0L) }
+                        var durationMs by remember { mutableLongStateOf(0L) }
+                        var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
+                        var seekFlash by remember { mutableStateOf<String?>(null) }
+                        var speedMenuOpen by remember { mutableStateOf(false) }
+                        var dragging by remember { mutableStateOf(false) }
+
+                        LaunchedEffect(playbackSpeed) {
+                            player.setPlaybackSpeed(playbackSpeed)
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { isControlsVisible = !isControlsVisible }
-                        ) {
+                        LaunchedEffect(seekFlash) {
+                            if (seekFlash != null) {
+                                kotlinx.coroutines.delay(750)
+                                seekFlash = null
+                            }
+                        }
+
+                        DisposableEffect(player) {
+                            val listener = object : androidx.media3.common.Player.Listener {
+                                override fun onPlaybackStateChanged(playbackState: Int) {
+                                    isBuffering = playbackState == androidx.media3.common.Player.STATE_BUFFERING
+                                }
+
+                                override fun onIsPlayingChanged(isNowPlaying: Boolean) {
+                                    isPlaying = isNowPlaying
+                                }
+                            }
+                            player.addListener(listener)
+                            onDispose {
+                                player.removeListener(listener)
+                                player.release()
+                            }
+                        }
+
+                        // Lightweight UI ticker: only runs while controls are visible or buffering
+                        LaunchedEffect(isControlsVisible, isBuffering) {
+                            while (true) {
+                                if (!dragging) {
+                                    positionMs = player.currentPosition
+                                }
+                                durationMs = player.duration.coerceAtLeast(0L)
+                                kotlinx.coroutines.delay(500)
+                            }
+                        }
+
+                        val hasEpisodes = (uiState.movie?.episodes?.size ?: 0) > 0
+                        val hasPrevEpisode = hasEpisodes && uiState.currentEpisode > 1
+                        val maxEpisodeNumber = uiState.movie?.episodes?.maxOfOrNull { it.number } ?: uiState.currentEpisode
+                        val hasNextEpisode = hasEpisodes && uiState.currentEpisode < maxEpisodeNumber
+
+                        val seekBy = { deltaMs: Long ->
+                            val target = (player.currentPosition + deltaMs)
+                                .coerceIn(0L, durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)
+                            player.seekTo(target)
+                        }
+
+                        Box(modifier = Modifier.fillMaxSize()) {
                             AndroidView(
                                 factory = { ctx ->
                                     PlayerView(ctx).apply {
                                         this.player = player
-                                        useController = true
+                                        useController = false
                                         keepScreenOn = true
-                                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
-                                            isControlsVisible = (visibility == android.view.View.VISIBLE)
-                                        })
                                     }
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
 
-                            // Overlay buttons (hidden when movie controls hide or during PiP mode)
+                            // Gesture layer: single tap toggles controls, double-tap seeks ±10s
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onTap = { isControlsVisible = !isControlsVisible },
+                                            onDoubleTap = { offset ->
+                                                val goBack = offset.x < size.width / 2f
+                                                seekBy(if (goBack) -10_000L else 10_000L)
+                                                seekFlash = if (goBack) "back" else "forward"
+                                            }
+                                        )
+                                    }
+                            )
+
+                            // Double-tap seek feedback
+                            if (seekFlash != null && activity?.isInPictureInPictureMode != true) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .padding(bottom = 140.dp)
+                                        .background(Color(0x99000000), RoundedCornerShape(999.dp))
+                                        .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(999.dp))
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        if (seekFlash == "back") "-10s" else "+10s",
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            // Buffering indicator
+                            if (isBuffering) {
+                                CircularProgressIndicator(
+                                    color = colors.accent,
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(48.dp)
+                                )
+                            }
+
+                            val barsVisible = isControlsVisible && activity?.isInPictureInPictureMode != true
+
+                            // Top bar: gradient scrim + back / title / PiP / fullscreen
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = isControlsVisible && activity?.isInPictureInPictureMode != true,
+                                visible = barsVisible,
                                 enter = fadeIn(),
                                 exit = fadeOut(),
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
                                     .fillMaxWidth()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(Color(0xE6000000), Color(0x33000000), Color.Transparent)
+                                        )
+                                    )
                             ) {
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    // Back button (left)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     if (!isFullscreen) {
                                         IconButton(
                                             onClick = onBack,
-                                            modifier = Modifier
-                                                .align(Alignment.TopStart)
-                                                .size(40.dp)
+                                            modifier = Modifier.size(44.dp)
                                         ) {
                                             Icon(
                                                 Icons.AutoMirrored.Filled.ArrowBack,
                                                 "Back",
                                                 tint = Color.White,
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(26.dp)
                                             )
                                         }
                                     }
 
-                                    // Fullscreen + PiP buttons (right)
-                                    Row(
-                                        modifier = Modifier.align(Alignment.TopEnd),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        IconButton(
-                                            onClick = onEnterPip,
-                                            modifier = Modifier.size(40.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.PictureInPicture,
-                                                "PiP",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(24.dp)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = uiState.movie?.title ?: "",
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (hasEpisodes) {
+                                            Text(
+                                                text = "Episode ${uiState.currentEpisode}",
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                fontSize = 12.sp
                                             )
                                         }
+                                    }
 
+                                    IconButton(
+                                        onClick = onEnterPip,
+                                        modifier = Modifier.size(44.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PictureInPicture,
+                                            "PiP",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            isFullscreen = !isFullscreen
+                                            activity?.requestedOrientation = if (isFullscreen) {
+                                                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                            } else {
+                                                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                            }
+                                        },
+                                        modifier = Modifier.size(44.dp)
+                                    ) {
+                                        Icon(
+                                            if (isFullscreen) Icons.Default.FullscreenExit
+                                            else Icons.Default.Fullscreen,
+                                            "Fullscreen",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Bottom controls: seek bar, time, speed, transport buttons
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = barsVisible,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(Color.Transparent, Color(0x33000000), Color(0xE6000000))
+                                        )
+                                    )
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    // Time + seek bar
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = formatPlaybackTime(if (positionMs > 0) positionMs else 0L),
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontSize = 12.sp
+                                        )
+                                        Slider(
+                                            value = positionMs.toFloat().coerceIn(0f, if (durationMs > 0) durationMs.toFloat() else 1f),
+                                            onValueChange = {
+                                                dragging = true
+                                                positionMs = it.toLong()
+                                            },
+                                            onValueChangeFinished = {
+                                                dragging = false
+                                                if (durationMs > 0) player.seekTo(positionMs)
+                                            },
+                                            valueRange = 0f..(if (durationMs > 0) durationMs.toFloat() else 1f),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 8.dp),
+                                            colors = SliderDefaults.colors(
+                                                thumbColor = colors.accent,
+                                                activeTrackColor = colors.accent,
+                                                inactiveTrackColor = Color.White.copy(alpha = 0.25f)
+                                            )
+                                        )
+                                        Text(
+                                            text = formatPlaybackTime(durationMs),
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontSize = 12.sp
+                                        )
+                                        // Speed selector
+                                        Box {
+                                            TextButton(
+                                                onClick = { speedMenuOpen = true },
+                                                contentPadding = PaddingValues(horizontal = 8.dp)
+                                            ) {
+                                                Text(
+                                                    text = playbackSpeedLabel(playbackSpeed),
+                                                    color = Color.White,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = speedMenuOpen,
+                                                onDismissRequest = { speedMenuOpen = false }
+                                            ) {
+                                                listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { spd ->
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(
+                                                                playbackSpeedLabel(spd),
+                                                                color = if (spd == playbackSpeed) colors.accent else Color.Unspecified,
+                                                                fontWeight = if (spd == playbackSpeed) FontWeight.Bold else FontWeight.Normal
+                                                            )
+                                                        },
+                                                        onClick = {
+                                                            playbackSpeed = spd
+                                                            speedMenuOpen = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Transport row
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp)
+                                            .padding(bottom = 24.dp, top = 4.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         IconButton(
                                             onClick = {
-                                                isFullscreen = !isFullscreen
-                                                activity?.requestedOrientation = if (isFullscreen) {
-                                                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                                } else {
-                                                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                                                }
+                                                if (hasPrevEpisode) viewModel.changeEpisode(uiState.currentEpisode - 1)
                                             },
-                                            modifier = Modifier.size(40.dp)
+                                            modifier = Modifier.size(52.dp),
+                                            enabled = hasPrevEpisode
                                         ) {
                                             Icon(
-                                                if (isFullscreen) Icons.Default.FullscreenExit
-                                                else Icons.Default.Fullscreen,
-                                                "Fullscreen",
+                                                Icons.Default.SkipPrevious,
+                                                "Previous episode",
                                                 tint = Color.White,
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { seekBy(-10_000L) },
+                                            modifier = Modifier.size(52.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.FastRewind,
+                                                "Back 10 seconds",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                        // Play / Pause (primary)
+                                        IconButton(
+                                            onClick = {
+                                                if (player.isPlaying) player.pause() else player.play()
+                                            },
+                                            modifier = Modifier
+                                                .size(68.dp)
+                                                .background(Color(0xCC000000), CircleShape)
+                                                .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+                                        ) {
+                                            Icon(
+                                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                "Play / Pause",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(36.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { seekBy(10_000L) },
+                                            modifier = Modifier.size(52.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.FastForward,
+                                                "Forward 10 seconds",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                if (hasNextEpisode) viewModel.changeEpisode(uiState.currentEpisode + 1)
+                                            },
+                                            modifier = Modifier.size(52.dp),
+                                            enabled = hasNextEpisode
+                                        ) {
+                                            Icon(
+                                                Icons.Default.SkipNext,
+                                                "Next episode",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
                                             )
                                         }
                                     }
@@ -728,4 +1013,21 @@ fun WatchScreen(
             }
         }
     }
+}
+
+private fun formatPlaybackTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%d:%02d", minutes, seconds)
+    }
+}
+
+private fun playbackSpeedLabel(speed: Float): String {
+    val str = if (speed % 1f == 0f) speed.toInt().toString() else speed.toString()
+    return "${str}x"
 }

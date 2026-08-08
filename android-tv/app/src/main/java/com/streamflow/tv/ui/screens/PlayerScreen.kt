@@ -576,7 +576,11 @@ fun PlayerScreen(
     val rewindFocusRequester = remember { FocusRequester() }
     val fastForwardFocusRequester = remember { FocusRequester() }
     val nextEpFocusRequester = remember { FocusRequester() }
+    val speedFocusRequester = remember { FocusRequester() }
     val seekBarFocusRequester = remember { FocusRequester() }
+
+    val speedSteps = listOf(1f, 1.25f, 1.5f, 0.75f, 0.5f)
+    var playbackSpeed by remember { mutableFloatStateOf(1f) }
 
     val navController = LocalNavController.current
     val onGoBack = {
@@ -990,6 +994,24 @@ fun PlayerScreen(
                         focusRequester = fastForwardFocusRequester,
                         modifier = Modifier.focusProperties {
                             left = playButtonFocusRequester
+                            right = speedFocusRequester
+                            up = backButtonFocusRequester
+                            down = seekBarFocusRequester
+                        }
+                    )
+
+                    // Playback Speed Cycle Button (1x → 1.25x → 1.5x → 0.75x → 0.5x)
+                    TvPlayerControlButton(
+                        onClick = {
+                            val currentIndex = speedSteps.indexOf(playbackSpeed).takeIf { it >= 0 } ?: 0
+                            val next = speedSteps[(currentIndex + 1) % speedSteps.size]
+                            playbackSpeed = next
+                            exoPlayer.setPlaybackSpeed(next)
+                        },
+                        text = if (playbackSpeed == 1f) "1x" else "${playbackSpeed}x",
+                        focusRequester = speedFocusRequester,
+                        modifier = Modifier.focusProperties {
+                            left = fastForwardFocusRequester
                             right = nextEpFocusRequester
                             up = backButtonFocusRequester
                             down = seekBarFocusRequester
@@ -1008,7 +1030,7 @@ fun PlayerScreen(
                         icon = Icons.Default.SkipNext,
                         focusRequester = nextEpFocusRequester,
                         modifier = Modifier.focusProperties {
-                            left = fastForwardFocusRequester
+                            left = speedFocusRequester
                             up = backButtonFocusRequester
                             down = seekBarFocusRequester
                         }

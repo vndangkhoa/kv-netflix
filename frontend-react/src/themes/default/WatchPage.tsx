@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark, Gauge, Check, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { useWatchMovie } from '../../hooks/useWatchMovie';
 import { usePiP } from '../../hooks/usePiP';
 import MovieRow from '../../components/MovieRow';
@@ -56,6 +56,112 @@ function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
     );
 }
 
+// Plyr re-parents the <video> into its own .plyr container (wrapper + controls).
+// When React unmounts this element (stream source change) it calls
+// parent.removeChild(video), which throws "The node to be removed is not a
+// child of this node" because the video now lives inside Plyr's wrapper.
+// Patch the React div's removeChild to put the video back under React's div
+// first. Runs only on real removals (StrictMode re-mounts never detach nodes).
+const PlyrVideo = ({ ref, className, poster }: { ref: React.Ref<HTMLVideoElement>; className?: string; poster?: string }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useLayoutEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        const parent = video.parentElement as HTMLElement | null;
+        if (!parent) return;
+        const origRemoveChild = parent.removeChild.bind(parent);
+        // Deliberately not restored on cleanup: React runs this cleanup BEFORE
+        // detaching the node, so unpatching here would let the unpatched
+        // removeChild(video) throw. The patched div is discarded together with
+        // the video, and each new video re-patches with its own element.
+        parent.removeChild = (child: Node) => {
+            if (child === video) {
+                const plyr = video.closest('.plyr');
+                if (plyr && plyr.parentElement === parent) {
+                    parent.insertBefore(video, plyr);
+                    plyr.remove();
+                }
+            }
+            return origRemoveChild(child);
+        };
+    }, []);
+
+    return (
+        <video
+            ref={(node) => {
+                videoRef.current = node;
+                if (typeof ref === 'function') ref(node);
+                else if (ref) ref.current = node;
+            }}
+            playsInline
+            className={className}
+            poster={poster}
+        />
+    );
+};
+
+const VerticalVolume = ({ ref }: { ref: React.RefObject<HTMLVideoElement | null> }) => {
+    const [volume, setVolume] = useState(1);
+    const [muted, setMuted] = useState(false);
+
+    useEffect(() => {
+        const video = ref.current;
+        if (!video) return;
+        const sync = () => {
+            setVolume(video.volume);
+            setMuted(video.muted);
+        };
+        sync();
+        video.addEventListener('volumechange', sync);
+        return () => video.removeEventListener('volumechange', sync);
+    }, [ref]);
+
+    const setVol = (v: number) => {
+        const video = ref.current;
+        if (!video) return;
+        video.volume = v;
+        video.muted = v === 0;
+    };
+
+    const toggleMute = () => {
+        const video = ref.current;
+        if (!video) return;
+        video.muted = !video.muted;
+    };
+
+    const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+
+    return (
+        <div className="group/vol relative">
+            {/* Vertical volume slider, revealed on hover */}
+            <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center justify-center opacity-0 translate-y-2 pointer-events-none transition-all duration-200 group-hover/vol:opacity-100 group-hover/vol:translate-y-0 group-hover/vol:pointer-events-auto focus-within:opacity-100 focus-within:translate-y-0 focus-within:pointer-events-auto">
+                <div className="bg-black/70 backdrop-blur-md border border-white/20 rounded-2xl py-3 px-1.5 shadow-2xl">
+                    <div className="relative h-36 w-8">
+                        <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={muted ? 0 : volume}
+                            onChange={(e) => setVol(parseFloat(e.target.value))}
+                            aria-label="Volume"
+                            className="absolute top-1/2 left-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90 accent-[var(--accent)] cursor-pointer"
+                        />
+                    </div>
+                </div>
+            </div>
+            <button
+                onClick={toggleMute}
+                aria-label={muted ? 'Unmute' : 'Mute'}
+                className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all hover:scale-110"
+            >
+                <VolumeIcon className="w-5 h-5 text-white" />
+            </button>
+        </div>
+    );
+};
+
 export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) => {
     const navigate = useNavigate();
     const [selectedServer, setSelectedServer] = useState<string>('');
@@ -64,12 +170,19 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         episodeEnded, videoActuallyEnded, hasNextEpisode, hasPrevEpisode,
         playNextEpisode, dismissEndScreen,
         source,
-    } = useWatchMovie(slug, episode, selectedServer);
+        buffering, playerError, retryStream, levels, currentLevel, selectQuality,
+    } = useWatchMovie(slug, episode, selectedServer, setSelectedServer);
     const [expanded, setExpanded] = useState(false);
     const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const togglePiPRef = useRef<(() => Promise<void>) | null>(null);
     const { togglePiP } = usePiP(videoRef);
+    const [playerControlsVisible, setPlayerControlsVisible] = useState(true);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1);
+    const [seekFlash, setSeekFlash] = useState<{ dir: 'back' | 'forward'; ts: number } | null>(null);
+    const lastTapRef = useRef<{ x: number; t: number }>({ x: 0, t: 0 });
+    const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         togglePiPRef.current = togglePiP;
     }, [togglePiP]);
@@ -151,6 +264,32 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         return `/api/images/proxy?url=${encodeURIComponent(raw)}&width=${width}`;
     };
 
+    const qualityLabel = (height: number) =>
+        height >= 1080 ? '1080p' : height >= 720 ? '720p' : height >= 480 ? '480p' : height >= 360 ? '360p' : `${height}p`;
+
+    const getEmbedHost = (url: string): string => {
+        try {
+            return new URL(url).hostname;
+        } catch {
+            // Proxied relative URLs (/api/stream?url=...) — read the real host from the query param
+            try {
+                const param = new URL(url, window.location.origin).searchParams.get('url');
+                return param ? new URL(param).hostname : '';
+            } catch {
+                return '';
+            }
+        }
+    };
+
+    const getRawStreamUrl = (url: string): string => {
+        try {
+            const u = new URL(url, window.location.origin);
+            return u.searchParams.get('url') || url;
+        } catch {
+            return url;
+        }
+    };
+
     const plyrRef = useRef<Plyr | null>(null);
     const plyrInitRef = useRef(false);
     const prevPlyrParentRef = useRef<HTMLDivElement | null>(null);
@@ -184,11 +323,23 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         prevPlyrParentRef.current = parentDiv;
     }, [source, currentEpisode]);
 
+    // Plyr wraps the <video> element, which is keyed by stream URL — every
+    // source change mounts a fresh video element, so Plyr must be rebuilt.
     useEffect(() => {
-        if (!source || !videoRef.current || plyrInitRef.current) return;
+        if (!source || !videoRef.current) return;
+
+        if (plyrInitRef.current) {
+            try {
+                plyrRef.current?.destroy?.();
+            } catch {
+                // element already removed from the DOM — ignore
+            }
+            plyrRef.current = null;
+            plyrInitRef.current = false;
+        }
 
         const player = new Plyr(videoRef.current, {
-            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+            controls: ['play-large', 'play', 'progress', 'current-time', 'fullscreen'],
             invertTime: false,
             seekTime: 10,
             keyboard: { focused: true, global: true },
@@ -228,7 +379,54 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         } else {
             player.on('ready', injectPiP);
         }
-    }, [source]);
+
+        const onControlsShow = () => setPlayerControlsVisible(true);
+        const onControlsHide = () => { setPlayerControlsVisible(false); setSettingsOpen(false); };
+        player.on('controlsshow', onControlsShow);
+        player.on('controlshidden', onControlsHide);
+        return () => {
+            player.off('controlsshow', onControlsShow);
+            player.off('controlshidden', onControlsHide);
+        };
+    }, [source?.stream_url]);
+
+    // Apply playback speed to the video element (survives HLS re-creation)
+    useEffect(() => {
+        const video = videoRef.current;
+        if (video) video.playbackRate = playbackSpeed;
+    }, [playbackSpeed, source]);
+
+    const seekRelative = useCallback((seconds: number) => {
+        const video = videoRef.current;
+        if (!video) return;
+        const target = Math.min(Math.max(video.currentTime + seconds, 0), video.duration || video.currentTime + seconds);
+        video.currentTime = target;
+    }, []);
+
+    // Single / double tap gesture on the video: double-tap seeks ±15s, single tap toggles play
+    const handleVideoTap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const video = videoRef.current;
+        if (!video || !(e.target instanceof HTMLVideoElement)) return;
+        const now = Date.now();
+        if (now - lastTapRef.current.t < 320) {
+            if (singleTapTimerRef.current) {
+                clearTimeout(singleTapTimerRef.current);
+                singleTapTimerRef.current = null;
+            }
+            const rect = video.getBoundingClientRect();
+            const goBack = e.clientX < rect.left + rect.width / 2;
+            seekRelative(goBack ? -15 : 15);
+            const ts = now;
+            setSeekFlash({ dir: goBack ? 'back' : 'forward', ts });
+            setTimeout(() => setSeekFlash(f => (f && f.ts === ts ? null : f)), 650);
+        } else {
+            lastTapRef.current = { x: e.clientX, t: now };
+            singleTapTimerRef.current = setTimeout(() => {
+                singleTapTimerRef.current = null;
+                if (video.paused) { video.play().catch(() => { }); } else { video.pause(); }
+            }, 380);
+        }
+    }, [seekRelative]);
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -384,8 +582,8 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
             {/* 1. Cinema Player Section */}
             <div className="w-full h-[50vh] md:h-[80vh] bg-black relative shadow-2xl z-40">
-                {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center z-20">
+                {(loading || (buffering && !episodeEnded)) && (
+                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                         <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent border-t-transparent shadow-[0_0_20px_rgba(229,9,20,0.4)]"></div>
                     </div>
                 )}
@@ -424,33 +622,139 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                         );
                     }
 
+                    const rawStreamUrl = source?.stream_url ? getRawStreamUrl(source.stream_url) : '';
+                    const isEmbedStream = !!source?.isEmbed || source?.ext === 'embed' || source?.format_id === 'embed' ||
+                        (rawStreamUrl && (rawStreamUrl.includes('embed.php') || rawStreamUrl.includes('streamc.xyz/embed') || rawStreamUrl.includes('/embed/')));
+
                     return (
                         <>
                             <div className="absolute inset-0">
-                                {source?.isEmbed || source?.ext === 'embed' || source?.format_id === 'embed' || (source?.stream_url && (source.stream_url.includes('embed') || source.stream_url.includes('streamc.xyz'))) ? (
+                                {isEmbedStream ? (
                                     <>
                                         <iframe
-                                            src={source.stream_url}
+                                            src={rawStreamUrl}
                                             className="w-full h-full"
                                             allowFullScreen
-                                            allow="autoplay; fullscreen; presentation"
-                                            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                                            allow="autoplay; fullscreen"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads"
                                         />
-                                        <style>{`
-                                            iframe[src*="${new URL(source.stream_url).hostname}"] ~ .ad-overlay { display: none; }
-                                        `}</style>
+                                        {getEmbedHost(rawStreamUrl) && (
+                                            <style>{`
+                                                iframe[src*="${getEmbedHost(rawStreamUrl)}"] ~ .ad-overlay { display: none; }
+                                            `}</style>
+                                        )}
                                         <div className="ad-overlay absolute inset-0 pointer-events-none z-10" />
                                     </>
                                 ) : (
-                                    <video
-                                        ref={videoRef}
-                                        controls
-                                        playsInline
-                                        className="w-full h-full"
-                                        poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
-                                    />
+                                    <div className="absolute inset-0" onClick={handleVideoTap}>
+                                        <PlyrVideo
+                                            key={source?.stream_url || 'none'}
+                                            ref={videoRef}
+                                            className="w-full h-full cursor-pointer"
+                                            poster={getProxyUrl(movie.backdrop || movie.thumbnail, 1280)}
+                                        />
+                                    </div>
                                 )}
                             </div>
+
+                            {/* Double-tap seek flash */}
+                            {seekFlash && (
+                                <div key={seekFlash.ts} className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center animate-fade-in">
+                                    <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-black/50 backdrop-blur-sm border border-white/15">
+                                        {seekFlash.dir === 'back' ? <SkipBack className="w-6 h-6 text-white" /> : <SkipForward className="w-6 h-6 text-white" />}
+                                        <span className="text-white font-bold">{seekFlash.dir === 'back' ? '-15s' : '+15s'}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Stream error overlay with retry */}
+                            {playerError && !episodeEnded && (
+                                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/80 backdrop-blur-sm">
+                                    <div className="text-center">
+                                        <p className="text-white font-semibold text-lg mb-1">Stream interrupted</p>
+                                        <p className="text-gray-400 text-sm mb-4">The stream failed to load. Please try again.</p>
+                                        <button
+                                            onClick={() => {
+                                                setSettingsOpen(false);
+                                                retryStream();
+                                            }}
+                                            className="px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-full text-sm font-bold transition-colors shadow-[0_0_20px_rgba(229,9,20,0.4)]"
+                                        >
+                                            Retry stream
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Floating action bar: skip ±10s + settings (direct streams only) */}
+                            {!source?.isEmbed && !String(source?.stream_url || '').includes('embed') && !episodeEnded && (
+                                <>
+                                    <div className="absolute bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 transition-opacity duration-300"
+                                         style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
+                                        <button
+                                            onClick={() => seekRelative(-10)}
+                                            className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all hover:scale-110"
+                                            aria-label="Back 10 seconds"
+                                        >
+                                            <SkipBack className="w-5 h-5 text-white" />
+                                        </button>
+                                        <button
+                                            onClick={() => seekRelative(10)}
+                                            className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all hover:scale-110"
+                                            aria-label="Forward 10 seconds"
+                                        >
+                                            <SkipForward className="w-5 h-5 text-white" />
+                                        </button>
+                                    </div>
+
+                                    {/* Volume + Settings */}
+                                    <div className="absolute bottom-24 md:bottom-28 right-3 md:right-6 z-40 flex items-center gap-3 transition-opacity duration-300"
+                                         style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
+                                        <VerticalVolume ref={videoRef} key={source?.stream_url} />
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setSettingsOpen(o => !o)}
+                                                className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${settingsOpen ? 'bg-accent border-accent' : 'bg-black/60 hover:bg-black/80 border-white/20'}`}
+                                                aria-label="Settings"
+                                            >
+                                                <Gauge className="w-5 h-5 text-white" />
+                                            </button>
+                                            {settingsOpen && (
+                                                <div className="absolute bottom-14 right-0 w-52 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in">
+                                                {levels.length > 0 && (
+                                                    <>
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-3 pt-2 pb-1">Quality</p>
+                                                        {[-1, ...levels].map(lv => (
+                                                            <button
+                                                                key={lv.index}
+                                                                onClick={() => selectQuality(lv.index)}
+                                                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
+                                                            >
+                                                                <span className={currentLevel === lv.index ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
+                                                                    {lv.index === -1 ? 'Auto' : qualityLabel(lv.height)}
+                                                                </span>
+                                                                {currentLevel === lv.index && <Check className="w-4 h-4 text-accent" />}
+                                                            </button>
+                                                        ))}
+                                                    </>
+                                                )}
+                                                <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Speed</p>
+                                                {[0.5, 0.75, 1, 1.25, 1.5, 2].map(spd => (
+                                                    <button
+                                                        key={spd}
+                                                        onClick={() => setPlaybackSpeed(spd)}
+                                                        className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
+                                                    >
+                                                        <span className={playbackSpeed === spd ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>{spd}x</span>
+                                                        {playbackSpeed === spd && <Check className="w-4 h-4 text-accent" />}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             {/* Auto-Play End Screen Overlay */}
                             {episodeEnded && (

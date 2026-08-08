@@ -2,19 +2,13 @@ package service
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"time"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 type VideoInfo struct {
@@ -27,222 +21,72 @@ type VideoInfo struct {
 	Ext        string `json:"ext"`
 }
 
-type VideoExtractor struct{}
-
-func NewVideoExtractor() *VideoExtractor {
-	return &VideoExtractor{}
+type VideoExtractor struct {
+	resolver *embedResolver
 }
 
+func NewVideoExtractor() *VideoExtractor {
+	return &VideoExtractor{resolver: newEmbedResolver()}
+}
+
+// Extract resolves a provider URL (direct HLS/MP4 or third-party embed page)
+// into a playable stream. Pipeline:
+//  1. Direct stream URL          -> returned as-is
+//  2. Embed crawler (server-side)-> walks nested iframes + player JS, probes result
+//  3. yt-dlp                     -> strongest single-shot resolver
+//  4. Last resort                -> returns the embed URL itself for web iframes
+//
+// Clients that cannot render embeds (Android TV / mobile) receive a direct
+// m3u8/mp4 URL from stage 2/3 in almost all cases.
 func (e *VideoExtractor) Extract(url string, quality string) (*VideoInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	log.Printf("[extractor] Attempting generic embed extraction for: %s", url)
-	if streamURL, err := e.parseGenericEmbed(ctx, url); err == nil && streamURL != "" {
-		log.Printf("[extractor] Generic embed extracted direct stream: %s", streamURL)
-		ext := "m3u8"
-		if strings.Contains(streamURL, ".mp4") {
-			ext = "mp4"
-		}
+	// 1) Direct provider URLs pass straight through.
+	lower := strings.ToLower(url)
+	if strings.Contains(lower, ".m3u8") || strings.Contains(lower, ".mp4") {
+		ext := extOfStream(url)
 		return &VideoInfo{
-			StreamURL:  streamURL,
+			StreamURL:  url,
 			Resolution: "HD",
 			Ext:        ext,
 			FormatID:   ext,
 		}, nil
 	}
 
-	if strings.Contains(url, "streamc.xyz") {
-		log.Printf("[extractor] streamc.xyz URL detected: %s", url)
-		return e.extractStreamC(ctx, url, quality)
-	}
-
-	if strings.Contains(url, "phim30.me") {
-		log.Printf("[extractor] phim30.me URL detected: %s", url)
-		return e.extractPhim30(ctx, url)
-	}
-
-	log.Printf("[extractor] yt-dlp extraction for: %s", url)
-	return e.extractWithYtDlp(ctx, url, quality)
-}
-
-func (e *VideoExtractor) parseGenericEmbed(ctx context.Context, embedURL string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", embedURL, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Referer", embedURL)
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   20 * time.Second,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	htmlContent := string(body)
-	htmlContent = strings.ReplaceAll(htmlContent, `\/`, `/`)
-
-	m3u8Regex := regexp.MustCompile(`https?://[^\s"'<>]+\.m3u8[^\s"'<>]*`)
-	if match := m3u8Regex.FindString(htmlContent); match != "" {
-		return match, nil
-	}
-
-	mp4Regex := regexp.MustCompile(`https?://[^\s"'<>]+\.mp4[^\s"'<>]*`)
-	if match := mp4Regex.FindString(htmlContent); match != "" {
-		return match, nil
-	}
-
-	return "", fmt.Errorf("no direct stream URL found in embed page")
-}
-
-func (e *VideoExtractor) extractStreamC(ctx context.Context, url string, quality string) (*VideoInfo, error) {
-	info, err := e.extractWithYtDlp(ctx, url, quality)
-	if err == nil && info.StreamURL != "" && info.Ext != "embed" {
-		log.Printf("[extractor] streamc.xyz extracted via yt-dlp: %s", info.StreamURL)
-		return info, nil
-	}
-	log.Printf("[extractor] streamc.xyz yt-dlp failed (%v), parsing embed page", err)
-	extracted, parseErr := e.parseStreamCEmbed(ctx, url)
-	if parseErr == nil && extracted != "" {
+	// 2) Embed crawler: server-side resolution of nested iframes/JS.
+	log.Printf("[extractor] resolving embed page: %s", url)
+	if streamURL, ext := e.resolver.ResolveDirectStream(ctx, url); streamURL != "" {
+		log.Printf("[extractor] embed resolved to direct stream: %s", streamURL)
+		formatID := ext
+		resolution := "HD"
 		return &VideoInfo{
-			StreamURL:  extracted,
-			Resolution: "unknown",
-			Ext:        "mp4",
+			StreamURL:  streamURL,
+			Resolution: resolution,
+			Ext:        ext,
+			FormatID:   formatID,
 		}, nil
 	}
-	log.Printf("[extractor] streamc.xyz embed parse failed (%v), returning as embed", parseErr)
+
+	// 3) yt-dlp as the heavy-duty fallback (handles protected players,
+	//    DRM-less obfuscation, known extractors the crawler cannot reach).
+	//    Skipped for streamc.xyz embeds: their stream is decrypted in-page by
+	//    their own player JS, so the only usable result is the embed itself.
+	log.Printf("[extractor] embed crawler failed, trying yt-dlp for: %s", url)
+	if !strings.Contains(lower, "streamc.xyz") {
+		if info, err := e.extractWithYtDlp(ctx, url, quality); err == nil && info.StreamURL != "" && info.Ext != "embed" {
+			return info, nil
+		}
+	}
+
+	// 4) Last resort: hand the embed back to the client (web iframe only).
+	log.Printf("[extractor] all resolution paths failed, returning embed URL as-is: %s", url)
 	return &VideoInfo{
 		StreamURL:  url,
 		Ext:        "embed",
 		FormatID:   "embed",
 		Resolution: "unknown",
 	}, nil
-}
-
-func (e *VideoExtractor) parseStreamCEmbed(ctx context.Context, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Referer", "https://phim.nguonc.com/")
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   15 * time.Second,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("status %d", resp.StatusCode)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if src, exists := doc.Find("video").Attr("src"); exists && src != "" {
-		return src, nil
-	}
-	if src, exists := doc.Find("source").Attr("src"); exists && src != "" {
-		return src, nil
-	}
-	if src, exists := doc.Find("iframe").Attr("src"); exists && src != "" {
-		if strings.Contains(src, ".m3u8") || strings.Contains(src, ".mp4") {
-			return src, nil
-		}
-	}
-
-	var found string
-	doc.Find("script").Each(func(i int, s *goquery.Selection) {
-		if found != "" {
-			return
-		}
-		text := s.Text()
-		for _, pattern := range []string{"file:", "src:", "source:", "url:"} {
-			idx := strings.Index(text, pattern)
-			if idx == -1 {
-				continue
-			}
-			rest := text[idx+len(pattern):]
-			rest = strings.TrimSpace(rest)
-			rest = strings.Trim(rest, "\"',")
-			if strings.HasPrefix(rest, "http") && (strings.Contains(rest, ".m3u8") || strings.Contains(rest, ".mp4")) {
-				found = rest
-				return
-			}
-		}
-	})
-
-	return found, nil
-}
-
-func (e *VideoExtractor) extractPhim30(ctx context.Context, url string) (*VideoInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create phim30 request: %v", err)
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   30 * time.Second,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch phim30 page: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("phim30 returned status: %d", resp.StatusCode)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse phim30 page: %v", err)
-	}
-
-	streamURL, _ := doc.Find("[data-movie-player-src-value]").Attr("data-movie-player-src-value")
-	if streamURL != "" {
-		return &VideoInfo{
-			StreamURL:  streamURL,
-			Resolution: "unknown",
-		}, nil
-	}
-
-	if src, exists := doc.Find("iframe").Attr("src"); exists && src != "" {
-		if strings.Contains(src, ".m3u8") || strings.Contains(src, ".mp4") {
-			return &VideoInfo{StreamURL: src, Resolution: "unknown"}, nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not find stream URL on phim30 page")
 }
 
 func (e *VideoExtractor) extractWithYtDlp(ctx context.Context, url string, quality string) (*VideoInfo, error) {

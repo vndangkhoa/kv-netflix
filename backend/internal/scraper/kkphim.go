@@ -33,7 +33,7 @@ func NewKKPhimScraper() *KKPhimScraper {
 }
 
 type kkPhimResponse struct {
-	Status     bool                  `json:"status"`
+	Status     json.RawMessage       `json:"status"`
 	Msg        string                `json:"msg"`
 	Data       kkPhimData            `json:"data"`
 	Items      []kkPhimItem          `json:"items"`
@@ -190,8 +190,10 @@ func (s *KKPhimScraper) fetchAndParseList(apiURL string) ([]models.RophimMovie, 
 
 	var movies []models.RophimMovie
 	for _, item := range items {
-		thumb := cleanKKPhimImageURL(item.ThumbURL)
-		backdrop := cleanKKPhimImageURL(item.PosterURL)
+		// phimimg.com uses inverted names vs ophim: "thumb" is landscape,
+		// "poster" is the 2:3 portrait shown on card grids.
+		thumb := cleanKKPhimImageURL(item.PosterURL)
+		backdrop := cleanKKPhimImageURL(item.ThumbURL)
 		movies = append(movies, models.RophimMovie{
 			ID:            item.Slug,
 			Title:         item.Name,
@@ -232,8 +234,8 @@ func (s *KKPhimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error)
 		movie = result.Data.Item
 	}
 
-	thumb := cleanKKPhimImageURL(movie.ThumbURL)
-	backdrop := cleanKKPhimImageURL(movie.PosterURL)
+	thumb := cleanKKPhimImageURL(movie.PosterURL)
+	backdrop := cleanKKPhimImageURL(movie.ThumbURL)
 
 	var rawEpisodes []kkPhimEpisodeServer
 	if len(result.Episodes) > 0 {

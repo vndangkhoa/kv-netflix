@@ -348,7 +348,7 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		// Fallback: Try searching provider with slug terms (e.g. "ham-silo-phan-3" -> "ham silo phan 3" or "silo phan 3")
 		searchQuery := strings.ReplaceAll(slug, "-", " ")
 		for i, provider := range h.Providers {
-			results, err := provider.Search(searchQuery, 5)
+			results, err := provider.Search(searchQuery, 1)
 			if err == nil && len(results) > 0 {
 				movie, err := provider.GetMovieDetail(results[0].Slug)
 				if err == nil && movie != nil {
@@ -417,8 +417,8 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Prioritize direct HLS servers
-		isDirectI := strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Phim30") || strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.URL, ".m3u8")
-		isDirectJ := strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Phim30") || strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.URL, ".m3u8")
+		isDirectI := strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.URL, ".m3u8")
+		isDirectJ := strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.URL, ".m3u8")
 		if isDirectI && !isDirectJ {
 			return true
 		}
@@ -501,8 +501,17 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use browser-grade headers for streamc.xyz to bypass Cloudflare
-	if strings.Contains(videoURL, "streamc.xyz") {
+	// Use browser-grade headers for embed hosts (streamc.xyz) and their CDNs
+	// (indoss*.amass15.top disguise TS segments as .png) to bypass bot
+	// protection on manifests and segments.
+	isStreamcCDN := strings.Contains(videoURL, "amass15.top")
+	isEmbedHost := strings.Contains(videoURL, "streamc.xyz") || isStreamcCDN
+	if isEmbedHost {
+		embedOrigin := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+		if isStreamcCDN {
+			embedOrigin = "https://streamc.xyz/"
+		}
+		req.Header.Set("User-Agent", defaultUserAgent)
 		req.Header.Set("Accept", "*/*")
 		req.Header.Set("Accept-Language", "en-US,en;q=0.9,vi;q=0.8")
 		req.Header.Set("sec-ch-ua", `"Chromium";v="148", "Google Chrome";v="148", ";Not A Brand";v="99"`)
@@ -512,12 +521,30 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Sec-Fetch-Mode", "cors")
 		req.Header.Set("Sec-Fetch-Site", "same-origin")
 		req.Header.Set("Priority", "u=1, i")
-		req.Header.Set("Origin", fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host))
+		req.Header.Set("Origin", embedOrigin)
+		req.Header.Set("Referer", embedOrigin)
+		// Reuse the Cloudflare-cleared session recorded during extraction.
+		if cookie := service.StreamCookies(parsedURL.Host); cookie != "" {
+			req.Header.Set("Cookie", cookie)
+		}
 	} else {
 		req.Header.Set("Referer", defaultReferer)
 		req.Header.Set("User-Agent", defaultUserAgent)
 	}
-	req.Header.Set("Range", r.Header.Get("Range"))
+	// Manifests are always fetched complete: a ranged 206 on an HLS playlist
+	// (without proper Content-Range semantics) can be mis-cached by browsers
+	// and then served truncated to hls.js, breaking playback.
+	isManifestTarget := strings.HasSuffix(parsedURL.Path, ".m3u8")
+	if !isManifestTarget {
+		if q := r.URL.Query().Get("url"); q != "" {
+			if target, err := url.Parse(q); err == nil {
+				isManifestTarget = strings.HasSuffix(target.Path, ".m3u8")
+			}
+		}
+	}
+	if !isManifestTarget {
+		req.Header.Set("Range", r.Header.Get("Range"))
+	}
 
 	resp, err := h.StreamClient.Do(req)
 	if err != nil {
@@ -537,10 +564,21 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		bytes.HasPrefix(bodyBytes, []byte("#EXTM3U"))
 
 	if isHLS {
-		h.handleHLSManifest(w, resp.StatusCode, bodyBytes, videoURL)
+		// Whole-playlist AES-GCM encrypted manifests (#ENC-AESGCM) cannot be
+		// decoded by any standard HLS client — reject rather than serve garbage.
+		if service.IsEncryptedManifest(bodyBytes) {
+			http.Error(w, "stream is encrypted and cannot be proxied", http.StatusUnprocessableEntity)
+			return
+		}
+		// Always serve the complete rewritten manifest with 200 so browsers
+		// never cache a partial playlist.
+		h.handleHLSManifest(w, http.StatusOK, bodyBytes, videoURL)
 		return
 	}
 
+	// Stream responses must never be cached: stale/truncated bodies served
+	// from the browser cache after an upstream hiccup break hls.js playback.
+	w.Header().Set("Cache-Control", "no-store")
 	for k, v := range resp.Header {
 		w.Header()[k] = v
 	}
@@ -607,6 +645,7 @@ func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body 
 
 	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(statusCode)
 	w.Write([]byte(newContent))
 }

@@ -3,11 +3,17 @@ import Hls from 'hls.js';
 import type { MovieDetail, VideoSource } from '../types';
 import { useWatchProgress } from './useWatchProgress';
 
-export const useWatchMovie = (slug: string | undefined, episode: string | undefined, selectedServer?: string) => {
+export const useWatchMovie = (slug: string | undefined, episode: string | undefined, selectedServer?: string, onServerFallback?: (server: string) => void) => {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const hlsRef = useRef<Hls | null>(null);
     const [movie, setMovie] = useState<MovieDetail | null>(null);
     const [source, setSource] = useState<VideoSource | null>(null);
     const [loading, setLoading] = useState(true);
+    const [buffering, setBuffering] = useState(false);
+    const [playerError, setPlayerError] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
+    const [levels, setLevels] = useState<{ index: number; height: number }[]>([]);
+    const [currentLevel, setCurrentLevel] = useState(-1);
     const [currentEpisode, setCurrentEpisode] = useState(parseInt(episode || '1'));
     const [episodeEnded, setEpisodeEnded] = useState(false);
     const { getProgress, saveProgress, clearProgress } = useWatchProgress();
@@ -20,6 +26,11 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
     const saveProgressRef = useRef(saveProgress);
     const clearProgressRef = useRef(clearProgress);
     const movieRef = useRef(movie);
+    // Tracks the stream URL currently loaded in the player. Used to avoid
+    // re-initializing hls.js when a server-fallback re-run resolves to the
+    // same URL (each re-init revokes the previous blob, which can surface
+    // spurious media errors in the browser).
+    const activeStreamUrlRef = useRef<string>('');
 
     // Update refs when values change
     useEffect(() => {
@@ -81,52 +92,102 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         const fetchStream = async () => {
             setLoading(true);
             try {
-                const targetServer = selectedServer || movie.episodes?.[0]?.serverName || movie.episodes?.[0]?.server_name;
-                const ep = movie.episodes?.find(e =>
-                    e.number === currentEpisode &&
-                    (e.serverName || e.server_name) === targetServer
-                ) || movie.episodes?.find(e => e.number === currentEpisode) || movie.episodes?.[0];
+                const allServerNames = Array.from(new Set(
+                    (movie.episodes ?? [])
+                        .map(e => e.serverName || e.server_name)
+                        .filter((s): s is string => !!s)
+                ));
+                const preferred = selectedServer || allServerNames[0] || '';
+                // Try the preferred server first, then every other server hosting the episode
+                const candidates = preferred
+                    ? [preferred, ...allServerNames.filter(s => s !== preferred)]
+                    : allServerNames;
 
-                // If no episode or no URL, don't try to extract — let WatchPage show "Coming Soon"
-                if (!ep?.url) {
-                    setLoading(false);
-                    return;
-                }
+                // Strict liveness check: a real HLS manifest starts with #EXTM3U.
+                // Rejects 404s, HTML error pages, and encrypted/obfuscated blobs
+                // (#ENC-AESGCM whole-playlist encryption is undecodable).
+                const probeManifest = async (proxyUrl: string): Promise<boolean> => {
+                    const probe = await fetch(proxyUrl, {
+                        headers: { Range: 'bytes=0-127' },
+                    }).catch(() => null);
+                    if (!probe || !probe.ok) return false;
+                    try {
+                        const head = (await probe.text()).trimStart();
+                        return head.startsWith('#EXTM3U') && !head.toLowerCase().includes('enc-aesgcm');
+                    } catch {
+                        return false;
+                    }
+                };
 
-                if (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8')) {
-                    const proxyUrl = `/api/stream?url=${encodeURIComponent(ep.url)}`;
-                    // Validate the stream is actually alive before setting source
-                    const probe = await fetch(proxyUrl, { method: 'HEAD' }).catch(() => null);
-                    if (probe && probe.ok) {
+                for (const server of candidates) {
+                    const ep = movie.episodes?.find(e =>
+                        e.number === currentEpisode &&
+                        (e.serverName || e.server_name) === server
+                    ) || movie.episodes?.find(e => e.number === currentEpisode) || movie.episodes?.[0];
+
+                    // No episode at all or no URL — let WatchPage show "Coming Soon"
+                    if (!ep?.url) continue;
+
+                    if (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8')) {
+                        const proxyUrl = `/api/stream?url=${encodeURIComponent(ep.url)}`;
+                        if (!(await probeManifest(proxyUrl))) continue; // dead server → try next
+                        if (server !== preferred) onServerFallback?.(server);
+                        // Same URL already playing → keep the current hls instance.
+                        if (activeStreamUrlRef.current === proxyUrl) {
+                            setLoading(false);
+                            return;
+                        }
+                        activeStreamUrlRef.current = proxyUrl;
                         setSource({
                             stream_url: proxyUrl,
                             resolution: 'HD',
                             format_id: 'hls'
                         });
+                        setLoading(false);
+                        return;
                     }
-                    // If probe failed (404/dead), don't set source — overlay will show server switch
+
+                    // Embed page → extract a real stream via the backend
+                    const res = await fetch(`/api/extract`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: ep.url })
+                    }).catch(() => null);
+                    if (!res || !res.ok) continue;
+                    const data = await res.json();
+                    const rawStreamUrl = data.url || data.stream_url || '';
+                    if (!rawStreamUrl) continue;
+
+                    // Proxy media URLs through the backend (headers/cookies/CORS).
+                    // Embed PAGES must stay raw: they load in an iframe with their own
+                    // origin, and their players use root-relative URLs that would break
+                    // inside the proxy path.
+                    const isEmbedPage = data.format_id === 'embed' || data.ext === 'embed' || data.isEmbed === true;
+                    const needsProxy = !isEmbedPage && rawStreamUrl.startsWith('http');
+                    const finalUrl = needsProxy
+                        ? `/api/stream?url=${encodeURIComponent(rawStreamUrl)}`
+                        : rawStreamUrl;
+
+                    // Validate extracted media before committing; embed pages are last resort
+                    if (!isEmbedPage && !(await probeManifest(finalUrl))) continue;
+
+                    if (server !== preferred) onServerFallback?.(server);
+                    // Same URL already playing → keep the current player instance.
+                    if (activeStreamUrlRef.current === finalUrl) {
+                        setLoading(false);
+                        return;
+                    }
+                    activeStreamUrlRef.current = finalUrl;
+                    setSource({
+                        ...data,
+                        stream_url: finalUrl
+                    });
                     setLoading(false);
                     return;
                 }
 
-                const targetUrl = ep ? ep.url : `https://phimmoichill.network/xem-phim/${slug}/tap-${currentEpisode}`;
-
-                const res = await fetch(`/api/extract`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: targetUrl })
-                });
-
-                if (!res.ok) throw new Error('Failed to extract');
-                const data = await res.json();
-                const rawStreamUrl = data.url || data.stream_url || '';
-                const needsProxy = rawStreamUrl.includes('.m3u8') || rawStreamUrl.includes('phimmoichill') || rawStreamUrl.includes('sotrim') || rawStreamUrl.includes('phmchill') || rawStreamUrl.includes('opstream');
-                setSource({
-                    ...data,
-                    stream_url: needsProxy
-                        ? `/api/stream?url=${encodeURIComponent(rawStreamUrl)}`
-                        : rawStreamUrl
-                });
+                // No server produced a playable stream
+                console.error("No playable stream found for episode", currentEpisode);
             } catch {
                 console.error("Failed to extract stream");
             } finally {
@@ -134,17 +195,23 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             }
         };
 
-        fetchStream();
-    }, [movie, currentEpisode, slug, selectedServer]);
+fetchStream();
+    }, [movie, currentEpisode, slug, selectedServer, retryKey, onServerFallback]);
 
     // Save progress periodically and seek to saved position
     useEffect(() => {
         if (!source || !videoRef.current || !slug) return;
 
         const video = videoRef.current;
-        let hls: Hls | null = null;
+let hls: Hls | null = null;
         let hasSeeked = false;
+        // When this instance is torn down (source switch, unmount), its blob
+        // gets revoked; any late media error from the stale instance must not
+        // flip the error overlay that the fresh instance is about to use.
+        let abandoned = false;
         hasTriggeredNearEnd.current = false;
+        setBuffering(true);
+        setPlayerError(false);
 
         const getNearEndThreshold = (duration: number): number => {
             if (duration <= 0) return 0;
@@ -188,10 +255,30 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
             saveCurrentProgress();
         };
 
-        const onEnded = () => {
+const onEnded = () => {
             clearProgressRef.current(slug);
             setVideoActuallyEnded(true);
             setEpisodeEnded(true);
+        };
+
+        const onWaiting = () => setBuffering(true);
+        const onPlaying = () => setBuffering(false);
+        const onError = () => {
+            if (abandoned) return;
+            // In the hls.js path the media element's 'error' event is often a
+            // zombie fired when the previous MediaSource blob is revoked during
+            // recovery/re-init — hls.js reports real failures via its own
+            // ERROR event, so only trust the element error for native playback.
+            if (isHls) return;
+            console.error('[player] media element error:', JSON.stringify({
+                code: video.error?.code,
+                message: video.error?.message,
+                src: (video.currentSrc || '').slice(0, 80),
+                networkState: video.networkState,
+                readyState: video.readyState,
+                srcObject: !!video.srcObject,
+            }));
+            setPlayerError(true);
         };
 
         const onTimeUpdate = () => {
@@ -207,36 +294,92 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
 
         const isHls = source.stream_url.includes('.m3u8') || source.format_id === 'hls';
 
-        if (isHls && Hls.isSupported()) {
-            hls = new Hls();
-            hls.loadSource(source.stream_url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                seekToSavedPosition();
+        // Defer init by one macrotask: StrictMode double-mount / rapid source
+        // switches tear down the previous hls instance (revoking its blob and
+        // calling video.load()) — attaching a new MediaSource in the same tick
+        // can make Chrome remove the SourceBuffer mid-append.
+        const initTimer = setTimeout(() => {
+            if (abandoned) return;
+            if (isHls && Hls.isSupported()) {
+                hls = new Hls();
+                hlsRef.current = hls;
+                setLevels([]);
+                setCurrentLevel(-1);
+                setBuffering(true);
+                hls.loadSource(source.stream_url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    const parsedLevels = hls?.levels.map((l, index) => ({ index, height: l.height || 0 })).filter(l => l.height > 0) || [];
+                    setLevels(parsedLevels);
+                    setCurrentLevel(hls?.autoLevelEnabled ? -1 : hls?.currentLevel ?? -1);
+                    seekToSavedPosition();
+                    video.play().catch(() => { });
+                });
+                hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
+                    setCurrentLevel(data.level ?? -1);
+                });
+                let hlsRecoveryAttempts = 0;
+                hls.on(Hls.Events.ERROR, (_e, data) => {
+                    console.error('[player] hls error:', JSON.stringify({
+                        type: data.type,
+                        details: data.details,
+                        fatal: data.fatal,
+                        msg: (data as { error?: Error }).error?.message || '',
+                        url: ((data as { url?: string }).url || '').slice(0, 90),
+                        level: (data as { level?: number }).level,
+                        frag: ((data as { frag?: { sn?: number; type?: string } }).frag?.sn),
+                        bufferError: ((data as { buffer?: { error?: string } }).buffer?.error) || '',
+                        reason: (data as { reason?: string }).reason || '',
+                    }));
+                    if (!data.fatal) return;
+                    if (abandoned) return;
+                    // Recover from transient network/buffer errors, but only a few
+                    // times — a persistent decode failure must surface to the user.
+                    if (hlsRecoveryAttempts < 2) {
+                        hlsRecoveryAttempts++;
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            hls?.startLoad();
+                        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                            hls?.recoverMediaError();
+                        } else {
+                            setPlayerError(true);
+                        }
+                        return;
+                    }
+                    setPlayerError(true);
+                });
+                hls.on(Hls.Events.FRAG_LOADED, () => {
+                    seekToSavedPosition();
+                });
+            } else {
+                video.src = source.stream_url;
                 video.play().catch(() => { });
-            });
-            hls.on(Hls.Events.FRAG_LOADED, () => {
-                seekToSavedPosition();
-            });
-        } else {
-            video.src = source.stream_url;
-            video.play().catch(() => { });
-        }
+            }
+        }, 0);
 
         video.addEventListener('canplay', onCanPlay);
         video.addEventListener('pause', onPause);
         video.addEventListener('ended', onEnded);
         video.addEventListener('timeupdate', onTimeUpdate);
+        video.addEventListener('waiting', onWaiting);
+        video.addEventListener('playing', onPlaying);
+        video.addEventListener('error', onError);
 
         // Save progress every 5 seconds
         saveIntervalRef.current = setInterval(saveCurrentProgress, 5000);
 
         return () => {
+            abandoned = true;
+            clearTimeout(initTimer);
             if (hls) hls.destroy();
+            if (hlsRef.current === hls) hlsRef.current = null;
             video.removeEventListener('canplay', onCanPlay);
             video.removeEventListener('pause', onPause);
             video.removeEventListener('ended', onEnded);
             video.removeEventListener('timeupdate', onTimeUpdate);
+            video.removeEventListener('waiting', onWaiting);
+            video.removeEventListener('playing', onPlaying);
+            video.removeEventListener('error', onError);
             if (saveIntervalRef.current) {
                 clearInterval(saveIntervalRef.current);
                 saveIntervalRef.current = null;
@@ -273,8 +416,21 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         }
     }, [currentEpisode, hasPrevEpisode]);
 
-    const dismissEndScreen = useCallback(() => {
+const dismissEndScreen = useCallback(() => {
         setEpisodeEnded(false);
+    }, []);
+
+    const selectQuality = useCallback((index: number) => {
+        const hls = hlsRef.current;
+        if (!hls) return;
+        hls.nextLevel = index;
+        setCurrentLevel(index);
+    }, []);
+
+    const retryStream = useCallback(() => {
+        setPlayerError(false);
+        setEpisodeEnded(false);
+        setRetryKey(k => k + 1);
     }, []);
 
     // Reset episodeEnded when episode changes
@@ -298,5 +454,11 @@ export const useWatchMovie = (slug: string | undefined, episode: string | undefi
         playPrevEpisode,
         dismissEndScreen,
         maxEpisode,
+        buffering,
+        playerError,
+        retryStream,
+        levels,
+        currentLevel,
+        selectQuality,
     };
 };

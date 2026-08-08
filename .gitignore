@@ -33,6 +33,7 @@ backend/*.js
 backend/*.json
 !backend/go.json
 backend/cache/
+cache/
 
 # Binaries and executables
 *.exe
