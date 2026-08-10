@@ -35,10 +35,10 @@ func NewOphimScraper() *OphimScraper {
 // Response structs for Ophim API
 
 type OphimResponse struct {
-	Status   string    `json:"status,omitempty"`
-	Message  string    `json:"message,omitempty"`
-	Data     ophimData `json:"data"`
-	Items    []OphimItem `json:"items"` // For homepage-style responses
+	Status   json.RawMessage `json:"status,omitempty"`
+	Message  string          `json:"message,omitempty"`
+	Data     ophimData       `json:"data"`
+	Items    []OphimItem     `json:"items"` // For homepage-style responses
 	Movie      OphimMovie           `json:"movie"`
 	Episodes   []OphimEpisodeServer `json:"episodes"`
 	Pagination struct {

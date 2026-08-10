@@ -105,10 +105,19 @@ func (s *KKPhimScraper) GetMoviesByCategory(category string, page int) ([]models
 	var path string
 	switch category {
 	case "home", "":
-		path = "danh-sach/phim-moi-cap-nhat"
-	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu", "phim-vietsub":
+		path = "v1/api/danh-sach/phim-moi-cap-nhat"
+	case "phim-le", "phim-bo", "hoat-hinh", "tv-shows", "phim-sap-chieu", "phim-dang-chieu", "phim-long-tieng", "phim-vietsub":
 		path = fmt.Sprintf("v1/api/danh-sach/%s", category)
+	case "han-quoc", "trung-quoc", "nhat-ban", "thai-lan", "au-my", "dai-loan", "hong-kong", "an-do",
+		"anh", "phap", "canada", "quoc-gia-khac", "duc", "tay-ban-nha", "tho-nhi-ky", "ha-lan",
+		"indonesia", "nga", "mexico", "ba-lan", "uc", "thuy-dien", "malaysia", "brazil",
+		"philippines", "bo-dao-nha", "y", "dan-mach", "uae", "na-uy", "thuy-si", "chau-phi",
+		"nam-phi", "ukraina", "a-rap-xe-ut", "bi", "ireland", "colombia", "phan-lan", "viet-nam",
+		"chile", "hy-lap", "nigeria", "argentina", "singapore":
+		// Country endpoint uses /quoc-gia/{slug}
+		path = fmt.Sprintf("v1/api/quoc-gia/%s", category)
 	default:
+		// Assume everything else is a Genre (e.g., hanh-dong, tinh-cam, co-trang)
 		path = fmt.Sprintf("v1/api/the-loai/%s", category)
 	}
 
