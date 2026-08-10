@@ -551,6 +551,20 @@ kv-netflix/
 
 ---
 
+## Support
+
+KV-NETFLIX is free and open source. If you find it useful, please consider supporting the project with a donation — every contribution helps keep the development going!
+
+<div align="center">
+
+<img src="frontend-react/public/donation.jpg" alt="Donation QR code" width="300" />
+
+</div>
+
+Thank you for your support!
+
+---
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
