@@ -349,6 +349,24 @@ const Navbar = () => {
                             <Palette size={18} style={{ color: accentTheme === 'crimson' ? '#e50914' : accentTheme === 'cyan' ? '#06b6d4' : '#ffd875' }} />
                         </button>
 
+                        {/* Theme Accent Selector (Palette icon) */}
+                        <button
+                            onClick={toggleAccentTheme}
+                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                            title={`Accent: ${accentTheme}`}
+                        >
+                            <Palette size={18} style={{ color: accentTheme === 'crimson' ? '#e50914' : accentTheme === 'cyan' ? '#06b6d4' : '#eab308' }} />
+                        </button>
+
+                        {/* Layout Selector (LayoutDashboard icon) */}
+                        <button
+                            onClick={toggleLayoutTheme}
+                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                            title={layoutTheme === 'hero' ? 'Netflix layout' : 'Compact list layout'}
+                        >
+                            <LayoutDashboard size={18} />
+                        </button>
+
                         {/* Language Selector (Globe icon) */}
                         <button
                             onClick={toggleLang}
