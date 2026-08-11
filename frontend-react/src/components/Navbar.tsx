@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown, Download } from 'lucide-react';
-import { CATEGORIES, GENRES } from '../constants';
+import { Search, X, User, Globe, ChevronDown, Download, Palette, LayoutDashboard } from 'lucide-react';
+import { CATEGORIES, GENRES, COUNTRIES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { registerWebOSBackHandler } from '../hooks/useWebOS';
 import { AppDownloadModal } from './AppDownloadModal';
 import LoginPage from '../pages/LoginPage';
@@ -12,6 +13,30 @@ import DevicePairPage from '../pages/DevicePairPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import type { Movie } from '../types';
 
+interface SearchSuggestionsProps {
+    suggestions: Movie[];
+    highlightIdx: number;
+    onSelect: (title: string) => void;
+    onHover: (idx: number) => void;
+}
+
+const SearchSuggestions = ({ suggestions, highlightIdx, onSelect, onHover }: SearchSuggestionsProps) => (
+    <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl shadow-2xl overflow-hidden z-50 max-h-[60vh] overflow-y-auto">
+        {suggestions.map((movie, idx) => (
+            <button
+                key={movie.id}
+                onClick={() => onSelect(movie.title)}
+                onMouseEnter={() => onHover(idx)}
+                className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors ${idx === highlightIdx ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'}`}
+            >
+                <Search className="w-3.5 h-3.5 text-[var(--text-dim)] flex-shrink-0" />
+                <span className="truncate">{movie.title}</span>
+                {movie.year && <span className="text-[var(--text-dim)] text-xs flex-shrink-0">{movie.year}</span>}
+            </button>
+        ))}
+    </div>
+);
+
 const Navbar = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState<Movie[]>([]);
@@ -19,6 +44,7 @@ const Navbar = () => {
     const [highlightIdx, setHighlightIdx] = useState(-1);
     const [searchOpen, setSearchOpen] = useState(false);
     const [showMore, setShowMore] = useState(false);
+    const [showCountries, setShowCountries] = useState(false);
     const [authModal, setAuthModal] = useState<'login' | 'register' | 'reset' | null>(null);
     const [showPairModal, setShowPairModal] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -62,6 +88,7 @@ const Navbar = () => {
     const location = useLocation();
     const { user, isAuthenticated } = useAuth();
     const { lang, t, toggleLang } = useLang();
+    const { accentTheme, toggleAccentTheme, layoutTheme, toggleLayoutTheme } = useTheme();
 
     const langKey = lang === 'vi' ? 'vi' : 'en';
 
@@ -126,11 +153,11 @@ const Navbar = () => {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && showMore) setShowMore(false);
+            if (e.key === 'Escape') { setShowMore(false); setShowCountries(false); }
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [showMore]);
+    }, []);
 
     useEffect(() => {
         return registerWebOSBackHandler(() => {
@@ -140,32 +167,18 @@ const Navbar = () => {
             if (searchOpen) { setSearchOpen(false); return true; }
             if (showSuggestions) { setShowSuggestions(false); return true; }
             if (showMore) { setShowMore(false); return true; }
+            if (showCountries) { setShowCountries(false); return true; }
             return false;
         });
-    }, [authModal, showPairModal, showDownloadModal, searchOpen, showSuggestions, showMore]);
+    }, [authModal, showPairModal, showDownloadModal, searchOpen, showSuggestions, showMore, showCountries]);
 
+    // Close dropdowns whenever the route changes (URL is an external system).
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         setShowMore(false);
+        setShowCountries(false);
     }, [location.pathname, location.search]);
-
-    const renderSearchSuggestions = (onSelect: (title: string) => void) => (
-        showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl shadow-2xl overflow-hidden z-50 max-h-[60vh] overflow-y-auto">
-                {suggestions.map((movie, idx) => (
-                    <button
-                        key={movie.id}
-                        onClick={() => onSelect(movie.title)}
-                        onMouseEnter={() => setHighlightIdx(idx)}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors ${idx === highlightIdx ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'}`}
-                    >
-                        <Search className="w-3.5 h-3.5 text-[var(--text-dim)] flex-shrink-0" />
-                        <span className="truncate">{movie.title}</span>
-                        {movie.year && <span className="text-[var(--text-dim)] text-xs flex-shrink-0">{movie.year}</span>}
-                    </button>
-                ))}
-            </div>
-        )
-    );
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     return (
         <>
@@ -213,7 +226,7 @@ const Navbar = () => {
 
                             {/* Genres toggle */}
                             <button
-                                onClick={() => setShowMore(!showMore)}
+                                onClick={() => { setShowMore(!showMore); setShowCountries(false); }}
                                 className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
                                     showMore || GENRES.some(g => isActive(`/?category=${g.id}`))
                                         ? 'text-accent bg-accent-bg'
@@ -222,6 +235,19 @@ const Navbar = () => {
                             >
                                 <span>Thể loại</span>
                                 <ChevronDown size={12} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Countries toggle */}
+                            <button
+                                onClick={() => { setShowCountries(!showCountries); setShowMore(false); }}
+                                className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                                    showCountries || COUNTRIES.some(c => isActive(`/?category=${c.id}`))
+                                        ? 'text-accent bg-accent-bg'
+                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
+                                }`}
+                            >
+                                <span>Quốc gia</span>
+                                <ChevronDown size={12} className={`transition-transform ${showCountries ? 'rotate-180' : ''}`} />
                             </button>
                         </div>
                     </div>
@@ -252,7 +278,14 @@ const Navbar = () => {
                                     />
                                     <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-[var(--text-dim)] group-focus-within:text-accent transition-colors" />
                                 </form>
-                                {renderSearchSuggestions((title) => submitSearch(title))}
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <SearchSuggestions
+                                        suggestions={suggestions}
+                                        highlightIdx={highlightIdx}
+                                        onSelect={(title) => submitSearch(title)}
+                                        onHover={setHighlightIdx}
+                                    />
+                                )}
                             </div>
 
                             {searchOpen && (
@@ -275,7 +308,14 @@ const Navbar = () => {
                                                 <X size={16} />
                                             </button>
                                         </form>
-                                        {renderSearchSuggestions((title) => { submitSearch(title); setSearchOpen(false); })}
+                                        {showSuggestions && suggestions.length > 0 && (
+                                            <SearchSuggestions
+                                                suggestions={suggestions}
+                                                highlightIdx={highlightIdx}
+                                                onSelect={(title) => { submitSearch(title); setSearchOpen(false); }}
+                                                onHover={setHighlightIdx}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -284,10 +324,29 @@ const Navbar = () => {
                         {/* App Download Button */}
                         <button
                             onClick={() => setShowDownloadModal(true)}
-                            className="p-2 rounded-xl bg-accent hover:bg-accent-hover text-white transition-all active:scale-95 shadow-lg shadow-accent/20"
+                            className="p-2 rounded-xl bg-accent hover:bg-accent-hover text-[var(--accent-contrast)] transition-all active:scale-95 shadow-lg shadow-accent/20 flex items-center gap-1.5"
                             title="Download Android TV & Mobile Apps"
                         >
                             <Download size={18} />
+                            <span className="hidden lg:inline text-xs font-semibold">Tải ứng dụng</span>
+                        </button>
+
+                        {/* Layout Selector (LayoutDashboard icon) */}
+                        <button
+                            onClick={toggleLayoutTheme}
+                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                            title={layoutTheme === 'new' ? 'Giao diện mới' : 'Giao diện cổ điển'}
+                        >
+                            <LayoutDashboard size={18} />
+                        </button>
+
+                        {/* Theme Accent Selector (Palette icon) */}
+                        <button
+                            onClick={toggleAccentTheme}
+                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                            title={`Accent: ${accentTheme}`}
+                        >
+                            <Palette size={18} style={{ color: accentTheme === 'crimson' ? '#e50914' : accentTheme === 'cyan' ? '#06b6d4' : '#ffd875' }} />
                         </button>
 
                         {/* Language Selector (Globe icon) */}
@@ -314,7 +373,7 @@ const Navbar = () => {
                         ) : (
                             <button
                                 onClick={() => setAuthModal('login')}
-                                className="flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-accent hover:bg-accent-hover px-3.5 py-2 rounded-xl transition-all duration-200 shadow-lg shadow-accent/10 hover:shadow-accent/25 active:scale-95"
+                                className="flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--accent-contrast)] bg-accent hover:bg-accent-hover px-3.5 py-2 rounded-xl transition-all duration-200 shadow-lg shadow-accent/10 hover:shadow-accent/25 active:scale-95"
                             >
                                 <User size={13} />
                                 <span className="hidden sm:inline">{t.login as string}</span>
@@ -373,6 +432,34 @@ const Navbar = () => {
                                 </span>
                             </button>
                         )}
+                    </div>
+                </div>
+            </>
+        )}
+
+        {/* Countries sub-navbar - lg+ only */}
+        {showCountries && (
+            <>
+                <div className="fixed inset-0 top-14 z-40 animate-fade-in" onClick={() => setShowCountries(false)} />
+                <div className="hidden lg:flex fixed top-14 left-0 right-0 z-50 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] shadow-md">
+                    <div className="flex gap-0.5 px-4 sm:px-6 lg:px-12 py-2 overflow-x-auto scrollbar-hide min-w-0 flex-1">
+                        {COUNTRIES.map(c => {
+                            const active = isActive(`/?category=${c.id}`);
+                            return (
+                                <Link
+                                    key={c.id}
+                                    to={`/?category=${c.id}`}
+                                    onClick={() => setShowCountries(false)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm whitespace-nowrap rounded-lg transition-colors ${
+                                        active
+                                            ? 'text-accent bg-accent-bg'
+                                            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
+                                    }`}
+                                >
+                                    {c[langKey]}
+                                </Link>
+                            );
+                        })}
                     </div>
                 </div>
             </>

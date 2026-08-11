@@ -4,8 +4,12 @@ import type { Movie } from '../types';
 import MovieRow from './MovieRow';
 import { MovieCard } from './MovieCard';
 import { Hero } from './Hero';
+import { LoginPromoBanner } from './LoginPromoBanner';
+import { ChartColumns } from './ChartColumns';
+import { FAQSection } from './FAQSection';
 import { CATEGORIES, GENRES } from '../constants';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 import { useMyList } from '../hooks/useMyList';
 import { useSmartRecommendations } from '../hooks/useSmartRecommendations';
@@ -25,8 +29,10 @@ export const HomeContent = () => {
     const query = searchParams.get('q');
     const category = searchParams.get('category');
     const { t, lang } = useLang();
+    const { layoutTheme } = useTheme();
 
     const isFiltered = !!(query || (category && category !== 'home'));
+    const isNewLayout = layoutTheme === 'new';
 
     const observer = useRef<IntersectionObserver | null>(null);
     const [rowMoviesMap, setRowMoviesMap] = useState<Record<string, Movie[]>>({});
@@ -64,7 +70,7 @@ export const HomeContent = () => {
             movies.slice(0, 5).forEach(m => {
                 if (m.id) excludeSet.add(m.id);
                 if (m.slug) excludeSet.add(m.slug);
-                const normTitle = (m.title || '').toLowerCase().replace(/[\(\[\{].*?[\)\]\}]/g, '').replace(/[^a-z0-9]/g, '');
+                const normTitle = (m.title || '').toLowerCase().replace(/[[({].*?[)\]}]/g, '').replace(/[^a-z0-9]/g, '');
                 if (normTitle) excludeSet.add(normTitle);
             });
         }
@@ -77,7 +83,7 @@ export const HomeContent = () => {
                 for (const m of prevMovies) {
                     if (m.id) excludeSet.add(m.id);
                     if (m.slug) excludeSet.add(m.slug);
-                    const normTitle = (m.title || '').toLowerCase().replace(/[\(\[\{].*?[\)\]\}]/g, '').replace(/[^a-z0-9]/g, '');
+                    const normTitle = (m.title || '').toLowerCase().replace(/[[({].*?[)\]}]/g, '').replace(/[^a-z0-9]/g, '');
                     if (normTitle) excludeSet.add(normTitle);
                 }
             }
@@ -145,7 +151,15 @@ export const HomeContent = () => {
         if (category === 'tv-shows') return t.tvShows;
         if (category === 'phim-sap-chieu') return t.upcoming;
         if (category === 'phim-hay') return t.movies;
-        if (category) return t.movies;
+        if (category) {
+            const cat = CATEGORIES.find(c => c.id === category);
+            if (cat) return t[cat.nameKey as keyof typeof t] as string;
+            const genre = GENRES.find(g => g.id === category);
+            if (genre) return lang === 'vi' ? genre.vi : genre.en;
+            const country = COUNTRIES.find(c => c.id === category);
+            if (country) return lang === 'vi' ? country.vi : country.en;
+            return category;
+        }
         return t.home;
     };
 
@@ -195,6 +209,12 @@ export const HomeContent = () => {
                     <Hero movies={movies.slice(0, 5)} />
                 </div>
             )}
+
+            {/* Login promo banner (mamphim style) */}
+            {isNewLayout && <LoginPromoBanner />}
+
+            {/* Community charts: Trending / Favorite / Hot Genres */}
+            {isNewLayout && <ChartColumns />}
 
             <div className="px-4 sm:px-6 lg:px-12 space-y-10">
                 {/* Personal Section */}
@@ -267,7 +287,7 @@ export const HomeContent = () => {
 
                 {/* Top 10 by Category */}
                 <section>
-                    {CATEGORIES.filter(c => c.id !== 'my-list').map((cat, idx) => (
+                    {CATEGORIES.filter(c => c.id !== 'my-list').map((cat) => (
                             <MovieRow
                                 key={cat.id}
                                 rowId={`cat-${cat.id}`}
@@ -295,6 +315,9 @@ export const HomeContent = () => {
                     ))}
                 </section>
             </div>
+
+            {/* FAQ section (mamphim style) */}
+            {isNewLayout && <FAQSection />}
         </div>
     );
 };
