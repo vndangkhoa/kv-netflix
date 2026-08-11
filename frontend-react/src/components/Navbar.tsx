@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown, Download, Palette } from 'lucide-react';
+import { Search, X, User, Globe, ChevronDown, Download, Palette, LayoutDashboard } from 'lucide-react';
 import { CATEGORIES, GENRES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
@@ -63,7 +63,7 @@ const Navbar = () => {
     const location = useLocation();
     const { user, isAuthenticated } = useAuth();
     const { lang, t, toggleLang } = useLang();
-    const { accentTheme, toggleAccentTheme } = useTheme();
+    const { accentTheme, toggleAccentTheme, layoutTheme, toggleLayoutTheme } = useTheme();
 
     const langKey = lang === 'vi' ? 'vi' : 'en';
 
@@ -296,9 +296,18 @@ const Navbar = () => {
                         <button
                             onClick={toggleAccentTheme}
                             className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
-                            title={accentTheme === 'crimson' ? 'Crimson theme' : 'Cyan theme'}
+                            title={`Accent: ${accentTheme}`}
                         >
-                            <Palette size={18} style={{ color: accentTheme === 'crimson' ? '#e50914' : '#06b6d4' }} />
+                            <Palette size={18} style={{ color: accentTheme === 'crimson' ? '#e50914' : accentTheme === 'cyan' ? '#06b6d4' : '#eab308' }} />
+                        </button>
+
+                        {/* Layout Selector (LayoutDashboard icon) */}
+                        <button
+                            onClick={toggleLayoutTheme}
+                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                            title={layoutTheme === 'hero' ? 'Netflix layout' : 'Compact list layout'}
+                        >
+                            <LayoutDashboard size={18} />
                         </button>
 
                         {/* Language Selector (Globe icon) */}

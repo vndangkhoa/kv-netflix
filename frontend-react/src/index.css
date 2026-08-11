@@ -48,6 +48,17 @@ html.accent-cyan, :root.accent-cyan, .accent-cyan {
   --accent-glow-faint: rgba(6, 182, 212, 0.2);
 }
 
+/* Golden accent (list layout theme) */
+html.accent-golden, :root.accent-golden, .accent-golden {
+  --accent: #eab308;
+  --accent-hover: #facc15;
+  --accent-bg: rgba(234, 179, 8, 0.1);
+  --accent-bg-hover: rgba(234, 179, 8, 0.25);
+  --accent-glow: rgba(234, 179, 8, 0.75);
+  --accent-glow-soft: rgba(234, 179, 8, 0.4);
+  --accent-glow-faint: rgba(234, 179, 8, 0.2);
+}
+
 /* Light theme */
 :root.light {
   --bg-primary: #f5f5f5;
@@ -85,6 +96,17 @@ html.accent-cyan.light, html.light.accent-cyan {
   --accent-glow: rgba(8, 145, 178, 0.75);
   --accent-glow-soft: rgba(8, 145, 178, 0.4);
   --accent-glow-faint: rgba(8, 145, 178, 0.2);
+}
+
+/* Golden accent (light mode) */
+html.accent-golden.light, html.light.accent-golden {
+  --accent: #ca8a04;
+  --accent-hover: #a16207;
+  --accent-bg: rgba(202, 138, 4, 0.08);
+  --accent-bg-hover: rgba(202, 138, 4, 0.18);
+  --accent-glow: rgba(202, 138, 4, 0.75);
+  --accent-glow-soft: rgba(202, 138, 4, 0.4);
+  --accent-glow-faint: rgba(202, 138, 4, 0.2);
 }
 
 /* Legacy cyan accent (light mode) */
