@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown, Download } from 'lucide-react';
+import { Search, X, User, Globe, ChevronDown, Download, Palette } from 'lucide-react';
 import { CATEGORIES, GENRES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { registerWebOSBackHandler } from '../hooks/useWebOS';
 import { AppDownloadModal } from './AppDownloadModal';
 import LoginPage from '../pages/LoginPage';
@@ -62,6 +63,7 @@ const Navbar = () => {
     const location = useLocation();
     const { user, isAuthenticated } = useAuth();
     const { lang, t, toggleLang } = useLang();
+    const { accentTheme, toggleAccentTheme } = useTheme();
 
     const langKey = lang === 'vi' ? 'vi' : 'en';
 
@@ -288,6 +290,15 @@ const Navbar = () => {
                             title="Download Android TV & Mobile Apps"
                         >
                             <Download size={18} />
+                        </button>
+
+                        {/* Theme Accent Selector (Palette icon) */}
+                        <button
+                            onClick={toggleAccentTheme}
+                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                            title={accentTheme === 'crimson' ? 'Crimson theme' : 'Cyan theme'}
+                        >
+                            <Palette size={18} style={{ color: accentTheme === 'crimson' ? '#e50914' : '#06b6d4' }} />
                         </button>
 
                         {/* Language Selector (Globe icon) */}

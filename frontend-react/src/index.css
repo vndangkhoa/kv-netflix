@@ -32,6 +32,20 @@
   --accent-hover: #f40b17;
   --accent-bg: rgba(229, 9, 20, 0.1);
   --accent-bg-hover: rgba(229, 9, 20, 0.25);
+  --accent-glow: rgba(229, 9, 20, 0.75);
+  --accent-glow-soft: rgba(229, 9, 20, 0.4);
+  --accent-glow-faint: rgba(229, 9, 20, 0.2);
+}
+
+/* Legacy cyan accent (pre-v8 theme) */
+html.accent-cyan, :root.accent-cyan, .accent-cyan {
+  --accent: #06b6d4;
+  --accent-hover: #22d3ee;
+  --accent-bg: rgba(6, 182, 212, 0.1);
+  --accent-bg-hover: rgba(6, 182, 212, 0.25);
+  --accent-glow: rgba(6, 182, 212, 0.75);
+  --accent-glow-soft: rgba(6, 182, 212, 0.4);
+  --accent-glow-faint: rgba(6, 182, 212, 0.2);
 }
 
 /* Light theme */
@@ -57,6 +71,28 @@
   --accent-hover: #b80710;
   --accent-bg: rgba(229, 9, 20, 0.08);
   --accent-bg-hover: rgba(229, 9, 20, 0.18);
+  --accent-glow: rgba(229, 9, 20, 0.75);
+  --accent-glow-soft: rgba(229, 9, 20, 0.4);
+  --accent-glow-faint: rgba(229, 9, 20, 0.2);
+}
+
+/* Legacy cyan accent (light mode) */
+html.accent-cyan.light, html.light.accent-cyan {
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --accent-bg: rgba(8, 145, 178, 0.08);
+  --accent-bg-hover: rgba(8, 145, 178, 0.18);
+  --accent-glow: rgba(8, 145, 178, 0.75);
+  --accent-glow-soft: rgba(8, 145, 178, 0.4);
+  --accent-glow-faint: rgba(8, 145, 178, 0.2);
+}
+
+/* Legacy cyan accent (light mode) */
+html.accent-cyan.light, html.light.accent-cyan {
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --accent-bg: rgba(8, 145, 178, 0.08);
+  --accent-bg-hover: rgba(8, 145, 178, 0.18);
 }
 
 body {
@@ -199,7 +235,7 @@ body {
 .tv-focus-visible:focus {
   outline: 3px solid var(--accent) !important;
   outline-offset: 3px !important;
-  box-shadow: 0 0 24px rgba(229, 9, 20, 0.75), 0 0 8px rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 0 24px var(--accent-glow), 0 0 8px rgba(255, 255, 255, 0.4) !important;
   z-index: 30 !important;
 }
 
@@ -243,6 +279,6 @@ button:focus-visible,
 .tv-card-focus:focus-visible {
   outline: 3px solid var(--accent) !important;
   outline-offset: 2px !important;
-  box-shadow: 0 0 25px rgba(229, 9, 20, 0.8) !important;
+  box-shadow: 0 0 25px var(--accent-glow) !important;
 }
 

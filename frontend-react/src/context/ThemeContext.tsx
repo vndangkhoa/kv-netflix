@@ -1,16 +1,21 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 
 type Theme = 'dark' | 'light';
+export type AccentTheme = 'crimson' | 'cyan';
 
 interface ThemeContextType {
     theme: Theme;
+    accentTheme: AccentTheme;
     toggleTheme: () => void;
     setTheme: (theme: Theme) => void;
+    toggleAccentTheme: () => void;
+    setAccentTheme: (accent: AccentTheme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'streamflow_theme';
+const ACCENT_STORAGE_KEY = 'streamflow_accent_theme';
 
 function isTVUserAgent(): boolean {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
@@ -27,8 +32,17 @@ function getInitialTheme(): Theme {
     return 'dark';
 }
 
+function getInitialAccentTheme(): AccentTheme {
+    try {
+        const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
+        if (stored === 'crimson' || stored === 'cyan') return stored;
+    } catch { /* ignore */ }
+    return 'crimson';
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+    const [accentTheme, setAccentThemeState] = useState<AccentTheme>(getInitialAccentTheme);
 
     const setTheme = useCallback((newTheme: Theme) => {
         const targetTheme = isTVUserAgent() ? 'dark' : newTheme;
@@ -42,6 +56,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setTheme(theme === 'dark' ? 'light' : 'dark');
     }, [theme, setTheme]);
 
+    const setAccentTheme = useCallback((newAccent: AccentTheme) => {
+        setAccentThemeState(newAccent);
+        try {
+            localStorage.setItem(ACCENT_STORAGE_KEY, newAccent);
+        } catch { /* ignore */ }
+    }, []);
+
+    const toggleAccentTheme = useCallback(() => {
+        setAccentTheme(accentTheme === 'crimson' ? 'cyan' : 'crimson');
+    }, [accentTheme, setAccentTheme]);
+
     // Apply theme class to document
     useEffect(() => {
         const root = document.documentElement;
@@ -52,6 +77,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             root.classList.add('light');
         }
     }, [theme]);
+
+    // Apply accent theme class to document
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.remove('accent-crimson', 'accent-cyan');
+        root.classList.add(`accent-${accentTheme}`);
+    }, [accentTheme]);
 
     // Listen for system theme changes (desktop only)
     useEffect(() => {
@@ -68,7 +100,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+        <ThemeContext.Provider value={{ theme, accentTheme, toggleTheme, setTheme, toggleAccentTheme, setAccentTheme }}>
             {children}
         </ThemeContext.Provider>
     );

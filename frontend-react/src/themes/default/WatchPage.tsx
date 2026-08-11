@@ -584,7 +584,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             <div className="w-full h-[50vh] md:h-[80vh] bg-black relative shadow-2xl z-40">
                 {(loading || (buffering && !episodeEnded)) && (
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent border-t-transparent shadow-[0_0_20px_rgba(229,9,20,0.4)]"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent border-t-transparent shadow-[0_0_20px_var(--accent-glow-soft)]"></div>
                     </div>
                 )}
                 {(() => {
@@ -678,7 +678,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                                 setSettingsOpen(false);
                                                 retryStream();
                                             }}
-                                            className="px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-full text-sm font-bold transition-colors shadow-[0_0_20px_rgba(229,9,20,0.4)]"
+                                            className="px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-full text-sm font-bold transition-colors shadow-[0_0_20px_var(--accent-glow-soft)]"
                                         >
                                             Retry stream
                                         </button>
@@ -794,7 +794,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                             {nextEp && (
                                                 <button
                                                     onClick={playNextEpisode}
-                                                    className="group relative flex-shrink-0 w-[160px] sm:w-[220px] md:w-[300px] rounded-xl overflow-hidden border-2 border-accent/50 hover:border-accent transition-all shadow-[0_0_30px_rgba(229,9,20,0.2)]"
+                                                    className="group relative flex-shrink-0 w-[160px] sm:w-[220px] md:w-[300px] rounded-xl overflow-hidden border-2 border-accent/50 hover:border-accent transition-all shadow-[0_0_30px_var(--accent-glow-faint)]"
                                                 >
                                                     <div className="aspect-video bg-[#1a1a1a] relative">
                                                         <img
@@ -930,7 +930,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                         </span>
                                     </div>
                                     {currentEpisode === ep.number && (
-                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(229,9,20,0.8)]" />
+                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent-glow)]" />
                                     )}
                                 </button>
                             ))}
