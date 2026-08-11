@@ -75,8 +75,8 @@ const PlyrVideo = ({ ref, className, poster }: { ref: React.Ref<HTMLVideoElement
         // detaching the node, so unpatching here would let the unpatched
         // removeChild(video) throw. The patched div is discarded together with
         // the video, and each new video re-patches with its own element.
-        parent.removeChild = (child: Node) => {
-            if (child === video) {
+        parent.removeChild = <T extends Node>(child: T): T => {
+            if (child === (video as Node)) {
                 const plyr = video.closest('.plyr');
                 if (plyr && plyr.parentElement === parent) {
                     parent.insertBefore(video, plyr);
@@ -292,7 +292,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
     const plyrRef = useRef<Plyr | null>(null);
     const plyrInitRef = useRef(false);
-    const prevPlyrParentRef = useRef<HTMLDivElement | null>(null);
+    const prevPlyrParentRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         togglePiPRef.current = togglePiP;
@@ -308,7 +308,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         // If Plyr recreated a new container, re-init HLS on the new video element
         if (prevPlyrParentRef.current && prevPlyrParentRef.current !== parentDiv) {
             const newVideo = videoRef.current as HTMLVideoElement;
-            void fetch(`/api/videos/${slug}`, { next: { cache: 'force-cache' } }).then(async () => {
+            void fetch(`/api/videos/${slug}`).then(async () => {
                 // HLS re-initialization happens in useWatchMovie when source changes
                 // We just need to ensure the event listeners are on this new DOM node
                 if (newVideo.src && !newVideo.paused) {
@@ -363,7 +363,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             pipBtn.setAttribute('type', 'button');
             pipBtn.setAttribute('aria-label', 'Picture-in-Picture');
             pipBtn.innerHTML = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18"><path d="M16 1H2a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-1 14H3V3h12v12z" fill="currentColor"/><path d="M10 7h5v5h-5V7z" fill="currentColor"/></svg>';
-            pipBtn.addEventListener('click', () => togglePiPRef.current());
+            pipBtn.addEventListener('click', () => togglePiPRef.current?.());
 
             const fsBtn = ctrl.querySelector('[data-plyr="fullscreen"]');
             if (fsBtn) {
@@ -382,11 +382,15 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
         const onControlsShow = () => setPlayerControlsVisible(true);
         const onControlsHide = () => { setPlayerControlsVisible(false); setSettingsOpen(false); };
-        player.on('controlsshow', onControlsShow);
-        player.on('controlshidden', onControlsHide);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (player as any).on('controlsshow', onControlsShow);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (player as any).on('controlshidden', onControlsHide);
         return () => {
-            player.off('controlsshow', onControlsShow);
-            player.off('controlshidden', onControlsHide);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (player as any).off('controlsshow', onControlsShow);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (player as any).off('controlshidden', onControlsHide);
         };
     }, [source?.stream_url]);
 
@@ -401,7 +405,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         if (!video) return;
         const target = Math.min(Math.max(video.currentTime + seconds, 0), video.duration || video.currentTime + seconds);
         video.currentTime = target;
-    }, []);
+    }, [videoRef]);
 
     // Single / double tap gesture on the video: double-tap seeks ±15s, single tap toggles play
     const handleVideoTap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -426,7 +430,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                 if (video.paused) { video.play().catch(() => { }); } else { video.pause(); }
             }, 380);
         }
-    }, [seekRelative]);
+    }, [seekRelative, videoRef]);
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -532,11 +536,15 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     }) || serversWithEpisode[0] || serverNames[0] || '';
     const activeServer = selectedServer && serverNames.includes(selectedServer) ? selectedServer : defaultServer;
 
+    // Seed the selected server once the default becomes known (loaded async
+    // from the API); afterwards only explicit user clicks change it.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (defaultServer && !selectedServer) {
             setSelectedServer(defaultServer);
         }
     }, [defaultServer, selectedServer]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const currentServerEpisodes = episodesByServer[activeServer] || [];
 
@@ -589,6 +597,34 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                 )}
                 {(() => {
                     const activeEpisode = currentServerEpisodes?.find(e => e.number === currentEpisode) || currentServerEpisodes?.[0];
+                    // Movie has no episodes at all (e.g. upcoming / now-showing):
+                    // invite the user to save it and check back later.
+                    if (!activeEpisode?.url && currentServerEpisodes.length === 0) {
+                        return (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
+                                <div className="max-w-lg relative z-10 flex flex-col items-center">
+                                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">{t.notAvailableYet}</h2>
+                                    <p className="text-gray-400 text-sm md:text-base mb-6 leading-relaxed">{t.checkBackLater}</p>
+                                    <button
+                                        onClick={handleToggleSave}
+                                        tabIndex={0}
+                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg focus-visible:ring-4 focus-visible:ring-accent active:scale-95 ${
+                                            isMovieSaved
+                                                ? 'bg-[var(--bg-3)] text-[var(--accent)] border border-[var(--accent)]/40'
+                                                : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-contrast)]'
+                                        }`}
+                                    >
+                                        {isMovieSaved ? <Check className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                                        {isMovieSaved ? (t.savedMovie as string) : (t.saveForLater as string)}
+                                    </button>
+                                </div>
+                                <div
+                                    className="absolute inset-0 -z-10 opacity-30 bg-cover bg-center blur-2xl grayscale"
+                                    style={{ backgroundImage: `url(${getProxyUrl(movie.backdrop || movie.thumbnail, 640)})` }}
+                                />
+                            </div>
+                        );
+                    }
                     if (!activeEpisode?.url) {
                         return (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
@@ -724,18 +760,22 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                                 {levels.length > 0 && (
                                                     <>
                                                         <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-3 pt-2 pb-1">Quality</p>
-                                                        {[-1, ...levels].map(lv => (
-                                                            <button
-                                                                key={lv.index}
-                                                                onClick={() => selectQuality(lv.index)}
-                                                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
-                                                            >
-                                                                <span className={currentLevel === lv.index ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
-                                                                    {lv.index === -1 ? 'Auto' : qualityLabel(lv.height)}
-                                                                </span>
-                                                                {currentLevel === lv.index && <Check className="w-4 h-4 text-accent" />}
-                                                            </button>
-                                                        ))}
+                                                        {[-1, ...levels].map(lv => {
+                                                            const index = typeof lv === 'number' ? lv : lv.index;
+                                                            const height = typeof lv === 'number' ? 0 : lv.height;
+                                                            return (
+                                                                <button
+                                                                    key={index}
+                                                                    onClick={() => selectQuality(index)}
+                                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
+                                                                >
+                                                                    <span className={currentLevel === index ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
+                                                                        {index === -1 ? 'Auto' : qualityLabel(height)}
+                                                                    </span>
+                                                                    {currentLevel === index && <Check className="w-4 h-4 text-accent" />}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </>
                                                 )}
                                                 <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Speed</p>

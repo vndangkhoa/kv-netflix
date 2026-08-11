@@ -15,6 +15,8 @@ export interface Translations {
     series: string;
     animation: string;
     tvShows: string;
+    koreanDrama: string;
+    chineseDrama: string;
     upcoming: string;
     nowShowing: string;
     continueWatching: string;
@@ -24,6 +26,46 @@ export interface Translations {
     castMember: string;
     latestUpdates: string;
     noResults: string;
+    quality: string;
+    inList: string;
+
+    // Login promo banner
+    loginPromoTitle: string;
+    loginPromoDesc: string;
+    featWatchProgress: string;
+    featFavorite: string;
+    featSync: string;
+    featList: string;
+
+    // Community charts
+    chartTrending: string;
+    chartFavorite: string;
+    chartHotGenre: string;
+    viewMore: string;
+
+    // FAQ
+    faqTitle: string;
+    faqSubtitle: string;
+    faqFreeQ: string;
+    faqFreeA: string;
+    faqUpdateQ: string;
+    faqUpdateA: string;
+    faqQualityQ: string;
+    faqQualityA: string;
+    faqDeviceQ: string;
+    faqDeviceA: string;
+    faqServerQ: string;
+    faqServerA: string;
+    faqSeekQ: string;
+    faqSeekA: string;
+    faqTheaterQ: string;
+    faqTheaterA: string;
+    faqDubQ: string;
+    faqDubA: string;
+    faqAnimeQ: string;
+    faqAnimeA: string;
+    faqSpeedQ: string;
+    faqSpeedA: string;
 
     // My List / Account
     explore: string;
@@ -115,6 +157,9 @@ export interface Translations {
     // Watch Page
     loadingStream: string;
     comingSoon: string;
+    notAvailableYet: string;
+    checkBackLater: string;
+    saveForLater: string;
     episode: string;
     server: string;
     nextEpisode: string;
@@ -140,6 +185,10 @@ export interface Translations {
     delete: string;
     confirm: string;
     back: string;
+
+    // Mobile bottom nav
+    mobileSchedule: string;
+    mobileAccount: string;
 }
 
 const vi: Translations = {
@@ -155,6 +204,8 @@ const vi: Translations = {
     series: 'Phim bộ',
     animation: 'Hoạt hình',
     tvShows: 'TV Shows',
+    koreanDrama: 'Hàn Quốc',
+    chineseDrama: 'Trung Quốc',
     upcoming: 'Sắp chiếu',
     nowShowing: 'Đang chiếu',
     continueWatching: 'Tiếp tục xem',
@@ -164,6 +215,43 @@ const vi: Translations = {
     castMember: 'Diễn viên',
     latestUpdates: 'Phim Mới Cập Nhật',
     noResults: 'Không tìm thấy phim nào.',
+    quality: 'Chất lượng',
+    inList: 'Trong danh sách',
+
+    loginPromoTitle: 'Đăng nhập để lưu phim xem tiếp',
+    loginPromoDesc: 'Lưu phim đang xem, đồng bộ trên nhiều thiết bị, tạo danh sách riêng – hoàn toàn miễn phí.',
+    featWatchProgress: 'Lưu tiến trình xem',
+    featFavorite: 'Thêm phim yêu thích',
+    featSync: 'Đồng bộ đa thiết bị',
+    featList: 'Tạo danh sách riêng',
+
+    chartTrending: 'Sôi nổi nhất',
+    chartFavorite: 'Yêu thích nhất',
+    chartHotGenre: 'Thể loại Hot',
+    viewMore: 'Xem thêm',
+
+    faqTitle: 'Câu hỏi thường gặp (FAQ)',
+    faqSubtitle: 'Giải đáp các thắc mắc phổ biến khi trải nghiệm xem phim tại Kv-Netflix',
+    faqFreeQ: 'Kv-Netflix có miễn phí xem phim không?',
+    faqFreeA: 'Kv-Netflix hoàn toàn miễn phí 100%, không thu phí thành viên, không yêu cầu đăng ký tài khoản. Toàn bộ kho phim Vietsub, lồng tiếng, thuyết minh đều có sẵn để xem online ngay khi bạn truy cập website.',
+    faqUpdateQ: 'Kv-Netflix cập nhật phim mới mỗi ngày không?',
+    faqUpdateA: 'Kv-Netflix cập nhật các tập phim mới liên tục hàng ngày, ngay sau khi các tập phim được phát sóng tại Nhật Bản hoặc có bản dịch Vietsub chất lượng tốt nhất.',
+    faqQualityQ: 'Chất lượng phim tại Kv-Netflix như thế nào?',
+    faqQualityA: 'Toàn bộ phim trên Kv-Netflix đều được cung cấp với chất lượng HD/Full HD sắc nét, âm thanh sống động, mang lại trải nghiệm xem chân thực nhất cho người xem.',
+    faqDeviceQ: 'Xem phim Kv-Netflix trên điện thoại và Smart TV được không?',
+    faqDeviceA: 'Được. Giao diện của Kv-Netflix được thiết kế tối ưu hóa để hiển thị tốt trên mọi loại thiết bị từ điện thoại di động, máy tính bảng cho đến Smart TV thông qua trình duyệt web.',
+    faqServerQ: 'Server xem phim của Kv-Netflix có ổn định không?',
+    faqServerA: 'Có. Kv-Netflix sử dụng hệ thống máy chủ tốc độ cao và băng thông rộng, giúp giảm thiểu tối đa tình trạng giật lag hay load chậm ngay cả khi xem vào các khung giờ cao điểm.',
+    faqSeekQ: 'Kv-Netflix có hỗ trợ tua nhanh, phụ đề tuỳ chỉnh không?',
+    faqSeekA: 'Có. Trình phát video của Kv-Netflix hỗ trợ đầy đủ các tính năng hiện đại như tua nhanh, chọn tốc độ phát, bật/tắt hoặc tùy chỉnh kích thước phụ đề một cách linh hoạt.',
+    faqTheaterQ: 'Phim chiếu rạp mới ra có trên Kv-Netflix không?',
+    faqTheaterA: 'Các bộ phim movie chiếu rạp bom tấn mới nhất luôn được Kv-Netflix cập nhật nhanh chóng ngay khi có bản đẹp hoặc bản dịch chất lượng nhất để phục vụ khán giả.',
+    faqDubQ: 'Kv-Netflix có phim lồng tiếng và thuyết minh không?',
+    faqDubA: 'Có. Ngoài phụ đề Vietsub, Kv-Netflix còn cung cấp rất nhiều bộ phim có bản thuyết minh hoặc lồng tiếng chất lượng cao dành cho mọi đối tượng khán giả.',
+    faqAnimeQ: 'Kv-Netflix chuyên về phim và cả anime đúng không?',
+    faqAnimeA: 'Đúng vậy. Kv-Netflix là chuyên trang cung cấp kho tàng phim khổng lồ từ các bộ phim truyền hình (TV Series), phim movie chiếu rạp, OVA cho đến các thể loại anime (phim hoạt hình Nhật Bản) được yêu thích nhất.',
+    faqSpeedQ: 'Tốc độ tải trang Kv-Netflix có nhanh không?',
+    faqSpeedA: 'Trang web được tối ưu mã nguồn tối đa để đảm bảo tốc độ tải trang cực nhanh, phản hồi tức thì và không gây khó chịu cho người dùng khi tìm kiếm và chọn phim.',
 
     explore: 'Khám phá',
     history: 'Lịch sử',
@@ -249,6 +337,9 @@ const vi: Translations = {
 
     loadingStream: 'Đang tải stream...',
     comingSoon: 'Sắp ra mắt',
+    notAvailableYet: 'Phim chưa có sẵn để xem',
+    checkBackLater: 'Lưu phim này để xem sau và quay lại khi có tập mới.',
+    saveForLater: 'Lưu phim để xem sau',
     episode: 'Tập',
     server: 'Server',
     nextEpisode: 'Tập tiếp',
@@ -272,6 +363,9 @@ const vi: Translations = {
     delete: 'Xóa',
     confirm: 'Xác nhận',
     back: 'Quay lại',
+
+    mobileSchedule: 'Lịch chiếu',
+    mobileAccount: 'Tài khoản',
 };
 
 const en: Translations = {
@@ -287,6 +381,8 @@ const en: Translations = {
     series: 'Series',
     animation: 'Animation',
     tvShows: 'TV Shows',
+    koreanDrama: 'K-Drama',
+    chineseDrama: 'C-Drama',
     upcoming: 'Upcoming',
     nowShowing: 'Now Showing',
     continueWatching: 'Continue Watching',
@@ -296,6 +392,43 @@ const en: Translations = {
     castMember: 'Cast',
     latestUpdates: 'Latest Updates',
     noResults: 'No movies found.',
+    quality: 'Quality',
+    inList: 'In My List',
+
+    loginPromoTitle: 'Sign in to save your watch progress',
+    loginPromoDesc: 'Save what you watch, sync across devices, create your own list - completely free.',
+    featWatchProgress: 'Save watch progress',
+    featFavorite: 'Add favorite movies',
+    featSync: 'Multi-device sync',
+    featList: 'Create your own list',
+
+    chartTrending: 'Trending Now',
+    chartFavorite: 'Most Favorite',
+    chartHotGenre: 'Hot Genres',
+    viewMore: 'View More',
+
+    faqTitle: 'Frequently Asked Questions (FAQ)',
+    faqSubtitle: 'Answers to common questions about watching movies on Kv-Netflix',
+    faqFreeQ: 'Is watching movies on Kv-Netflix free?',
+    faqFreeA: 'Kv-Netflix is 100% free, no membership fees, no account registration required. The entire movie library with Vietnamese subtitles, dubbed and narrated versions is available to watch online the moment you visit the website.',
+    faqUpdateQ: 'Are new movies updated daily?',
+    faqUpdateA: 'Kv-Netflix updates new episodes continuously every day, right after episodes air in Japan or as soon as the best-quality Vietnamese subtitles are available.',
+    faqQualityQ: 'What is the video quality on Kv-Netflix?',
+    faqQualityA: 'All movies on Kv-Netflix are provided in crisp HD/Full HD quality with vivid sound, giving viewers the most realistic viewing experience.',
+    faqDeviceQ: 'Can I watch Kv-Netflix on phones and Smart TVs?',
+    faqDeviceA: 'Yes. The Kv-Netflix interface is optimized to display well on all device types, from mobile phones and tablets to Smart TVs via web browser.',
+    faqServerQ: 'Are the streaming servers stable?',
+    faqServerA: 'Yes. Kv-Netflix uses a high-speed server system with wide bandwidth, minimizing lag or slow loading even during peak hours.',
+    faqSeekQ: 'Does Kv-Netflix support seeking and adjustable subtitles?',
+    faqSeekA: 'Yes. The video player supports modern features like fast seeking, playback speed selection, and flexible toggling or resizing of subtitles.',
+    faqTheaterQ: 'Are newly released theater movies available on Kv-Netflix?',
+    faqTheaterA: 'The latest blockbuster theater movies are always updated quickly on Kv-Netflix as soon as a quality version or best translation is available.',
+    faqDubQ: 'Does Kv-Netflix have dubbed and narrated movies?',
+    faqDubA: 'Yes. In addition to Vietnamese subtitles, Kv-Netflix offers many movies with high-quality narration or dubbing for all audiences.',
+    faqAnimeQ: 'Does Kv-Netflix specialize in movies and anime?',
+    faqAnimeA: 'Yes. Kv-Netflix is a dedicated site providing a huge library from TV series, theatrical movies, OVA to the most beloved anime genres.',
+    faqSpeedQ: 'Is the Kv-Netflix page loading fast?',
+    faqSpeedA: 'The website is maximally optimized to ensure lightning-fast page loads, instant response, and no annoyance when searching for and choosing movies.',
 
     explore: 'Explore',
     history: 'History',
@@ -381,6 +514,9 @@ const en: Translations = {
 
     loadingStream: 'Loading stream...',
     comingSoon: 'Coming Soon',
+    notAvailableYet: 'Movie not available yet',
+    checkBackLater: 'Save this movie to watch later and check back when new episodes arrive.',
+    saveForLater: 'Save for later',
     episode: 'Episode',
     server: 'Server',
     nextEpisode: 'Next Episode',
@@ -404,6 +540,9 @@ const en: Translations = {
     delete: 'Delete',
     confirm: 'Confirm',
     back: 'Back',
+
+    mobileSchedule: 'Schedule',
+    mobileAccount: 'Account',
 };
 
 export const translations: Record<Lang, Translations> = { vi, en };

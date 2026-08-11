@@ -61,7 +61,7 @@ export default function DevicePairPage({ onClose }: Props) {
         return (
             <Modal onClose={onClose}>
                 <p className="text-[var(--text-muted)] text-sm text-center mb-3">{t.loginToPair}</p>
-                <button onClick={onClose} className="w-full py-2 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-500 transition-colors">
+                <button onClick={onClose} className="w-full py-2 bg-accent text-[var(--accent-contrast)] rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors">
                     {t.close}
                 </button>
             </Modal>
@@ -81,7 +81,7 @@ export default function DevicePairPage({ onClose }: Props) {
 
             {loading ? (
                 <div className="py-8">
-                    <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
             ) : status === 'used' ? (
                 <div className="text-center py-4">
@@ -110,7 +110,7 @@ export default function DevicePairPage({ onClose }: Props) {
                     {status === 'expired' && (
                         <button
                             onClick={generateCode}
-                            className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded-lg transition-colors"
+                            className="w-full py-2.5 bg-accent hover:bg-accent-hover text-[var(--accent-contrast)] text-sm font-bold rounded-lg transition-colors"
                         >
                             {t.generateNewCode}
                         </button>
@@ -118,7 +118,7 @@ export default function DevicePairPage({ onClose }: Props) {
 
                     {status === 'waiting' && (
                         <div className="flex items-center justify-center gap-2 text-[var(--text-dim)] text-xs">
-                            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
+                            <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
                             {t.waitingForDevice}
                         </div>
                     )}

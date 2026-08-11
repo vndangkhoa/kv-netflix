@@ -52,7 +52,7 @@ export default function RegisterPage({ onClose, onSwitchToLogin }: Props) {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-accent/50"
                         placeholder={t.name}
                     />
                 </div>
@@ -63,7 +63,7 @@ export default function RegisterPage({ onClose, onSwitchToLogin }: Props) {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-accent/50"
                         placeholder="email@example.com"
                     />
                 </div>
@@ -75,14 +75,14 @@ export default function RegisterPage({ onClose, onSwitchToLogin }: Props) {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         minLength={6}
-                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-accent/50"
                         placeholder={t.passwordMinHint}
                     />
                 </div>
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors mt-1"
+                    className="w-full py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-[var(--accent-contrast)] text-sm font-bold rounded-lg transition-colors mt-1"
                 >
                     {loading ? t.registering : t.register}
                 </button>
@@ -90,7 +90,7 @@ export default function RegisterPage({ onClose, onSwitchToLogin }: Props) {
 
             <p className="text-center text-xs text-[var(--text-muted)] mt-4">
                 {t.hasAccount}{' '}
-                <button onClick={onSwitchToLogin} className="text-cyan-500 hover:text-cyan-400 font-medium">
+                <button onClick={onSwitchToLogin} className="text-accent hover:text-accent-hover font-medium">
                     {t.login}
                 </button>
             </p>

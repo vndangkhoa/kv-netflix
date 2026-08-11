@@ -8,6 +8,7 @@ export interface Movie {
     backdrop?: string;
     quality?: string;
     year?: number;
+    rating?: string;
     category: string;
     time?: string;
     lang?: string;
@@ -46,6 +47,7 @@ export interface VideoSource {
     resolution: string;
     format_id: string;
     isEmbed?: boolean;
+    ext?: string;
 }
 export interface Category {
     name: string;

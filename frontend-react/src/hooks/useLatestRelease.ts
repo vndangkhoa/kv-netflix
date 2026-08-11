@@ -143,12 +143,8 @@ export function useLatestRelease() {
     const [loading, setLoading] = useState(!getCached());
 
     useEffect(() => {
-        const cached = getCached();
-        if (cached) {
-            setDownloads(cached);
-            setLoading(false);
-            return;
-        }
+        // Initial state already restores the cached release; skip refetching.
+        if (getCached()) return;
 
         let cancelled = false;
 

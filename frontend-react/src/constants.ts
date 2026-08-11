@@ -1,10 +1,10 @@
-import { Home, Film, Tv, PlayCircle, Heart, Folder, Swords, HeartHandshake, Laugh, Castle, Brain, Siren, Bomb, Dumbbell, Target, Rocket, Compass, FlaskRound, Ghost, Music, VenetianMask, BookOpen, Trees, Landmark, Eye, GraduationCap, Star, Smartphone } from 'lucide-react';
+import { Home, Film, Tv, Heart, Folder, Swords, HeartHandshake, Laugh, Castle, Brain, Siren, Bomb, Dumbbell, Target, Rocket, Compass, FlaskRound, Ghost, Music, VenetianMask, BookOpen, Trees, Landmark, Eye, GraduationCap, Star, Smartphone } from 'lucide-react';
 
 export type Category = {
     id: string;
-    nameKey: keyof typeof import('../i18n').en;
+    nameKey: keyof typeof import('./i18n/translations').translations.en;
     path: string;
-    icon: React.ComponentType<any>;
+    icon: React.ComponentType<{ size?: number | string; className?: string; strokeWidth?: number | string }>;
     showText?: boolean; // If false, only show icon (no text)
 };
 
@@ -28,6 +28,25 @@ export interface Genre {
     en: string;
     icon: typeof Home;
 }
+
+export interface Country {
+    id: string;
+    vi: string;
+    en: string;
+}
+
+export const COUNTRIES: Country[] = [
+    { id: 'viet-nam', vi: 'Việt Nam', en: 'Vietnam' },
+    { id: 'han-quoc', vi: 'Hàn Quốc', en: 'Korea' },
+    { id: 'trung-quoc', vi: 'Trung Quốc', en: 'China' },
+    { id: 'nhat-ban', vi: 'Nhật Bản', en: 'Japan' },
+    { id: 'thai-lan', vi: 'Thái Lan', en: 'Thailand' },
+    { id: 'au-my', vi: 'Âu Mỹ', en: 'US & Europe' },
+    { id: 'hong-kong', vi: 'Hồng Kông', en: 'Hong Kong' },
+    { id: 'dai-loan', vi: 'Đài Loan', en: 'Taiwan' },
+    { id: 'an-do', vi: 'Ấn Độ', en: 'India' },
+    { id: 'nam-phi', vi: 'Nam Phi', en: 'South Africa' },
+];
 
 export const GENRES: Genre[] = [
     { id: 'hanh-dong', vi: 'Hành Động', en: 'Action', icon: Swords },

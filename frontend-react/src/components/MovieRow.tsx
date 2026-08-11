@@ -26,7 +26,7 @@ function deduplicateMovies(list: Movie[], excludeIds?: Set<string>): Movie[] {
 
         const normTitle = (m.title || '')
             .toLowerCase()
-            .replace(/[\(\[\{].*?[\)\]\}]/g, '')
+            .replace(/[[({].*?[)\]}]/g, '')
             .replace(/[^a-z0-9]/g, '');
 
         const key = m.id || m.slug || normTitle;

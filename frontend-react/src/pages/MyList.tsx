@@ -6,6 +6,7 @@ import { MovieCard } from '../components/MovieCard';
 import DevicePairPage from './DevicePairPage';
 import { accountAPI, exploreAPI } from '../api/client';
 import type { Device, ExploreMovie } from '../api/client';
+import type { Movie } from '../types';
 import {
     User, Monitor, LogOut, Trash2, Shield, Copy, Check,
     RefreshCw, Eye, EyeOff, AlertTriangle, Compass, Clock, Bookmark,
@@ -116,11 +117,11 @@ function ExploreTab() {
     const [error, setError] = useState('');
     const { t } = useLang();
 
-    useEffect(() => { loadExplore(); }, []);
-
-    async function loadExplore() {
-        setLoading(true);
-        setError('');
+    async function loadExplore(showSpinner = false) {
+        if (showSpinner) {
+            setLoading(true);
+            setError('');
+        }
         try {
             setMovies(await exploreAPI.getRelated());
         } catch {
@@ -129,6 +130,11 @@ function ExploreTab() {
         setLoading(false);
     }
 
+    // Fetch-on-mount: the loader only sets state after the async fetch resolves.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => { loadExplore(); }, []);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
     return (
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 pb-12">
             <div className="flex items-center gap-3 mb-6">
@@ -136,7 +142,7 @@ function ExploreTab() {
                     <Compass size={18} className="text-accent" />
                 </div>
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">{t.exploreTitle as string}</h2>
-                <button onClick={loadExplore} className="ml-auto p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-lg transition-colors">
+                <button onClick={() => loadExplore(true)} className="ml-auto p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-lg transition-colors">
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 </button>
             </div>
@@ -148,7 +154,7 @@ function ExploreTab() {
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-20 text-[var(--text-muted)]">
                     <p className="text-sm mb-3">{error}</p>
-                    <button onClick={loadExplore} className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-colors">
+                    <button onClick={() => loadExplore(true)} className="px-4 py-2 text-sm font-medium text-[var(--accent-contrast)] bg-accent hover:bg-accent-hover rounded-lg transition-colors">
                         {t.retry as string}
                     </button>
                 </div>
@@ -171,13 +177,13 @@ function ExploreTab() {
 
 // ── History / Saved Tab ────────────────────────────────────────────────
 
-function HistoryTab({ items, emptyKey, hintKey, onRemove }: { items: any[]; emptyKey: string; hintKey: string; onRemove?: (id: string) => void }) {
+function HistoryTab({ items, emptyKey, hintKey, onRemove }: { items: Movie[]; emptyKey: string; hintKey: string; onRemove?: (id: string) => void }) {
     const { t } = useLang();
     return (
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 pb-12">
             {items.length > 0 ? (
                 <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
-                    {items.map((movie: any, index: number) => (
+                    {items.map((movie, index: number) => (
                         <div key={`${movie.id}-${index}`} className="relative group">
                             <MovieCard movie={movie} />
                             {onRemove && (
@@ -225,13 +231,16 @@ function AccountSettings({ user, logout, onShowPair }: { user: { id: number; nam
     const [keyShown, setKeyShown] = useState(false);
     const [keyError, setKeyError] = useState('');
 
-    useEffect(() => { loadDevices(); }, []);
-
-    async function loadDevices() {
-        setLoadingDevices(true);
+    async function loadDevices(showSpinner = false) {
+        if (showSpinner) setLoadingDevices(true);
         try { setDevices(await accountAPI.getDevices()); } catch { /* ignore */ }
         setLoadingDevices(false);
     }
+
+    // Fetch-on-mount: the loader only sets state after the async fetch resolves.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => { loadDevices(); }, []);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     async function handleRemoveDevice(deviceId: number) {
         setRemovingId(deviceId);
@@ -252,7 +261,7 @@ function AccountSettings({ user, logout, onShowPair }: { user: { id: number; nam
             await accountAPI.changePassword(currentPw, newPw);
             setPwSuccess(t.passwordChanged as string);
             setCurrentPw(''); setNewPw(''); setConfirmPw('');
-        } catch (e: any) { setPwError(e.message || (t.passwordChangeFailed as string)); }
+        } catch (e) { setPwError(e instanceof Error ? e.message : (t.passwordChangeFailed as string)); }
         setChangingPw(false);
     }
 
@@ -264,8 +273,8 @@ function AccountSettings({ user, logout, onShowPair }: { user: { id: number; nam
             setRecoveryKey(data.key);
             setKeyShown(true);
             setKeyCopied(false);
-        } catch (e: any) {
-            setKeyError(e.message || (t.keyGeneratedError as string));
+        } catch (e) {
+            setKeyError(e instanceof Error ? e.message : (t.keyGeneratedError as string));
         }
         setGeneratingKey(false);
     }
@@ -410,7 +419,7 @@ function AccountSettings({ user, logout, onShowPair }: { user: { id: number; nam
                             <h3 className="font-semibold text-[var(--text-primary)]">{t.connectedDevices as string}</h3>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-muted)]">{devices.length}</span>
                         </div>
-                        <button onClick={loadDevices} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-lg transition-colors">
+                        <button onClick={() => loadDevices(true)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-lg transition-colors">
                             <RefreshCw size={14} className={loadingDevices ? 'animate-spin' : ''} />
                         </button>
                     </div>

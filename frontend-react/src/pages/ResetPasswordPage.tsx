@@ -37,8 +37,8 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
         try {
             await authAPI.resetPassword(key, newPw);
             setSuccess(true);
-        } catch (e: any) {
-            setError(e.message || t.invalidKey);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : t.invalidKey);
         }
         setLoading(false);
     }
@@ -54,7 +54,7 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
                     </p>
                     <button
                         onClick={onSwitchToLogin}
-                        className="w-full px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors"
+                        className="w-full px-4 py-2 text-sm font-medium text-[var(--accent-contrast)] bg-accent hover:bg-accent-hover rounded-lg transition-colors"
                     >
                         {t.login}
                     </button>
@@ -66,7 +66,7 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
     return (
         <Modal onClose={onClose}>
             <div className="flex items-center gap-2 mb-1">
-                <Key size={20} className="text-cyan-500" />
+                <Key size={20} className="text-accent" />
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">{t.resetPassword}</h2>
             </div>
             <p className="text-sm text-[var(--text-muted)] mb-5">
@@ -87,7 +87,7 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
                         value={key}
                         onChange={e => setKey(e.target.value)}
                         placeholder="XXXX-XXXX-XXXX-XXXX"
-                        className="w-full px-3 py-2 text-sm font-mono bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full px-3 py-2 text-sm font-mono bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-accent/50"
                     />
                 </div>
                 <div>
@@ -98,7 +98,7 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
                             value={newPw}
                             onChange={e => setNewPw(e.target.value)}
                             placeholder={`${t.newPassword} ${t.passwordMinHint}`}
-                            className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                            className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-accent/50"
                         />
                         <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                             {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -112,13 +112,13 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
                         value={confirmPw}
                         onChange={e => setConfirmPw(e.target.value)}
                         placeholder="••••••"
-                        className="w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-accent/50"
                     />
                 </div>
                 <button
                     onClick={handleReset}
                     disabled={loading}
-                    className="w-full py-2.5 text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded-lg transition-colors mt-1"
+                    className="w-full py-2.5 text-sm font-bold text-[var(--accent-contrast)] bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-lg transition-colors mt-1"
                 >
                     {loading ? t.resetting : t.resetBtn}
                 </button>
@@ -126,7 +126,7 @@ export default function ResetPasswordPage({ onClose, onSwitchToLogin }: Props) {
 
             <p className="text-center text-xs text-[var(--text-muted)] mt-4">
                 {t.hasAccount}{' '}
-                <button onClick={onSwitchToLogin} className="text-cyan-500 hover:text-cyan-400 font-medium">
+                <button onClick={onSwitchToLogin} className="text-accent hover:text-accent-hover font-medium">
                     {t.login}
                 </button>
             </p>

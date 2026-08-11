@@ -10,9 +10,10 @@ interface MovieCardProps {
     className?: string;
     isDragging?: boolean;
     aspectRatio?: 'poster' | 'landscape';
+    rank?: number;
 }
 
-export const MovieCard = ({ movie, className = '', isDragging = false, aspectRatio = 'poster' }: MovieCardProps) => {
+export const MovieCard = ({ movie, className = '', isDragging = false, aspectRatio = 'poster', rank }: MovieCardProps) => {
     const targetUrl = aspectRatio === 'landscape' ? (movie.backdrop || movie.thumbnail) : movie.thumbnail;
     const getRawImageUrl = (url: string) => {
         if (!url) return '';
@@ -26,7 +27,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                 if (path) {
                     url = path.startsWith('http') ? path : `https://phim.nguonc.com${path.startsWith('/') ? '' : '/'}${path}`;
                 }
-            } catch {}
+            } catch { /* ignore malformed JSON thumbnails */ }
         }
         if (url.startsWith('//')) return `https:${url}`;
         if (!url.startsWith('http')) return `https://${url}`;
@@ -73,6 +74,9 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
         ? movie.duration - movie.watchedTimestamp
         : 0;
 
+    // Reset image state whenever the movie's image URL changes (cards are
+    // reused across rows with different movies). Intentional prop sync.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         setImgSrc(proxyUrl);
         setImgError(false);
@@ -82,6 +86,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
             setImgLoaded(false);
         }
     }, [proxyUrl, rawUrl]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const handleImgLoad = () => {
         if (proxyUrl) loadedImageCache.add(proxyUrl);
@@ -107,7 +112,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                 onFocus={(e) => {
                     e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }}
-                className={`block relative ${aspectClass} rounded-xl overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-accent/15 border border-black/5 dark:border-white/5 transition-all duration-500 tv-card-focus focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${isDragging ? 'pointer-events-none' : ''}`}
+                className={`block relative ${aspectClass} clip-mamphim overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-[var(--accent)]/15 transition-all duration-500 tv-card-focus focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${isDragging ? 'pointer-events-none' : ''}`}
                 draggable={false}
             >
                 {isVisible && !imgError ? (
@@ -125,6 +130,8 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                             className={`w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110 group-focus-within/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
                             draggable={false}
                         />
+                        {/* Gold hover mask (mamphim .v-thumbnail:hover .mask) */}
+                        <div className="absolute inset-0 bg-[var(--accent)] opacity-0 group-hover/card:opacity-25 group-focus-within/card:opacity-25 transition-opacity duration-500 pointer-events-none" />
                     </>
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg-elevated)] text-[var(--text-dim)] p-4 text-center">
@@ -133,10 +140,20 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                     </div>
                 )}
 
+                {/* Rank number top-right (mamphim .pin-top) */}
+                {rank !== undefined && (
+                    <div
+                        className="absolute top-0 right-2 z-10 pointer-events-none text-white text-4xl md:text-5xl font-extrabold leading-none text-right"
+                        style={{ textShadow: '0 2px 3px rgba(0,0,0,0.6)', lineHeight: 1.1 }}
+                    >
+                        {rank}
+                    </div>
+                )}
+
                 {/* Hover / Focus Play Button Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-all duration-500 flex items-center justify-center">
-                    <div className="bg-accent/90 text-white p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 group-focus-within/card:translate-y-0 hover:scale-115 transition-all duration-500 shadow-2xl shadow-accent/20 border border-accent/25">
-                        <Play className="w-5 h-5 text-white fill-current" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-all duration-500 flex items-center justify-center">
+                    <div className="bg-[var(--accent)] text-[var(--accent-contrast)] p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 group-focus-within/card:translate-y-0 hover:scale-115 transition-all duration-500 shadow-2xl shadow-[var(--accent)]/20">
+                        <Play className="w-5 h-5 fill-current text-[var(--accent-contrast)]" />
                     </div>
                 </div>
 
@@ -144,7 +161,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                 <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
                     {/* Episode Badge for Series */}
                     {movie.currentEpisode && (
-                        <div className="bg-accent/90 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-white border border-accent/20 shadow-md">
+                        <div className="bg-[var(--accent)] text-[var(--accent-contrast)] backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-extrabold border border-black/20 shadow-md">
                             Tập {movie.currentEpisode}
                         </div>
                     )}
@@ -185,7 +202,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                 </h3>
                 {movie.year && (
                     <p className="text-[10px] md:text-[11px] text-[var(--text-dim)] mt-1 font-medium tracking-wide">
-                        {movie.year} • 98% Match
+                        {movie.year} • {movie.rating ? `★ ${movie.rating}` : '98% Match'}
                     </p>
                 )}
             </div>

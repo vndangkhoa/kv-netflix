@@ -41,6 +41,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLang() {
     const ctx = useContext(LanguageContext);
     if (!ctx) throw new Error('useLang must be used within LanguageProvider');

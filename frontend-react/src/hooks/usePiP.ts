@@ -8,6 +8,8 @@ export const usePiP = (videoRef: RefObject<HTMLVideoElement | null>) => {
     useEffect(() => {
         const standardSupport = 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
         const hasVideo = !!videoRef.current;
+        // One-time mount detection; videoRef is only available after first render.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsPiPSupported(standardSupport || (hasVideo && 'webkitPresentationMode' in videoRef.current!));
     }, []);
 
