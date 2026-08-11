@@ -32,11 +32,11 @@
   --border-primary: rgba(255, 255, 255, 0.1);
   --border-subtle: rgba(255, 255, 255, 0.05);
   --gradient-mask: #202331;
-  --accent: #ffd875;
-  --accent-hover: #ffde8a;
-  --accent-bg: rgba(255, 216, 117, 0.1);
-  --accent-bg-hover: rgba(255, 216, 117, 0.22);
-  --accent-contrast: #191b24;
+  --accent: #e50914;
+  --accent-hover: #f40b17;
+  --accent-bg: rgba(229, 9, 20, 0.1);
+  --accent-bg-hover: rgba(229, 9, 20, 0.25);
+  --accent-contrast: #ffffff;
 }
 
 /* Crimson accent (classic Netflix theme) */
@@ -76,10 +76,10 @@ html.accent-cyan, :root.accent-cyan, .accent-cyan {
   --border-primary: rgba(0, 0, 0, 0.1);
   --border-subtle: rgba(0, 0, 0, 0.05);
   --gradient-mask: #ffffff;
-  --accent: #b8860b;
-  --accent-hover: #8b6508;
-  --accent-bg: rgba(184, 134, 11, 0.1);
-  --accent-bg-hover: rgba(184, 134, 11, 0.18);
+  --accent: #e50914;
+  --accent-hover: #b80710;
+  --accent-bg: rgba(229, 9, 20, 0.08);
+  --accent-bg-hover: rgba(229, 9, 20, 0.18);
   --accent-contrast: #ffffff;
 }
 
