@@ -130,8 +130,28 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 		if err == nil {
 			f.Close()
 		} else {
-			// If not found, rewrite path to serve index.html for SPA routing
-			r.URL.Path = pathPrefix + "/index.html"
+			// If not found, serve index.html directly for SPA routing.
+			// We must NOT rewrite the URL to "/index.html" and hand it to
+			// http.FileServer: Go's FileServer redirects any URL ending in
+			// "index.html" to "./", which turns SPA fallbacks into redirect
+			// loops (e.g. /watch/ -> ./ -> /watch/).
+			indexFile, err := root.Open("/index.html")
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			defer indexFile.Close()
+
+			info, err := indexFile.Stat()
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "public, max-age=300")
+			http.ServeContent(w, r, "index.html", info.ModTime(), indexFile)
+			return
 		}
 
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))

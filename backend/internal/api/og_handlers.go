@@ -43,6 +43,17 @@ func isSocialCrawler(ua string) bool {
 	return false
 }
 
+// normalizePath collapses duplicate slashes and lowercases the path so that
+// crawler URLs like "//WATCH/soulm8te" still match the OG routes instead of
+// falling through to the SPA, where trailing-slash redirects can loop.
+func normalizePath(p string) string {
+	lower := strings.ToLower(p)
+	for strings.Contains(lower, "//") {
+		lower = strings.ReplaceAll(lower, "//", "/")
+	}
+	return lower
+}
+
 // OGCrawlerMiddleware intercepts requests for the home page or /watch/* URLs
 // coming from social crawlers and serves a prerendered Open Graph page so link
 // previews show the relevant image, title, and description. All other requests
@@ -54,7 +65,7 @@ func OGCrawlerMiddleware(h *Handler) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			path := r.URL.Path
+			path := normalizePath(r.URL.Path)
 			if path == "/" || path == "" {
 				h.ServeHomeOG(w, r)
 				return
@@ -105,7 +116,7 @@ func (h *Handler) ServeHomeOG(w http.ResponseWriter, r *http.Request) {
 // /watch/:slug (or /watch/:slug/:episode) URL based on the live movie data.
 func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
 	// Path is /watch/:slug or /watch/:slug/:episode — take the first segment.
-	slug := strings.TrimPrefix(r.URL.Path, "/watch/")
+	slug := strings.TrimPrefix(normalizePath(r.URL.Path), "/watch/")
 	slug = strings.Trim(slug, "/")
 	if i := strings.Index(slug, "/"); i >= 0 {
 		slug = slug[:i]

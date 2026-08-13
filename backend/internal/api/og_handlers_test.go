@@ -94,6 +94,26 @@ func TestServeWatchOGUsesFallbackImage(t *testing.T) {
 	}
 }
 
+func TestNormalizePath(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"/", "/"},
+		{"/watch/some-movie", "/watch/some-movie"},
+		{"/watch/some-movie/1", "/watch/some-movie/1"},
+		{"//watch/some-movie", "/watch/some-movie"},
+		{"//watch/", "/watch/"},
+		{"/WATCH/SOME-MOVIE", "/watch/some-movie"},
+		{"/WATCH//some-movie", "/watch/some-movie"},
+	}
+	for _, c := range cases {
+		if got := normalizePath(c.in); got != c.want {
+			t.Errorf("normalizePath(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestServeWatchOGCrawlerMiddleware(t *testing.T) {
 	h := &Handler{}
 	passed := false
