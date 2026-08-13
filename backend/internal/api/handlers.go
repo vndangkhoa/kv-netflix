@@ -51,6 +51,7 @@ type Handler struct {
 	Image        *service.ImageService
 	JWTSecret    []byte
 	StreamClient *http.Client
+	PublicURL    string
 }
 
 func NewHandler(
@@ -311,9 +312,24 @@ func (h *Handler) ProxyImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
-	if slug == "" {
-		http.Error(w, "slug required", http.StatusBadRequest)
+	movie, err := h.fetchMovieDetail(slug)
+	if err != nil {
+		if slug == "" {
+			http.Error(w, "slug required", http.StatusBadRequest)
+		} else {
+			http.Error(w, "movie not found", http.StatusNotFound)
+		}
 		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(movie)
+}
+
+// fetchMovieDetail resolves a slug against all providers and returns the
+// merged movie. It is shared by the JSON API and the Open Graph crawler page.
+func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
+	if slug == "" {
+		return nil, fmt.Errorf("slug required")
 	}
 
 	var primaryMovie *models.RophimMovie
@@ -362,8 +378,7 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !success || primaryMovie == nil {
-		http.Error(w, "movie not found", http.StatusNotFound)
-		return
+		return nil, fmt.Errorf("movie not found")
 	}
 
 	for i, provider := range h.Providers {
@@ -441,8 +456,7 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		primaryMovie.Episodes = uniqueEps
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(primaryMovie)
+	return primaryMovie, nil
 }
 
 func (h *Handler) GetGenres(w http.ResponseWriter, r *http.Request) {

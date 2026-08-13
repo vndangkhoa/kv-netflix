@@ -12,6 +12,7 @@ type Config struct {
 	TMDBAPIKey     string
 	GINMode        string
 	AllowedOrigins []string
+	PublicURL      string
 }
 
 func Load() *Config {
@@ -22,6 +23,7 @@ func Load() *Config {
 		TMDBAPIKey:     os.Getenv("TMDB_API_KEY"),
 		GINMode:        getEnv("GIN_MODE", "debug"),
 		AllowedOrigins: getEnvSlice("ALLOWED_ORIGINS", []string{"*"}),
+		PublicURL:      os.Getenv("PUBLIC_URL"),
 	}
 }
 

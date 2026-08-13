@@ -40,12 +40,14 @@ func main() {
 	providers := []scraper.MovieProvider{ophimService, kkphimService}
 
 	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService, cfg.JWTSecret)
+	handler.PublicURL = cfg.PublicURL
 
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
+	r.Use(api.OGCrawlerMiddleware(handler))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
