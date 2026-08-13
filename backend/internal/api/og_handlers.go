@@ -10,8 +10,8 @@ import (
 // ogBotUAs lists known social-network / messaging crawlers that fetch a URL
 // and render a link preview without executing JavaScript. Facebook and
 // Messenger both use the "facebookexternalhit" bot. Serving Open Graph markup
-// to these user agents lets a shared /watch/:slug link display the movie
-// thumbnail, title, and description in the chat.
+// to these user agents lets a shared link display the movie thumbnail, title,
+// and description in the chat.
 var ogBotUAs = []string{
 	"facebookexternalhit",
 	"facebot",
@@ -29,6 +29,8 @@ var ogBotUAs = []string{
 	"yandex",
 }
 
+const siteName = "StreamFlow"
+
 // isSocialCrawler reports whether the given User-Agent belongs to a link
 // preview / social crawler that needs server-rendered Open Graph tags.
 func isSocialCrawler(ua string) bool {
@@ -41,14 +43,23 @@ func isSocialCrawler(ua string) bool {
 	return false
 }
 
-// OGCrawlerMiddleware intercepts requests for /watch/* URLs coming from social
-// crawlers and serves a prerendered Open Graph page so link previews show the
-// movie thumbnail. All other requests (including normal browsers) pass through
-// to the SPA.
+// OGCrawlerMiddleware intercepts requests for the home page or /watch/* URLs
+// coming from social crawlers and serves a prerendered Open Graph page so link
+// previews show the relevant image, title, and description. All other requests
+// (including normal browsers) pass through to the SPA.
 func OGCrawlerMiddleware(h *Handler) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/watch/") && isSocialCrawler(r.UserAgent()) {
+			if r.Method != http.MethodGet || !isSocialCrawler(r.UserAgent()) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			path := r.URL.Path
+			if path == "/" || path == "" {
+				h.ServeHomeOG(w, r)
+				return
+			}
+			if strings.HasPrefix(path, "/watch/") {
 				h.ServeWatchOG(w, r)
 				return
 			}
@@ -72,6 +83,24 @@ func (h *Handler) baseURL(r *http.Request) string {
 	return scheme + "://" + r.Host
 }
 
+// fallbackImageURL returns the absolute URL of the app's default poster, used
+// when a movie has no thumbnail/backdrop so link previews never render broken.
+func (h *Handler) fallbackImageURL(r *http.Request) string {
+	return h.baseURL(r) + "/poster-default.jpg"
+}
+
+// ServeHomeOG renders Open Graph meta tags for the root page.
+func (h *Handler) ServeHomeOG(w http.ResponseWriter, r *http.Request) {
+	origin := h.baseURL(r)
+	h.renderOG(w,
+		siteName+" - Watch Movies Online",
+		"Stream your favorite movies and TV shows in HD for free.",
+		h.fallbackImageURL(r),
+		"website",
+		origin+"/",
+	)
+}
+
 // ServeWatchOG renders the Open Graph / Twitter Card meta tags for a
 // /watch/:slug (or /watch/:slug/:episode) URL based on the live movie data.
 func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
@@ -85,9 +114,9 @@ func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
 	origin := h.baseURL(r)
 	canonical := origin + "/watch/" + slug
 
-	title := "StreamFlow - Watch Movies Online"
+	title := siteName + " - Watch Movies Online"
 	description := "Stream your favorite movies and TV shows in HD for free."
-	image := ""
+	image := h.fallbackImageURL(r)
 	ogType := "website"
 
 	if slug != "" {
@@ -103,8 +132,8 @@ func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
 			if movie.Description != "" {
 				description = movie.Description
 			}
-			// Movie detail pages are video previews — helps platforms render
-			// a play affordance in some clients.
+			// Movie detail pages are video previews — helps platforms render a
+			// play affordance in some clients.
 			ogType = "video.other"
 			if movie.Year > 0 {
 				title = fmt.Sprintf("%s (%d)", movie.Title, movie.Year)
@@ -112,8 +141,12 @@ func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Facebook recommends og:image dimensions >= 1200x630. Thumbnails come from
-	// providers as absolute URLs, which the crawler can fetch directly.
+	h.renderOG(w, title, description, image, ogType, canonical)
+}
+
+// renderOG writes an HTML page carrying Open Graph and Twitter Card tags.
+// og:image must be an absolute, publicly reachable URL for crawlers to fetch.
+func (h *Handler) renderOG(w http.ResponseWriter, title, description, image, ogType, canonical string) {
 	escTitle := html.EscapeString(title)
 	escDesc := html.EscapeString(description)
 	escImage := html.EscapeString(image)
@@ -129,7 +162,7 @@ func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>%s</title>
 <meta name="description" content="%s" />
-<meta property="og:site_name" content="StreamFlow" />
+<meta property="og:site_name" content="%s" />
 <meta property="og:title" content="%s" />
 <meta property="og:description" content="%s" />
 <meta property="og:type" content="%s" />
@@ -148,6 +181,6 @@ func (h *Handler) ServeWatchOG(w http.ResponseWriter, r *http.Request) {
 <a href="%s">%s</a>
 </body>
 </html>
-`, escTitle, escDesc, escTitle, escDesc, ogType, escURL, escImage, escTitle,
+`, escTitle, escDesc, siteName, escTitle, escDesc, ogType, escURL, escImage, escTitle,
 		escTitle, escDesc, escImage, escURL, escURL, escTitle)
 }

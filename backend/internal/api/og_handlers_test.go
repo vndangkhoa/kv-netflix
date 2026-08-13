@@ -55,11 +55,59 @@ func TestServeWatchOGFallsBackToDefaults(t *testing.T) {
 	}
 }
 
+func TestServeHomeOG(t *testing.T) {
+	h := &Handler{PublicURL: "https://example.com"}
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	req.Header.Set("User-Agent", "facebookexternalhit/1.1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHomeOG(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`og:title`,
+		`og:type`,
+		`og:url" content="https://example.com/"`,
+		`og:image" content="https://example.com/poster-default.jpg`,
+		`twitter:card`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("home response missing %q", want)
+		}
+	}
+}
+
+func TestServeWatchOGUsesFallbackImage(t *testing.T) {
+	h := &Handler{PublicURL: "https://example.com"} // nil providers -> no thumbnail -> fallback
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/watch/some-movie", nil)
+	req.Header.Set("User-Agent", "facebookexternalhit/1.1")
+	rec := httptest.NewRecorder()
+
+	h.ServeWatchOG(rec, req)
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `og:image" content="https://example.com/poster-default.jpg`) {
+		t.Errorf("watch response should fall back to default poster; body=%q", body)
+	}
+}
+
 func TestServeWatchOGCrawlerMiddleware(t *testing.T) {
 	h := &Handler{}
 	passed := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { passed = true; w.WriteHeader(200) })
 	mw := OGCrawlerMiddleware(h)
+
+	// Crawler on the home page is intercepted (next NOT called).
+	rec0 := httptest.NewRecorder()
+	req0 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req0.Header.Set("User-Agent", "facebookexternalhit/1.1")
+	mw(next).ServeHTTP(rec0, req0)
+	if !strings.Contains(rec0.Body.String(), "og:title") {
+		t.Errorf("home crawler request not intercepted; body=%q", rec0.Body.String())
+	}
 
 	// Crawler on a /watch/ path is intercepted (next NOT called).
 	rec := httptest.NewRecorder()
