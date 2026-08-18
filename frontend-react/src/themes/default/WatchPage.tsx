@@ -12,6 +12,11 @@ import { useAuth } from '../../context/AuthContext';
 import { syncAPI } from '../../api/client';
 import { registerWebOSBackHandler, WEBOS_KEY_CODES } from '../../hooks/useWebOS';
 
+// Icons for the custom controls injected into the Plyr control bar
+const NEXT_EPISODE_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" x2="19" y1="5" y2="19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const FULLSCREEN_ICON_ENTER = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/></svg>';
+const FULLSCREEN_ICON_EXIT = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor"/></svg>';
+
 function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
     const [count, setCount] = useState(10);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -323,6 +328,70 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         prevPlyrParentRef.current = parentDiv;
     }, [source, currentEpisode]);
 
+    const playerContainerRef = useRef<HTMLDivElement | null>(null);
+    const toggleFullscreenRef = useRef<(() => void) | null>(null);
+    const playNextEpisodeRef = useRef(playNextEpisode);
+    const hasNextEpisodeRef = useRef(hasNextEpisode);
+    // Latest-value refs so the DOM buttons injected into the Plyr bar never
+    // capture stale episode state (the Plyr init effect only re-runs when the
+    // stream URL changes). Kept above the init effect that reads them.
+    useEffect(() => { playNextEpisodeRef.current = playNextEpisode; });
+    useEffect(() => { hasNextEpisodeRef.current = hasNextEpisode; });
+
+    // Cross-platform fullscreen toggle.
+    // - iPhone/iPod: the Fullscreen API only supports <video> elements there,
+    //   and Plyr's default handling degrades to a CSS "fill the viewport" zoom
+    //   instead of a real fullscreen player — so use the native iOS fullscreen
+    //   player instead (webkitEnterFullscreen on all iOS versions, or
+    //   requestFullscreen on the video element for iOS 16.4+).
+    // - Android / desktop / iPad: fullscreen the player container so our custom
+    //   controls (skip, next episode, volume, settings) stay visible.
+    const toggleFullscreen = useCallback(async () => {
+        const video = videoRef.current;
+        const container = playerContainerRef.current;
+        if (!container) return;
+
+        const doc = document as Document & {
+            webkitFullscreenElement?: Element | null;
+            webkitExitFullscreen?: () => void;
+        };
+        const isFullscreen = !!(document.fullscreenElement || doc.webkitFullscreenElement);
+        const exitFullscreen = async () => {
+            if (document.exitFullscreen) await document.exitFullscreen().catch(() => {});
+            else doc.webkitExitFullscreen?.();
+        };
+
+        if (/iPhone|iPod/.test(navigator.userAgent) && video &&
+            typeof (video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen === 'function') {
+            if (isFullscreen) {
+                await exitFullscreen();
+            } else {
+                try {
+                    (video as HTMLVideoElement & { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
+                } catch {
+                    try { await video.requestFullscreen(); } catch { /* unsupported */ }
+                }
+            }
+            return;
+        }
+
+        const el = container as HTMLElement & { webkitRequestFullscreen?: () => void };
+        if (isFullscreen) {
+            await exitFullscreen();
+        } else if (el.requestFullscreen) {
+            await el.requestFullscreen().catch(() => {});
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (video?.requestFullscreen) {
+            // Last resort for browsers that only allow fullscreen on <video>
+            await video.requestFullscreen().catch(() => {});
+        }
+    }, [videoRef]);
+
+    useEffect(() => {
+        toggleFullscreenRef.current = toggleFullscreen;
+    }, [toggleFullscreen]);
+
     // Plyr wraps the <video> element, which is keyed by stream URL — every
     // source change mounts a fresh video element, so Plyr must be rebuilt.
     useEffect(() => {
@@ -339,60 +408,96 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
 
         const player = new Plyr(videoRef.current, {
-            controls: ['play-large', 'play', 'progress', 'current-time', 'fullscreen'],
+            controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time'],
             invertTime: false,
             seekTime: 10,
             keyboard: { focused: true, global: true },
+            // Plyr's own fullscreen is unreliable on iPhone (it degrades to a
+            // CSS "fill the viewport" zoom instead of a real fullscreen
+            // player), so it is disabled here — a custom cross-platform
+            // fullscreen button is injected instead.
+            fullscreen: { enabled: false },
         });
         plyrRef.current = player;
         plyrInitRef.current = true;
 
-        const injectPiP = () => {
-            if (!document.pictureInPictureEnabled) return;
+        const injectCustomControls = () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ctrl = (player as any).elements?.controls as HTMLElement | undefined;
-            if (!ctrl || ctrl.querySelector('[data-plyr="pip"]')) return;
+            if (!ctrl) return;
 
-            // Ensure the container has the pip-supported class so Plyr CSS shows the button
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (player as any).elements?.container?.classList?.add('plyr--pip-supported');
+            // Picture-in-Picture (native API only)
+            if (document.pictureInPictureEnabled && !ctrl.querySelector('[data-plyr="pip"]')) {
+                // Ensure the container has the pip-supported class so Plyr CSS shows the button
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (player as any).elements?.container?.classList?.add('plyr--pip-supported');
 
-            const pipBtn = document.createElement('button');
-            pipBtn.className = 'plyr__controls__item plyr__control';
-            pipBtn.setAttribute('data-plyr', 'pip');
-            pipBtn.setAttribute('type', 'button');
-            pipBtn.setAttribute('aria-label', 'Picture-in-Picture');
-            pipBtn.innerHTML = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18"><path d="M16 1H2a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-1 14H3V3h12v12z" fill="currentColor"/><path d="M10 7h5v5h-5V7z" fill="currentColor"/></svg>';
-            pipBtn.addEventListener('click', () => togglePiPRef.current?.());
-
-            const fsBtn = ctrl.querySelector('[data-plyr="fullscreen"]');
-            if (fsBtn) {
-                ctrl.insertBefore(pipBtn, fsBtn);
-            } else {
+                const pipBtn = document.createElement('button');
+                pipBtn.className = 'plyr__controls__item plyr__control';
+                pipBtn.setAttribute('data-plyr', 'pip');
+                pipBtn.setAttribute('type', 'button');
+                pipBtn.setAttribute('aria-label', 'Picture-in-Picture');
+                pipBtn.innerHTML = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18"><path d="M16 1H2a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-1 14H3V3h12v12z" fill="currentColor"/><path d="M10 7h5v5h-5V7z" fill="currentColor"/></svg>';
+                pipBtn.addEventListener('click', () => togglePiPRef.current?.());
                 ctrl.appendChild(pipBtn);
+            }
+
+            // Next episode button (hidden when there is no next episode)
+            if (!ctrl.querySelector('[data-kv-next]')) {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'plyr__controls__item plyr__control';
+                nextBtn.setAttribute('data-kv-next', '');
+                nextBtn.setAttribute('type', 'button');
+                nextBtn.setAttribute('aria-label', 'Next episode');
+                nextBtn.title = 'Next episode';
+                nextBtn.innerHTML = NEXT_EPISODE_ICON;
+                nextBtn.style.display = hasNextEpisodeRef.current ? '' : 'none';
+                nextBtn.addEventListener('click', () => playNextEpisodeRef.current?.());
+                ctrl.appendChild(nextBtn);
+            }
+
+            // Cross-platform fullscreen (works on iPhone via the native player)
+            if (!ctrl.querySelector('[data-kv-fullscreen]')) {
+                const fsBtn = document.createElement('button');
+                fsBtn.className = 'plyr__controls__item plyr__control';
+                fsBtn.setAttribute('data-kv-fullscreen', '');
+                fsBtn.setAttribute('type', 'button');
+                fsBtn.setAttribute('aria-label', 'Toggle fullscreen');
+                fsBtn.title = 'Toggle fullscreen';
+                fsBtn.innerHTML = FULLSCREEN_ICON_ENTER;
+                fsBtn.addEventListener('click', () => toggleFullscreenRef.current?.());
+                ctrl.appendChild(fsBtn);
             }
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((player as any).elements?.controls) {
-            injectPiP();
+            injectCustomControls();
         } else {
-            player.on('ready', injectPiP);
+            player.on('ready', injectCustomControls);
         }
 
         const onControlsShow = () => setPlayerControlsVisible(true);
         const onControlsHide = () => { setPlayerControlsVisible(false); setSettingsOpen(false); };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (player as any).on('controlsshow', onControlsShow);
+        (player as any).on('controlsshown', onControlsShow);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (player as any).on('controlshidden', onControlsHide);
         return () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (player as any).off('controlsshow', onControlsShow);
+            (player as any).off('controlsshown', onControlsShow);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (player as any).off('controlshidden', onControlsHide);
         };
     }, [source?.stream_url]);
+
+    // Keep the injected next-episode button in the Plyr bar in sync with the
+    // current episode (the button is re-injected per stream, but the episode
+    // can change without the stream URL changing).
+    useEffect(() => {
+        const btn = document.querySelector<HTMLElement>('.plyr__controls [data-kv-next]');
+        if (btn) btn.style.display = hasNextEpisode ? '' : 'none';
+    }, [hasNextEpisode]);
 
     // Apply playback speed to the video element (survives HLS re-creation)
     useEffect(() => {
@@ -435,6 +540,11 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     useEffect(() => {
         const handleFullscreenChange = () => {
             const isFS = !!document.fullscreenElement;
+
+            // Swap the injected fullscreen button icon between enter/exit
+            const fsBtn = document.querySelector<HTMLElement>('.plyr__controls [data-kv-fullscreen]');
+            if (fsBtn) fsBtn.innerHTML = isFS ? FULLSCREEN_ICON_EXIT : FULLSCREEN_ICON_ENTER;
+
             if (isFS) {
                 if ('orientation' in screen && typeof (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock === 'function') {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -589,7 +699,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             </div>
 
             {/* 1. Cinema Player Section */}
-            <div className="w-full h-[50vh] md:h-[80vh] bg-black relative shadow-2xl z-40">
+            <div ref={playerContainerRef} className="w-full h-[50vh] md:h-[80vh] bg-black relative shadow-2xl z-40">
                 {(loading || (buffering && !episodeEnded)) && (
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                         <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent border-t-transparent shadow-[0_0_20px_var(--accent-glow-soft)]"></div>
