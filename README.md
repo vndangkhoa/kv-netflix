@@ -291,6 +291,22 @@ cd kv-netflix/android-app
 
 The app connects to the backend at `https://nf.khoavo.myds.me/` by default.
 
+### Releases & Updates
+Release builds are R8-minified. The in-app updater checks GitHub and Forgejo
+releases for newer versions automatically.
+
+**Shipping an update** (all channels: GitHub/Forgejo releases, NAS Package
+Center SPK, download site): follow the step-by-step runbook in
+[RELEASE.md](RELEASE.md). Quick version:
+
+```bash
+# 1) bump versionCode/versionName + CHANGELOG, commit
+# 2) push both remotes + tag vX.Y.Z  -> CI builds the APKs
+# 3) Forgejo release with app-version tag (v1.4.x) carrying the APKs
+# 4) ../spk/ship.sh kvnetflix all <image-tag> <spk-ver>   (backend/NAS)
+# 5) ../spk/tools/kvfiles.py apk kvnetflix phone.apk tv.apk --restart
+```
+
 ---
 
 ## Local Development
