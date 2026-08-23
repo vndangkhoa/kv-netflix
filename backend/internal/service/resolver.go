@@ -324,13 +324,6 @@ type probeResult struct {
 	ok  bool
 }
 
-// probeExt probes a single candidate, reporting whether it is alive and, when
-// possible, its media type.
-func (r *embedResolver) probeExt(ctx context.Context, rawURL string) probeResult {
-	res := r.probeOne(ctx, rawURL)
-	return res
-}
-
 func (r *embedResolver) probeOne(ctx context.Context, rawURL string) probeResult {
 	probeCtx, cancel := context.WithTimeout(ctx, resolverProbeTimeout)
 	defer cancel()

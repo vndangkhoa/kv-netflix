@@ -21,7 +21,7 @@ func (h *Handler) GetDevices(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("user_id = ? AND is_paired = ?", userID, true).Find(&devices)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(devices)
+	_ = json.NewEncoder(w).Encode(devices)
 }
 
 // ── Remove Device ─────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ func (h *Handler) RemoveDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 }
 
 // ── Change Password ──────────────────────────────────────────────────
@@ -95,7 +95,7 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	database.DB.Model(&user).Update("password_hash", string(hash))
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "password_changed"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "password_changed"})
 }
 
 // ── Generate Recovery Key ─────────────────────────────────────────────
@@ -134,8 +134,8 @@ func (h *Handler) GenerateRecoveryKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"key":       formatted,
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"key":        formatted,
 		"created_at": recoveryKey.CreatedAt,
 	})
 }
@@ -143,7 +143,7 @@ func (h *Handler) GenerateRecoveryKey(w http.ResponseWriter, r *http.Request) {
 // ── Reset Password with Recovery Key (public, no auth) ────────────────
 
 type ResetPasswordRequest struct {
-	Key        string `json:"key"`
+	Key         string `json:"key"`
 	NewPassword string `json:"new_password"`
 }
 
@@ -194,5 +194,5 @@ func (h *Handler) ResetPasswordWithKey(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("user_id = ?", recoveryKey.UserID).Delete(&models.Device{})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "password_reset"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "password_reset"})
 }

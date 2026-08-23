@@ -26,7 +26,7 @@ func fakeSite(t *testing.T, routes map[string]func(w http.ResponseWriter, r *htt
 
 func hlsManifest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
-	w.Write([]byte("#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:6.0,\nseg1.ts\n#EXT-X-ENDLIST\n"))
+	_, _ = w.Write([]byte("#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:6.0,\nseg1.ts\n#EXT-X-ENDLIST\n"))
 }
 
 func TestResolveDirectM3U8InPage(t *testing.T) {
@@ -79,7 +79,7 @@ func TestResolveStreamFromExternalJS(t *testing.T) {
 		},
 		"/player.js": func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/javascript")
-			w.Write([]byte(`var cfg={source:"https://cdn.example.com/stream/playlist.m3u8"};`))
+			_, _ = w.Write([]byte(`var cfg={source:"https://cdn.example.com/stream/playlist.m3u8"};`))
 		},
 	})
 
@@ -129,7 +129,7 @@ func TestProbePicksAliveCandidateOverDead(t *testing.T) {
 			fmt.Fprintf(w, `<html><script src="/js1.js"></script><script src="/js2.js"></script></html>`)
 		},
 		"/js1.js": func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`var deadSource="https://cdn.example.com/dead/index.m3u8";`))
+			_, _ = w.Write([]byte(`var deadSource="https://cdn.example.com/dead/index.m3u8";`))
 		},
 		"/js2.js": func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `var liveSource="%s/alive/index.m3u8";`, aliveURL)
@@ -171,7 +171,7 @@ func TestResolveCacheHitSkipsRefetch(t *testing.T) {
 func TestResolveRejectsAdOnlyPage(t *testing.T) {
 	srv := fakeSite(t, map[string]func(w http.ResponseWriter, r *http.Request){
 		"/embed/4": func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`<html>
+			_, _ = w.Write([]byte(`<html>
 				<script src="https://ads.propellerads.com/main.js"></script>
 				<img src="https://cdn.example.com/ad-banner.jpg">
 				<iframe src="https://ads.exoclick.com/frame"></iframe>

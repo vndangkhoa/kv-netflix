@@ -126,7 +126,7 @@ func (e *VideoExtractor) extractWithYtDlp(ctx context.Context, url string, quali
 	}
 
 	var rawData map[string]interface{}
-	json.Unmarshal(output, &rawData)
+	_ = json.Unmarshal(output, &rawData)
 
 	if h, ok := rawData["height"].(float64); ok {
 		info.Resolution = fmt.Sprintf("%dp", int(h))

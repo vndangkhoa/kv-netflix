@@ -93,7 +93,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"token": token,
 		"user":  user,
 	})
@@ -131,7 +131,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"token": token,
 		"user":  user,
 	})
@@ -140,7 +140,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 // ── Get Current User ────────────────────────────────────────────────
 
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(ContextUserIDKey).(uint)
 
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
@@ -149,7 +149,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	_ = json.NewEncoder(w).Encode(user)
 }
 
 // ── Device Pairing: Generate Code ──────────────────────────────────
@@ -176,8 +176,8 @@ func (h *Handler) GenerateDeviceCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"code":      code,
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"code":       code,
 		"expires_at": device.ExpiresAt,
 	})
 }
@@ -189,7 +189,7 @@ type PairDeviceRequest struct {
 }
 
 func (h *Handler) PairDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(ContextUserIDKey).(uint)
 
 	var req PairDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -221,7 +221,7 @@ func (h *Handler) PairDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"token":  token,
 		"device": device,
 	})
@@ -250,7 +250,7 @@ func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
 
 	if !device.IsPaired {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "waiting",
 		})
 		return
@@ -264,7 +264,7 @@ func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "paired",
 		"token":  token,
 	})
@@ -273,7 +273,7 @@ func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
 // ── Generate Link Code (logged-in user shows code for other device) ──
 
 func (h *Handler) GenerateLinkCode(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(ContextUserIDKey).(uint)
 
 	// Invalidate any existing unused link codes for this user
 	database.DB.Where("user_id = ? AND is_paired = false AND name = ?", userID, "link-code").Delete(&models.Device{})
@@ -293,7 +293,7 @@ func (h *Handler) GenerateLinkCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"code":       code,
 		"expires_at": device.ExpiresAt,
 	})
@@ -343,7 +343,7 @@ func (h *Handler) LoginWithCode(w http.ResponseWriter, r *http.Request) {
 	database.DB.First(&user, device.UserID)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"token": token,
 		"user":  user,
 	})

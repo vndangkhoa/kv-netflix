@@ -31,7 +31,7 @@ func (h *Handler) GetSavedMovies(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("user_id = ?", userID).Order("saved_at DESC").Find(&movies)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movies)
+	_ = json.NewEncoder(w).Encode(movies)
 }
 
 func (h *Handler) AddSavedMovie(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +62,7 @@ func (h *Handler) AddSavedMovie(w http.ResponseWriter, r *http.Request) {
 	var existing models.SavedMovie
 	if err := database.DB.Where("user_id = ? AND movie_id = ?", userID, req.MovieID).First(&existing).Error; err == nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(existing)
+		_ = json.NewEncoder(w).Encode(existing)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *Handler) AddSavedMovie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movie)
+	_ = json.NewEncoder(w).Encode(movie)
 }
 
 func (h *Handler) RemoveSavedMovie(w http.ResponseWriter, r *http.Request) {
@@ -87,26 +87,26 @@ func (h *Handler) RemoveSavedMovie(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("user_id = ? AND movie_id = ?", userID, movieID).Delete(&models.SavedMovie{})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "removed"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "removed"})
 }
 
 // ── Watch History ───────────────────────────────────────────────────
 
 type WatchHistoryRequest struct {
-	MovieID         string  `json:"movie_id"`
-	Title           string  `json:"title"`
-	Slug            string  `json:"slug"`
-	Thumbnail       string  `json:"thumbnail"`
-	Backdrop        string  `json:"backdrop"`
-	Year            int     `json:"year"`
-	Category        string  `json:"category"`
-	Genre           string  `json:"genre"`
-	Country         string  `json:"country"`
-	Quality         string  `json:"quality"`
-	CurrentEpisode  int     `json:"current_episode"`
+	MovieID          string  `json:"movie_id"`
+	Title            string  `json:"title"`
+	Slug             string  `json:"slug"`
+	Thumbnail        string  `json:"thumbnail"`
+	Backdrop         string  `json:"backdrop"`
+	Year             int     `json:"year"`
+	Category         string  `json:"category"`
+	Genre            string  `json:"genre"`
+	Country          string  `json:"country"`
+	Quality          string  `json:"quality"`
+	CurrentEpisode   int     `json:"current_episode"`
 	WatchedTimestamp int     `json:"watched_timestamp"`
-	Duration        int     `json:"duration"`
-	Progress        float64 `json:"progress"`
+	Duration         int     `json:"duration"`
+	Progress         float64 `json:"progress"`
 }
 
 func (h *Handler) GetWatchHistory(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +116,7 @@ func (h *Handler) GetWatchHistory(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("user_id = ?", userID).Order("watched_at DESC").Find(&history)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(history)
+	_ = json.NewEncoder(w).Encode(history)
 }
 
 func (h *Handler) UpdateWatchProgress(w http.ResponseWriter, r *http.Request) {
@@ -145,28 +145,28 @@ func (h *Handler) UpdateWatchProgress(w http.ResponseWriter, r *http.Request) {
 		database.DB.Save(&existing)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(existing)
+		_ = json.NewEncoder(w).Encode(existing)
 		return
 	}
 
 	// Create new
 	entry := models.WatchHistory{
-		UserID:          userID,
-		MovieID:         req.MovieID,
-		Title:           req.Title,
-		Slug:            req.Slug,
-		Thumbnail:       req.Thumbnail,
-		Backdrop:        req.Backdrop,
-		Year:            req.Year,
-		Category:        req.Category,
-		Genre:           req.Genre,
-		Country:         req.Country,
-		Quality:         req.Quality,
-		CurrentEpisode:  req.CurrentEpisode,
+		UserID:           userID,
+		MovieID:          req.MovieID,
+		Title:            req.Title,
+		Slug:             req.Slug,
+		Thumbnail:        req.Thumbnail,
+		Backdrop:         req.Backdrop,
+		Year:             req.Year,
+		Category:         req.Category,
+		Genre:            req.Genre,
+		Country:          req.Country,
+		Quality:          req.Quality,
+		CurrentEpisode:   req.CurrentEpisode,
 		WatchedTimestamp: req.WatchedTimestamp,
-		Duration:        req.Duration,
-		Progress:        req.Progress,
-		WatchedAt:       time.Now(),
+		Duration:         req.Duration,
+		Progress:         req.Progress,
+		WatchedAt:        time.Now(),
 	}
 
 	if err := database.DB.Create(&entry).Error; err != nil {
@@ -175,13 +175,13 @@ func (h *Handler) UpdateWatchProgress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(entry)
+	_ = json.NewEncoder(w).Encode(entry)
 }
 
 // ── Bulk Sync (initial login sync) ─────────────────────────────────
 
 type BulkSyncRequest struct {
-	SavedMovies  []SavedMovieRequest  `json:"saved_movies"`
+	SavedMovies  []SavedMovieRequest   `json:"saved_movies"`
 	WatchHistory []WatchHistoryRequest `json:"watch_history"`
 }
 
@@ -220,22 +220,22 @@ func (h *Handler) BulkSync(w http.ResponseWriter, r *http.Request) {
 		var existing models.WatchHistory
 		if err := database.DB.Where("user_id = ? AND movie_id = ?", userID, wh.MovieID).First(&existing).Error; err != nil {
 			database.DB.Create(&models.WatchHistory{
-				UserID:          userID,
-				MovieID:         wh.MovieID,
-				Title:           wh.Title,
-				Slug:            wh.Slug,
-				Thumbnail:       wh.Thumbnail,
-				Backdrop:        wh.Backdrop,
-				Year:            wh.Year,
-				Category:        wh.Category,
-				Genre:           wh.Genre,
-				Country:         wh.Country,
-				Quality:         wh.Quality,
-				CurrentEpisode:  wh.CurrentEpisode,
+				UserID:           userID,
+				MovieID:          wh.MovieID,
+				Title:            wh.Title,
+				Slug:             wh.Slug,
+				Thumbnail:        wh.Thumbnail,
+				Backdrop:         wh.Backdrop,
+				Year:             wh.Year,
+				Category:         wh.Category,
+				Genre:            wh.Genre,
+				Country:          wh.Country,
+				Quality:          wh.Quality,
+				CurrentEpisode:   wh.CurrentEpisode,
 				WatchedTimestamp: wh.WatchedTimestamp,
-				Duration:        wh.Duration,
-				Progress:        wh.Progress,
-				WatchedAt:       time.Now(),
+				Duration:         wh.Duration,
+				Progress:         wh.Progress,
+				WatchedAt:        time.Now(),
 			})
 		}
 	}
@@ -248,7 +248,7 @@ func (h *Handler) BulkSync(w http.ResponseWriter, r *http.Request) {
 	database.DB.Where("user_id = ?", userID).Order("watched_at DESC").Find(&history)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"saved_movies":  savedMovies,
 		"watch_history": history,
 	})

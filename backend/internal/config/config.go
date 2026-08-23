@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strconv"
 )
 
 type Config struct {
@@ -37,15 +36,6 @@ func getEnv(key, fallback string) string {
 func getEnvSlice(key string, fallback []string) []string {
 	if val := os.Getenv(key); val != "" {
 		return []string{val}
-	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	if val := os.Getenv(key); val != "" {
-		if i, err := strconv.Atoi(val); err == nil {
-			return i
-		}
 	}
 	return fallback
 }

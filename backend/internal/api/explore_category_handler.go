@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"streamflow-backend/internal/scraper"
 	"streamflow-backend/internal/models"
+	"streamflow-backend/internal/scraper"
 )
 
 // ── Explore by Category: K-drama / C-drama ─────────────────────────────
@@ -15,7 +15,7 @@ func (h *Handler) ExploreCategory(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 	if category == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "category parameter is required"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "category parameter is required"})
 		return
 	}
 
@@ -29,5 +29,5 @@ func (h *Handler) ExploreCategory(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movies)
+	_ = json.NewEncoder(w).Encode(movies)
 }

@@ -23,7 +23,7 @@ var genreSlugMap = map[string]string{
 	"chiến tranh": "chien-tranh",
 	"tâm lý":      "tam-ly",
 	"âm nhạc":     "am-nhac",
-	"thần thoại":   "than-thoai",
+	"thần thoại":  "than-thoai",
 	"co trang":    "co-trang",
 	"hoạt hình":   "hoat-hinh",
 	"hockey":      "hoat-hinh",
@@ -129,5 +129,5 @@ func (h *Handler) ExploreMovies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(allMovies)
+	_ = json.NewEncoder(w).Encode(allMovies)
 }

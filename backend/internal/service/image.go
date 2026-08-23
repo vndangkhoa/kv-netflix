@@ -35,7 +35,7 @@ type ImageService struct {
 }
 
 func NewImageService() *ImageService {
-	os.MkdirAll(CacheDir, 0755)
+	_ = os.MkdirAll(CacheDir, 0755)
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -169,7 +169,7 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 	}
 
 	jpegData := buf.Bytes()
-	go os.WriteFile(cachePath, jpegData, 0644)
+	go func() { _ = os.WriteFile(cachePath, jpegData, 0644) }()
 	s.setMemCache(cacheKey, jpegData, "image/jpeg")
 
 	return jpegData, "image/jpeg", nil

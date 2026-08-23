@@ -93,7 +93,7 @@ func (h *Handler) GetHomeVideos(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movies)
+	_ = json.NewEncoder(w).Encode(movies)
 }
 
 func extractYear(query string) (string, int) {
@@ -149,7 +149,7 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movies)
+	_ = json.NewEncoder(w).Encode(movies)
 }
 
 type movieFetcher func(p scraper.MovieProvider) ([]models.RophimMovie, error)
@@ -281,7 +281,7 @@ func (h *Handler) ExtractVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
 
 func (h *Handler) ProxyImage(w http.ResponseWriter, r *http.Request) {
@@ -307,7 +307,7 @@ func (h *Handler) ProxyImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "public, max-age=259200, stale-while-revalidate=86400")
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
@@ -322,7 +322,7 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movie)
+	_ = json.NewEncoder(w).Encode(movie)
 }
 
 // fetchMovieDetail resolves a slug against all providers and returns the
@@ -505,7 +505,7 @@ func (h *Handler) GetGenres(w http.ResponseWriter, r *http.Request) {
 			genres, err := gp.GetGenres()
 			if err == nil {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(genres)
+				_ = json.NewEncoder(w).Encode(genres)
 				return
 			}
 		}
@@ -521,7 +521,7 @@ func (h *Handler) GetCountries(w http.ResponseWriter, r *http.Request) {
 			countries, err := cp.GetCountries()
 			if err == nil {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(countries)
+				_ = json.NewEncoder(w).Encode(countries)
 				return
 			}
 		}
@@ -651,7 +651,7 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, _ = io.Copy(w, resp.Body)
 }
 
 func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body []byte, baseURL string) {
@@ -714,7 +714,7 @@ func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(statusCode)
-	w.Write([]byte(newContent))
+	_, _ = w.Write([]byte(newContent))
 }
 
 func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {

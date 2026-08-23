@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	mime.AddExtensionType(".apk", "application/vnd.android.package-archive")
+	_ = mime.AddExtensionType(".apk", "application/vnd.android.package-archive")
 
 	cfg := config.Load()
 
@@ -59,7 +59,7 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`{"status":"healthy", "version":"v3.7"}`))
+			_, _ = w.Write([]byte(`{"status":"healthy", "version":"v3.7"}`))
 		})
 
 		api.RegisterRoutes(r, handler)
