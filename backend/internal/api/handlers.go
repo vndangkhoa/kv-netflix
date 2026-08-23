@@ -399,6 +399,19 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 	}
 
 	// Merge episodes/metadata from other providers in parallel.
+	// Snapshot the identity fields up front: mergeMovieMetadata never
+	// mutates Title/OriginalTitle, so goroutines can safely compare against
+	// these local copies while other providers merge in parallel.
+	mergeSearchQuery := primaryMovie.OriginalTitle
+	if mergeSearchQuery == "" {
+		mergeSearchQuery = primaryMovie.Title
+	}
+	mergeTitleKey := normalizeKey(primaryMovie.Title)
+	mergeOrigKey := ""
+	if primaryMovie.OriginalTitle != "" {
+		mergeOrigKey = normalizeKey(primaryMovie.OriginalTitle)
+	}
+
 	var mergeWg sync.WaitGroup
 	var mergeMu sync.Mutex
 	for i, provider := range h.Providers {
@@ -410,18 +423,14 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 		go func(p scraper.MovieProvider) {
 			defer mergeWg.Done()
 
-			searchQuery := primaryMovie.OriginalTitle
-			if searchQuery == "" {
-				searchQuery = primaryMovie.Title
-			}
-
-			results, err := p.Search(searchQuery, 1)
+			results, err := p.Search(mergeSearchQuery, 1)
 			if err != nil {
 				return
 			}
 			for _, res := range results {
-				if normalizeKey(res.Title) == normalizeKey(primaryMovie.Title) ||
-					(primaryMovie.OriginalTitle != "" && normalizeKey(res.OriginalTitle) == normalizeKey(primaryMovie.OriginalTitle)) {
+				titleMatch := normalizeKey(res.Title) == mergeTitleKey
+				origMatch := mergeOrigKey != "" && normalizeKey(res.OriginalTitle) == mergeOrigKey
+				if titleMatch || origMatch {
 					details, err := p.GetMovieDetail(res.Slug)
 					if err == nil && details != nil {
 						providerName := details.Provider
