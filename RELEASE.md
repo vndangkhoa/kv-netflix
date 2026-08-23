@@ -1,5 +1,9 @@
 # Release Runbook — kv-netflix
 
+> 🌐 **Generic master guide for ALL KV apps**: `../spk/docs/MASTER-RELEASE.md`
+> (shared tools, versioning rules, gotchas). This file is the
+> kv-netflix-specific runbook with exact commands.
+
 How to ship an update to **all four distribution channels**. Every command
 below is copy-paste ready. Paths assume the repo lives at
 `/mnt/data/Package Center/kv-netflix` with siblings `spk/`, `spkrepo/`,
