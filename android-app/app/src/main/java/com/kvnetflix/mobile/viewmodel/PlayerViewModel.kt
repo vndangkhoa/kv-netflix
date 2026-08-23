@@ -39,32 +39,41 @@ class PlayerViewModel : ViewModel() {
             try {
                 val movie = repository.getMovieDetail(slug)
                 val isSaved = userRepo?.isInMyList(slug) ?: false
-                
-                // Load recommendations and genres in parallel
-                var recommendations = try { repository.exploreMovies() } catch (e: Exception) { emptyList() }
-                if (recommendations.isEmpty()) {
-                    recommendations = try { repository.getHomeVideos().items.take(10) } catch (e: Exception) { emptyList() }
-                }
-                val genres = try { repository.getGenres() } catch (e: Exception) { emptyList() }
 
                 val servers = movie.episodes?.map { it.serverName }?.distinct() ?: emptyList()
                 val selectedServer = servers.firstOrNull() ?: ""
 
+                // Start playback immediately; recommendations/genres are
+                // decorative and must never delay the stream.
                 _uiState.value = _uiState.value.copy(
-                    movie = movie, 
+                    movie = movie,
                     isSaved = isSaved,
                     servers = servers,
-                    selectedServer = selectedServer,
-                    recommendations = recommendations,
-                    genres = genres
+                    selectedServer = selectedServer
                 )
                 loadStream(movie, episode, selectedServer)
+
+                viewModelScope.launch { loadRecommendations(movie) }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Failed to load"
                 )
             }
+        }
+    }
+
+    private suspend fun loadRecommendations(movie: MovieDetail) {
+        var recommendations = try { repository.exploreMovies() } catch (_: Exception) { emptyList() }
+        if (recommendations.isEmpty()) {
+            recommendations = try { repository.getHomeVideos().items.take(10) } catch (_: Exception) { emptyList() }
+        }
+        val genres = try { repository.getGenres() } catch (_: Exception) { emptyList() }
+        if (_uiState.value.movie?.slug == movie.slug) {
+            _uiState.value = _uiState.value.copy(
+                recommendations = recommendations,
+                genres = genres
+            )
         }
     }
 

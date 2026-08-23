@@ -336,27 +336,44 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 	var primaryProviderIdx int = -1
 	var success bool
 
-	// Fetch detail from all providers for exact slug
+	// Fetch detail from all providers in parallel for exact slug.
+	type detailResult struct {
+		idx   int
+		movie *models.RophimMovie
+	}
+	detailResults := make([]detailResult, len(h.Providers))
+	var detailWg sync.WaitGroup
 	for i, provider := range h.Providers {
-		movie, err := provider.GetMovieDetail(slug)
-		if err == nil && movie != nil {
-			providerName := movie.Provider
-			if providerName == "" {
-				providerName = "Server"
-			}
-			for j := range movie.Episodes {
-				if !strings.HasPrefix(movie.Episodes[j].ServerName, providerName) {
-					movie.Episodes[j].ServerName = fmt.Sprintf("%s - %s", providerName, movie.Episodes[j].ServerName)
+		detailWg.Add(1)
+		go func(idx int, p scraper.MovieProvider) {
+			defer detailWg.Done()
+			movie, err := p.GetMovieDetail(slug)
+			if err == nil && movie != nil {
+				providerName := movie.Provider
+				if providerName == "" {
+					providerName = "Server"
 				}
+				for j := range movie.Episodes {
+					if !strings.HasPrefix(movie.Episodes[j].ServerName, providerName) {
+						movie.Episodes[j].ServerName = fmt.Sprintf("%s - %s", providerName, movie.Episodes[j].ServerName)
+					}
+				}
+				detailResults[idx] = detailResult{idx: idx, movie: movie}
 			}
+		}(i, provider)
+	}
+	detailWg.Wait()
 
-			if primaryMovie == nil {
-				primaryMovie = movie
-				primaryProviderIdx = i
-				success = true
-			} else {
-				h.mergeMovieMetadata(primaryMovie, movie)
-			}
+	for _, res := range detailResults {
+		if res.movie == nil {
+			continue
+		}
+		if primaryMovie == nil {
+			primaryMovie = res.movie
+			primaryProviderIdx = res.idx
+			success = true
+		} else {
+			h.mergeMovieMetadata(primaryMovie, res.movie)
 		}
 	}
 
@@ -381,22 +398,31 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 		return nil, fmt.Errorf("movie not found")
 	}
 
+	// Merge episodes/metadata from other providers in parallel.
+	var mergeWg sync.WaitGroup
+	var mergeMu sync.Mutex
 	for i, provider := range h.Providers {
 		if i == primaryProviderIdx {
 			continue
 		}
 
-		searchQuery := primaryMovie.OriginalTitle
-		if searchQuery == "" {
-			searchQuery = primaryMovie.Title
-		}
+		mergeWg.Add(1)
+		go func(p scraper.MovieProvider) {
+			defer mergeWg.Done()
 
-		results, err := provider.Search(searchQuery, 1)
-		if err == nil {
+			searchQuery := primaryMovie.OriginalTitle
+			if searchQuery == "" {
+				searchQuery = primaryMovie.Title
+			}
+
+			results, err := p.Search(searchQuery, 1)
+			if err != nil {
+				return
+			}
 			for _, res := range results {
 				if normalizeKey(res.Title) == normalizeKey(primaryMovie.Title) ||
 					(primaryMovie.OriginalTitle != "" && normalizeKey(res.OriginalTitle) == normalizeKey(primaryMovie.OriginalTitle)) {
-					details, err := provider.GetMovieDetail(res.Slug)
+					details, err := p.GetMovieDetail(res.Slug)
 					if err == nil && details != nil {
 						providerName := details.Provider
 						if providerName == "" {
@@ -407,13 +433,16 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 								details.Episodes[j].ServerName = fmt.Sprintf("%s - %s", providerName, details.Episodes[j].ServerName)
 							}
 						}
+						mergeMu.Lock()
 						h.mergeMovieMetadata(primaryMovie, details)
+						mergeMu.Unlock()
 					}
 					break
 				}
 			}
-		}
+		}(provider)
 	}
+	mergeWg.Wait()
 
 	sort.SliceStable(primaryMovie.Episodes, func(i, j int) bool {
 		epI, epJ := primaryMovie.Episodes[i], primaryMovie.Episodes[j]
@@ -565,17 +594,32 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
 		return
 	}
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, "upstream read error: "+err.Error(), http.StatusBadGateway)
-		return
-	}
+	defer resp.Body.Close()
 
 	contentType := resp.Header.Get("Content-Type")
-	isHLS := strings.HasSuffix(parsedURL.Path, ".m3u8") ||
-		strings.Contains(contentType, "mpegurl") ||
-		strings.Contains(contentType, "m3u8") ||
-		bytes.HasPrefix(bodyBytes, []byte("#EXTM3U"))
+
+	// Manifests must be buffered completely so relative URIs can be
+	// rewritten. Everything else (TS/fMP4 segments, MP4s, error pages)
+	// is streamed straight through without buffering.
+	pathIsManifest := strings.HasSuffix(parsedURL.Path, ".m3u8")
+	declaredManifest := strings.Contains(contentType, "mpegurl") ||
+		strings.Contains(contentType, "m3u8")
+	var bodyBytes []byte
+	if pathIsManifest || declaredManifest {
+		bodyBytes, err = io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, "upstream read error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+	}
+
+	// Only rewrite genuine playlists served with a success status. A dead CDN
+	// answering an .m3u8 request with a 404 HTML page must be passed through
+	// untouched so players fail fast instead of choking on mangled markup.
+	isHLS := resp.StatusCode == http.StatusOK &&
+		(bytes.HasPrefix(bodyBytes, []byte("#EXTM3U")) ||
+			declaredManifest ||
+			(pathIsManifest && len(bodyBytes) > 0 && bodyBytes[0] == '#'))
 
 	if isHLS {
 		// Whole-playlist AES-GCM encrypted manifests (#ENC-AESGCM) cannot be
@@ -598,7 +642,7 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
-	w.Write(bodyBytes)
+	io.Copy(w, resp.Body)
 }
 
 func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body []byte, baseURL string) {

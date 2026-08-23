@@ -88,17 +88,32 @@ class HomeViewModel : ViewModel() {
     }
 
     private suspend fun loadAllPagesForCategory(categorySlug: String, maxPages: Int = 10): List<Movie> {
-        val allMovies = mutableSetOf<Movie>()
-        for (page in 1..maxPages) {
-            try {
-                val response = repository.getHomeVideos(categorySlug, page)
-                if (response.items.isEmpty()) break
-                allMovies.addAll(response.items)
-            } catch (_: Exception) {
-                break
-            }
+        // Probe page 1 first to learn how much content exists, then fetch the
+        // remaining pages concurrently instead of one-by-one.
+        val firstPage = try {
+            repository.getHomeVideos(categorySlug, 1)
+        } catch (_: Exception) {
+            return emptyList()
         }
-        return allMovies.toList()
+        if (firstPage.items.isEmpty()) return emptyList()
+
+        val pageSize = firstPage.items.size
+        val estimatedPages = minOf(maxPages, maxOf(1, (500 / pageSize.coerceAtLeast(1)) + 1))
+        val remainingPages = (2..estimatedPages).toList()
+
+        val extraItems: List<Movie> = kotlinx.coroutines.coroutineScope {
+            remainingPages.map { page ->
+                async {
+                    try {
+                        repository.getHomeVideos(categorySlug, page).items
+                    } catch (_: Exception) {
+                        emptyList<Movie>()
+                    }
+                }
+            }.awaitAll().flatten()
+        }
+
+        return (firstPage.items + extraItems).toMutableSet().toList()
     }
 
     fun loadGenres() {

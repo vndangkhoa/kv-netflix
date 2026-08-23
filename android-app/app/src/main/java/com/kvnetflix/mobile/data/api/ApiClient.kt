@@ -1,7 +1,10 @@
 package com.kvnetflix.mobile.data.api
 
+import android.content.Context
+import com.kvnetflix.mobile.BuildConfig
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.Cache
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -10,6 +13,15 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
+
+    private var appContext: Context? = null
+
+    fun init(context: Context) {
+        if (appContext == null) {
+            appContext = context.applicationContext
+            synchronized(this) { _api = null }
+        }
+    }
 
     private var _baseUrl: String = "https://nf.khoavo.myds.me/"
 
@@ -54,12 +66,21 @@ object ApiClient {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
-        .addInterceptor(authInterceptor)
-        .addInterceptor(
-            HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+        .apply {
+            appContext?.let {
+                cache(Cache(it.cacheDir.resolve("http_cache"), 20L * 1024 * 1024))
             }
-        )
+        }
+        .addInterceptor(authInterceptor)
+        .apply {
+            if (BuildConfig.DEBUG) {
+                addInterceptor(
+                    HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BASIC
+                    }
+                )
+            }
+        }
         .build()
 
     private var _api: StreamFlowApi? = null

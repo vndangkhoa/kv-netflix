@@ -363,56 +363,40 @@ fun WatchScreen(
 
                         var exoRetryCount by remember { mutableIntStateOf(0) }
                         val maxRetries = 3
+                        var reprepareStream by remember { mutableStateOf<(() -> Unit)?>(null) }
+                        val retryHandler = remember {
+                            android.os.Handler(android.os.Looper.getMainLooper())
+                        }
 
                         LaunchedEffect(uiState.source, uiState.currentEpisode) {
                             try {
                                 val source = uiState.source ?: return@LaunchedEffect
-                                if (source.streamUrl.isNotEmpty()) {
-                                    exoRetryCount = 0
-                                    val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-                                        .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                                        .setConnectTimeoutMs(15_000)
-                                        .setReadTimeoutMs(30_000)
-                                        .setAllowCrossProtocolRedirects(true)
-                                    val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
-                                    val mediaItem = MediaItem.fromUri(source.streamUrl)
+                                if (source.streamUrl.isEmpty()) return@LaunchedEffect
+                                exoRetryCount = 0
+                                retryHandler.removeCallbacksAndMessages(null)
+                                val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                                    .setConnectTimeoutMs(15_000)
+                                    .setReadTimeoutMs(30_000)
+                                    .setAllowCrossProtocolRedirects(true)
+                                val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
+                                val mediaItem = MediaItem.fromUri(source.streamUrl)
+                                val isHls = source.streamUrl.contains(".m3u8", ignoreCase = true)
 
-                                    player.addListener(object : androidx.media3.common.Player.Listener {
-                                        override fun onPlayerError(error: PlaybackException) {
-                                            android.util.Log.e("WatchScreen", "ExoPlayer error (attempt ${exoRetryCount + 1}/$maxRetries): ${error.message}", error)
-                                            if (exoRetryCount < maxRetries && source.streamUrl.isNotEmpty()) {
-                                                exoRetryCount++
-                                                android.util.Log.d("WatchScreen", "Retrying ExoPlayer in 1s (attempt $exoRetryCount)")
-                                                player.stop()
-                                                player.setMediaSource(
-                                                    if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
-                                                        HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-                                                    } else {
-                                                        androidx.media3.common.MediaItem.fromUri(source.streamUrl).let {
-                                                            player.setMediaItem(it)
-                                                            return
-                                                        }
-                                                    }
-                                                )
-                                                player.prepare()
-                                                player.playWhenReady = true
-                                            } else {
-                                                android.util.Log.e("WatchScreen", "Max retries reached, switching to WebView embed")
-                                                isFallbackToEmbed = true
-                                            }
-                                        }
-                                    })
-
-                                    if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
-                                        val hlsSource = HlsMediaSource.Factory(dataSourceFactory)
-                                            .createMediaSource(mediaItem)
-                                        player.setMediaSource(hlsSource)
+                                val prepare: () -> Unit = {
+                                    if (isHls) {
+                                        player.setMediaSource(
+                                            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+                                        )
                                     } else {
                                         player.setMediaItem(mediaItem)
                                     }
                                     player.prepare()
                                     player.playWhenReady = true
                                 }
+                                reprepareStream = prepare
+                                prepare()
+
                                 if (userRepo != null) {
                                     viewModel.saveToHistory(userRepo)
                                 }
@@ -451,9 +435,28 @@ fun WatchScreen(
                                 override fun onIsPlayingChanged(isNowPlaying: Boolean) {
                                     isPlaying = isNowPlaying
                                 }
+
+                                override fun onPlayerError(error: PlaybackException) {
+                                    android.util.Log.e(
+                                        "WatchScreen",
+                                        "ExoPlayer error (attempt ${exoRetryCount + 1}/$maxRetries): ${error.message}",
+                                        error
+                                    )
+                                    if (exoRetryCount < maxRetries && !isFallbackToEmbed) {
+                                        exoRetryCount++
+                                        player.stop()
+                                        retryHandler.postDelayed({
+                                            reprepareStream?.invoke()
+                                        }, 1_000L)
+                                    } else {
+                                        android.util.Log.e("WatchScreen", "Max retries reached, switching to WebView embed")
+                                        isFallbackToEmbed = true
+                                    }
+                                }
                             }
                             player.addListener(listener)
                             onDispose {
+                                retryHandler.removeCallbacksAndMessages(null)
                                 player.removeListener(listener)
                                 player.release()
                             }

@@ -74,17 +74,23 @@ class UpdateManager(private val context: Context) {
             val body = response.body ?: throw Exception("Empty response body from server")
             val totalBytes = if (apkAsset.size > 0) apkAsset.size else body.contentLength()
             var downloadedBytes = 0L
+            var lastReportedProgress = -1f
 
             body.byteStream().use { input ->
                 FileOutputStream(destination).use { output ->
-                    val buffer = ByteArray(16384)
+                    val buffer = ByteArray(65536)
                     var bytesRead: Int
                     while (input.read(buffer).also { bytesRead = it } != -1) {
                         output.write(buffer, 0, bytesRead)
                         downloadedBytes += bytesRead
+                        // Throttle UI updates: only report when progress moves
+                        // by >=1% to avoid thousands of recompositions.
                         if (totalBytes > 0) {
-                            val progress = downloadedBytes.toFloat() / totalBytes.toFloat()
-                            onProgress(progress.coerceIn(0f, 1f))
+                            val progress = (downloadedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                            if (progress - lastReportedProgress >= 0.01f || progress >= 1f) {
+                                lastReportedProgress = progress
+                                onProgress(progress)
+                            }
                         } else {
                             onProgress(0.5f)
                         }

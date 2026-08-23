@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.1] - 2026-08-23
+### Fixed
+- **Android app performance**: parallel category page loading for Phim Lẻ / Phim Bộ (was 10 sequential requests), stream playback no longer blocked by recommendations fetch, HTTP body logging disabled in release builds, added OkHttp response cache.
+- **ExoPlayer**: fixed listener leak on episode/server changes and broken retry path for progressive (non-HLS) streams; failed streams now fall back to WebView embed cleanly.
+- **Backend stream proxy**: dead CDN 404 pages are passed through untouched instead of being rewritten into broken HLS playlists; video segments stream via `io.Copy` instead of full in-memory buffering; `Range` passthrough verified.
+- **Backend movie detail**: provider lookups and cross-provider metadata merge now run in parallel.
+
+### Changed
+- Release APK is now minified with R8 + resource shrinking: **17.2 MB → 3.3 MB** (much faster download & install).
+- In-app update downloads throttle progress UI updates and use a larger copy buffer.
+
+---
+
 ## [v9.2.0] - 2026-07-18
 ### Added
 - **Android Mobile App** (`android-app/`): native Jetpack Compose client for Android phones and tablets.
