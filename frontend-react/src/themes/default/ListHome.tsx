@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Heart, Clock, BookmarkCheck, Users, ChevronRight } from 'lucide-react';
 import { Layout } from '../../components/Layout';
-import { CATEGORIES, GENRES } from '../../constants';
+import { GENRES } from '../../constants';
 import { useLang } from '../../context/LanguageContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useMyList } from '../../hooks/useMyList';
 import { useWatchProgress } from '../../hooks/useWatchProgress';
 import { useSmartRecommendations } from '../../hooks/useSmartRecommendations';
@@ -127,7 +126,7 @@ const GenreList = ({ title, maxItems = 10 }: GenreListProps) => {
 
 export const ListHome = () => {
     const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const navigate = useNavigate();
     const { t } = useLang();
     const { isAuthenticated } = useAuth();
