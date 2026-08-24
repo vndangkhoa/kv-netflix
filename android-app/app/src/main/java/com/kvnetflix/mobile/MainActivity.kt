@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -56,9 +58,15 @@ class MainActivity : ComponentActivity() {
                 val myListViewModel: MyListViewModel = viewModel()
                 val accountViewModel: AccountViewModel = viewModel()
                 val pairingViewModel = remember { PairingViewModel(userRepo) }
-                val updateViewModel: UpdateViewModel? = remember {
-                    try { UpdateViewModel(applicationContext) } catch (_: Exception) { null }
-                }
+                // Scoped to the ViewModelStore so it survives config changes
+                // (e.g. an in-flight update download keeps its progress state).
+                val updateViewModel: UpdateViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        @Suppress("UNCHECKED_CAST")
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                            UpdateViewModel(applicationContext) as T
+                    }
+                )
 
                 var isAuthenticated by remember { mutableStateOf(false) }
                 var isDarkTheme by remember { mutableStateOf(true) }

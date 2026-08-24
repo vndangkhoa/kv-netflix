@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.2] - 2026-08-24
+### Fixed
+- **Android app crash on "Check for Update"**: R8 minification (v9.2.1) obfuscated the release-parsing models (`ReleaseInfo`/`ReleaseAsset` live in `data.api`, not `data.model`), making Moshi's reflective adapter throw uncatchable `Error`s on tap. Added a `@JsonClass` ProGuard keep rule and `Throwable` guards so update-check failures now show an error state instead of crashing.
+- **APK install**: on Android 8+ the installer silently no-oped without the "Install unknown apps" permission; users are now routed to grant it, then can retry.
+- **Watch screen**: removed a force-unwrap (`uiState.source!!`) that could NPE if player state flipped between null check and use.
+- **Update download**: survives configuration changes (ViewModel now lifecycle-scoped); guarded package-info lookup and unavailable external storage.
+
+### Changed
+- Removed unused duplicate GitHub API client (`data/api/GitHubApi.kt`).
+
+---
+
 ## [v9.2.1] - 2026-08-23
 ### Fixed
 - **Android app performance**: parallel category page loading for Phim Lẻ / Phim Bộ (was 10 sequential requests), stream playback no longer blocked by recommendations fetch, HTTP body logging disabled in release builds, added OkHttp response cache.

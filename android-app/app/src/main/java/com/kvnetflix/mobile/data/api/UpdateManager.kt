@@ -2,7 +2,10 @@ package com.kvnetflix.mobile.data.api
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,7 +19,11 @@ class UpdateManager(private val context: Context) {
 
     suspend fun checkForUpdate(): ReleaseInfo? {
         return withContext(Dispatchers.IO) {
-            val currentVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+            val currentVersion = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+            } catch (e: Exception) {
+                "1.0.0"
+            }
 
             var candidateRelease: ReleaseInfo? = null
 
@@ -55,7 +62,9 @@ class UpdateManager(private val context: Context) {
                 ?: release.assets.find { it.name.endsWith(".apk", ignoreCase = true) }
             val downloadUrl = apkAsset?.downloadUrl ?: throw Exception("No APK asset found in release")
 
-            val destination = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "kv-netflix-mobile-update.apk")
+            val externalDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: throw Exception("External storage unavailable")
+            val destination = File(externalDir, "kv-netflix-mobile-update.apk")
             if (destination.exists()) destination.delete()
 
             val client = OkHttpClient.Builder()
@@ -104,12 +113,34 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun installApk(file: File) {
+        // On Android 8+ the installer intent silently no-ops without this
+        // permission, so route the user to grant it first.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !context.packageManager.canRequestPackageInstalls()
+        ) {
+            try {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}")
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: Exception) {
+                android.util.Log.w("UpdateManager", "Could not open unknown-apps settings")
+            }
+            throw Exception("Enable 'Install unknown apps' for kv-netflix, then tap Update again")
+        }
+
         val intent = Intent(Intent.ACTION_VIEW).apply {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
             setDataAndType(uri, "application/vnd.android.package-archive")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            throw Exception("No package installer found to open APK", e)
+        }
     }
 
     companion object {

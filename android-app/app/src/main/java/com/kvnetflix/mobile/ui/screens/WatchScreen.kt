@@ -279,7 +279,9 @@ fun WatchScreen(
                     }
                 } else if (uiState.source != null) {
                     val context = LocalContext.current
-                    val currentSource = uiState.source!!
+                    // Safe local copy: uiState.source is a delegated state read on
+                    // every access and could flip between the null check and use.
+                    val currentSource = uiState.source ?: return@Box
                     var isFallbackToEmbed by remember { mutableStateOf(false) }
 
                     // Reset fallback when source changes

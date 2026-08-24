@@ -27,11 +27,17 @@ class UpdateViewModel(context: Context) : ViewModel() {
     fun checkUpdate() {
         viewModelScope.launch {
             _uiState.value = UpdateUiState.Checking
-            val release = updateManager.checkForUpdate()
-            if (release != null) {
-                _uiState.value = UpdateUiState.UpdateAvailable(release)
-            } else {
-                _uiState.value = UpdateUiState.UpToDate
+            try {
+                val release = updateManager.checkForUpdate()
+                if (release != null) {
+                    _uiState.value = UpdateUiState.UpdateAvailable(release)
+                } else {
+                    _uiState.value = UpdateUiState.UpToDate
+                }
+            } catch (t: Throwable) {
+                // Catch Throwable: minified builds can throw Errors (e.g. reflection
+                // failures) that are not Exceptions and would otherwise crash.
+                _uiState.value = UpdateUiState.Error(t.message ?: "Update check failed")
             }
         }
     }
@@ -43,8 +49,8 @@ class UpdateViewModel(context: Context) : ViewModel() {
                 updateManager.downloadAndInstall(release) { progress ->
                     _uiState.value = UpdateUiState.Downloading(progress)
                 }
-            } catch (e: Exception) {
-                _uiState.value = UpdateUiState.Error(e.message ?: "Download failed")
+            } catch (t: Throwable) {
+                _uiState.value = UpdateUiState.Error(t.message ?: "Download failed")
             }
         }
     }
