@@ -80,10 +80,14 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		Addr:    ":" + cfg.Port,
+		Handler: r,
+		// Scraper calls can legitimately take up to 30s (provider client
+		// timeouts) before a handler writes its response; a 15s write
+		// timeout killed those connections mid-flight and nginx surfaced
+		// them as random 502s. Long-lived video streams also need room.
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 120 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
