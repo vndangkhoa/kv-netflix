@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.3] - 2026-08-24
+### Fixed
+- **Android app: saved movies disappearing from My List**: login triggered two concurrent remote syncs, and a sync response that was requested *before* a save but returned *after* it overwrote the local list with the stale server snapshot — wiping freshly saved movies from the UI (they reappeared only after an app restart). Syncs are now serialized against save/remove/history mutations and merge local + remote lists instead of blind overwrite.
+- Removed redundant duplicate `syncWithRemote()` calls on login/registration (MainActivity's auth collector already runs one).
+
+---
+
 ## [v9.2.2] - 2026-08-24
 ### Fixed
 - **Android app crash on "Check for Update"**: R8 minification (v9.2.1) obfuscated the release-parsing models (`ReleaseInfo`/`ReleaseAsset` live in `data.api`, not `data.model`), making Moshi's reflective adapter throw uncatchable `Error`s on tap. Added a `@JsonClass` ProGuard keep rule and `Throwable` guards so update-check failures now show an error state instead of crashing.

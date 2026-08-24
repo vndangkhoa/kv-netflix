@@ -173,10 +173,10 @@ fun LoginScreen(
                                 }
                                 ApiClient.authToken = response.token
                                 userRepo?.saveAuthData(response.token, response.user)
+                                // No explicit sync needed here: saving the auth
+                                // data triggers MainActivity's token collector,
+                                // which runs syncWithRemote() once.
                                 onLoginSuccess()
-                                scope.launch {
-                                    userRepo?.syncWithRemote()
-                                }
                             } catch (e: Exception) {
                                 error = when (e) {
                                     is retrofit2.HttpException -> {

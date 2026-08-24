@@ -136,7 +136,7 @@ fun RegisterScreen(
                                 )
                                 ApiClient.authToken = response.token
                                 userRepo?.saveAuthData(response.token, response.user)
-                                userRepo?.syncWithRemote()
+                                // MainActivity's token collector runs syncWithRemote().
                                 onRegisterSuccess()
                             } catch (e: Exception) {
                                 error = when (e) {

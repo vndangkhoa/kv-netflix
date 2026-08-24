@@ -14,6 +14,8 @@ import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_data")
 
@@ -35,6 +37,10 @@ class UserDataRepository(private val context: Context) {
     private val movieListType = Types.newParameterizedType(List::class.java, Movie::class.java)
     private val movieListAdapter = moshi.adapter<List<Movie>>(movieListType)
     private val userProfileAdapter = moshi.adapter(UserProfile::class.java)
+
+    // Serializes remote syncs against local mutations: a sync GET that was
+    // fired before a save must never clobber the save's local write.
+    private val syncMutex = Mutex()
 
     // --- Auth ---
 
@@ -66,15 +72,27 @@ class UserDataRepository(private val context: Context) {
         try {
             val token = ApiClient.authToken
             if (token == null) return
-            val remoteSaved = ApiClient.api.getSavedMovies()
-            val savedMovies = remoteSaved.map { it.toMovie() }
-            context.dataStore.edit { prefs ->
-                prefs[MY_LIST_KEY] = movieListAdapter.toJson(savedMovies)
-            }
-            val remoteHistory = ApiClient.api.getWatchHistory()
-            val watchedMovies = remoteHistory.map { it.toMovie() }
-            context.dataStore.edit { prefs ->
-                prefs[WATCH_HISTORY_KEY] = movieListAdapter.toJson(watchedMovies)
+            syncMutex.withLock {
+                // Wait for any in-flight add/remove POSTs to land first, then
+                // fetch. Merge with local list instead of overwriting so a
+                // save made moments ago can never be wiped by a stale
+                // snapshot that was requested before the save.
+                val remoteSaved = ApiClient.api.getSavedMovies().map { it.toMovie() }
+                context.dataStore.edit { prefs ->
+                    val local = movieListAdapter.fromJson(prefs[MY_LIST_KEY] ?: "[]") ?: emptyList()
+                    val merged = remoteSaved + local.filter { l ->
+                        remoteSaved.none { it.slug == l.slug }
+                    }
+                    prefs[MY_LIST_KEY] = movieListAdapter.toJson(merged.distinctBy { it.slug })
+                }
+                val remoteHistory = ApiClient.api.getWatchHistory().map { it.toMovie() }
+                context.dataStore.edit { prefs ->
+                    val local = movieListAdapter.fromJson(prefs[WATCH_HISTORY_KEY] ?: "[]") ?: emptyList()
+                    val merged = remoteHistory + local.filter { l ->
+                        remoteHistory.none { it.slug == l.slug }
+                    }
+                    prefs[WATCH_HISTORY_KEY] = movieListAdapter.toJson(merged.distinctBy { it.slug })
+                }
             }
         } catch (e: Exception) {
             android.util.Log.e("UserDataRepository", "syncWithRemote failed: ${e.message}", e)
@@ -97,18 +115,20 @@ class UserDataRepository(private val context: Context) {
         }
         try {
             if (ApiClient.authToken != null) {
-                ApiClient.api.addSavedMovie(
-                    mapOf(
-                        "movie_id" to (if (movie.id.isEmpty()) movie.slug else movie.id),
-                        "title" to movie.title,
-                        "slug" to movie.slug,
-                        "thumbnail" to movie.thumbnail,
-                        "backdrop" to movie.backdrop,
-                        "year" to movie.year,
-                        "category" to movie.category,
-                        "quality" to movie.quality
+                syncMutex.withLock {
+                    ApiClient.api.addSavedMovie(
+                        mapOf(
+                            "movie_id" to (if (movie.id.isEmpty()) movie.slug else movie.id),
+                            "title" to movie.title,
+                            "slug" to movie.slug,
+                            "thumbnail" to movie.thumbnail,
+                            "backdrop" to movie.backdrop,
+                            "year" to movie.year,
+                            "category" to movie.category,
+                            "quality" to movie.quality
+                        )
                     )
-                )
+                }
             }
         } catch (_: Exception) {}
     }
@@ -122,7 +142,9 @@ class UserDataRepository(private val context: Context) {
         }
         try {
             if (ApiClient.authToken != null) {
-                ApiClient.api.removeSavedMovie(movieId)
+                syncMutex.withLock {
+                    ApiClient.api.removeSavedMovie(movieId)
+                }
             }
         } catch (_: Exception) {}
     }
@@ -154,22 +176,24 @@ class UserDataRepository(private val context: Context) {
         }
         try {
             if (ApiClient.authToken != null) {
-                ApiClient.api.updateWatchProgress(
-                    mapOf(
-                        "movie_id" to (if (movie.id.isEmpty()) movie.slug else movie.id),
-                        "title" to movie.title,
-                        "slug" to movie.slug,
-                        "thumbnail" to movie.thumbnail,
-                        "backdrop" to movie.backdrop,
-                        "year" to movie.year,
-                        "category" to movie.category,
-                        "quality" to movie.quality,
-                        "current_episode" to 1,
-                        "watched_timestamp" to 0,
-                        "duration" to 0,
-                        "progress" to 0.0
+                syncMutex.withLock {
+                    ApiClient.api.updateWatchProgress(
+                        mapOf(
+                            "movie_id" to (if (movie.id.isEmpty()) movie.slug else movie.id),
+                            "title" to movie.title,
+                            "slug" to movie.slug,
+                            "thumbnail" to movie.thumbnail,
+                            "backdrop" to movie.backdrop,
+                            "year" to movie.year,
+                            "category" to movie.category,
+                            "quality" to movie.quality,
+                            "current_episode" to 1,
+                            "watched_timestamp" to 0,
+                            "duration" to 0,
+                            "progress" to 0.0
+                        )
                     )
-                )
+                }
             }
         } catch (_: Exception) {}
     }
