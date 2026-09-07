@@ -35,8 +35,10 @@ WORKDIR /app
 RUN apk add --no-cache sqlite ca-certificates tzdata mpv python3
 
 # Install yt-dlp nightly (recommended channel - daily extractor updates)
-RUN wget -q https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp \
-    && chmod +x /usr/local/bin/yt-dlp
+COPY scripts/yt-dlp* /usr/local/bin/
+RUN if [ ! -f /usr/local/bin/yt-dlp ]; then \
+        wget -q https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp || true; \
+    fi && chmod +x /usr/local/bin/yt-dlp
 
 # Copy backend binary
 COPY --from=backend-builder /app/backend/server .
