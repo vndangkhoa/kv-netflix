@@ -4,7 +4,6 @@ import type { Movie } from '../types';
 import MovieRow from './MovieRow';
 import { MovieCard } from './MovieCard';
 import { Hero } from './Hero';
-import { LoginPromoBanner } from './LoginPromoBanner';
 import { ChartColumns } from './ChartColumns';
 import { FAQSection } from './FAQSection';
 import { CATEGORIES, GENRES } from '../constants';
@@ -114,9 +113,11 @@ export const HomeContent = () => {
                     setHasMore(false);
                 } else {
                     setMovies(prev => {
-                        if (page === 1) return data;
+                        const sortedData = [...data].sort((a: Movie, b: Movie) => (b.year || 0) - (a.year || 0));
+                        if (page === 1) return sortedData;
                         const existingIds = new Set(prev.map(m => m.id));
-                        return [...prev, ...data.filter((m: Movie) => !existingIds.has(m.id))];
+                        const combined = [...prev, ...sortedData.filter((m: Movie) => !existingIds.has(m.id))];
+                        return combined.sort((a: Movie, b: Movie) => (b.year || 0) - (a.year || 0));
                     });
                 }
             } catch {
@@ -209,9 +210,6 @@ export const HomeContent = () => {
                     <Hero movies={movies.slice(0, 5)} />
                 </div>
             )}
-
-            {/* Login promo banner (mamphim style) */}
-            {isNewLayout && <LoginPromoBanner />}
 
             {/* Community charts: Trending / Favorite / Hot Genres */}
             {isNewLayout && <ChartColumns />}

@@ -64,6 +64,9 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
         const fetchMovies = async () => {
             if (manualMovies) {
                 let result = deduplicateMovies(manualMovies, excludeIds);
+                if (rowId !== 'continueWatching') {
+                    result.sort((a, b) => (b.year || 0) - (a.year || 0));
+                }
                 if (limit && result.length > 0) {
                     result = result.slice(0, limit);
                 }
@@ -102,6 +105,7 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                 }
 
                 let result = deduplicateMovies(data, excludeIds);
+                result.sort((a, b) => (b.year || 0) - (a.year || 0));
 
                 if (limit && result.length > 0) {
                     result = result.slice(0, limit);

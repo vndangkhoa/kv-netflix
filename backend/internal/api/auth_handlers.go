@@ -2,9 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
-	"strconv"
+	"strings"
 	"time"
 
 	"streamflow-backend/internal/database"
@@ -34,7 +35,15 @@ func (h *Handler) generateToken(user *models.User) (string, error) {
 }
 
 func generateDeviceCode() string {
-	return strconv.Itoa(100000 + rand.Intn(900000))
+	for i := 0; i < 10; i++ {
+		code := fmt.Sprintf("%06d", 100000+rand.Intn(900000))
+		var count int64
+		database.DB.Model(&models.Device{}).Where("code = ?", code).Count(&count)
+		if count == 0 {
+			return code
+		}
+	}
+	return fmt.Sprintf("%06d", 100000+rand.Intn(900000))
 }
 
 // ── Register ────────────────────────────────────────────────────────
@@ -52,8 +61,19 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" && req.Email != "" {
+		req.Name = strings.Split(req.Email, "@")[0]
+	}
+
 	if req.Email == "" || req.Password == "" {
 		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	if !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
+		http.Error(w, "Invalid email address format", http.StatusBadRequest)
 		return
 	}
 
@@ -113,6 +133,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
 	var user models.User
 	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
@@ -140,7 +166,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 // ── Get Current User ────────────────────────────────────────────────
 
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(ContextUserIDKey).(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
@@ -161,6 +191,8 @@ func (h *Handler) GenerateDeviceCode(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		req.DeviceName = "Unknown Device"
 	}
+
+	database.DB.Where("expires_at < ?", time.Now()).Delete(&models.Device{})
 
 	code := generateDeviceCode()
 	device := &models.Device{
@@ -189,11 +221,21 @@ type PairDeviceRequest struct {
 }
 
 func (h *Handler) PairDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(ContextUserIDKey).(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req PairDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	req.Code = strings.TrimSpace(req.Code)
+	if req.Code == "" {
+		http.Error(w, "Code is required", http.StatusBadRequest)
 		return
 	}
 
@@ -213,8 +255,14 @@ func (h *Handler) PairDevice(w http.ResponseWriter, r *http.Request) {
 	device.IsPaired = true
 	database.DB.Save(&device)
 
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
 	// Generate token for the paired device
-	token, err := h.generateToken(&models.User{ID: userID})
+	token, err := h.generateToken(&user)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -224,13 +272,14 @@ func (h *Handler) PairDevice(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"token":  token,
 		"device": device,
+		"user":   user,
 	})
 }
 
 // ── Device Pairing: Check Status (called from Android polling) ────
 
 func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
-	code := r.URL.Query().Get("code")
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
 	if code == "" {
 		http.Error(w, "Code is required", http.StatusBadRequest)
 		return
@@ -257,7 +306,13 @@ func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Device was paired — generate token
-	token, err := h.generateToken(&models.User{ID: device.UserID})
+	var user models.User
+	if err := database.DB.First(&user, device.UserID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	token, err := h.generateToken(&user)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -267,15 +322,21 @@ func (h *Handler) CheckDeviceStatus(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "paired",
 		"token":  token,
+		"user":   user,
 	})
 }
 
 // ── Generate Link Code (logged-in user shows code for other device) ──
 
 func (h *Handler) GenerateLinkCode(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(ContextUserIDKey).(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	// Invalidate any existing unused link codes for this user
+	// Invalidate any existing unused link codes for this user and expired devices
+	database.DB.Where("expires_at < ?", time.Now()).Delete(&models.Device{})
 	database.DB.Where("user_id = ? AND is_paired = false AND name = ?", userID, "link-code").Delete(&models.Device{})
 
 	code := generateDeviceCode()
@@ -312,6 +373,7 @@ func (h *Handler) LoginWithCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Code = strings.TrimSpace(req.Code)
 	if req.Code == "" {
 		http.Error(w, "Code is required", http.StatusBadRequest)
 		return
@@ -333,14 +395,17 @@ func (h *Handler) LoginWithCode(w http.ResponseWriter, r *http.Request) {
 	device.IsPaired = true
 	database.DB.Save(&device)
 
-	token, err := h.generateToken(&models.User{ID: device.UserID})
+	var user models.User
+	if err := database.DB.First(&user, device.UserID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	token, err := h.generateToken(&user)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
-
-	var user models.User
-	database.DB.First(&user, device.UserID)
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{

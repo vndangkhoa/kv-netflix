@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.4] - 2026-09-07
+### Fixed
+- **Authentication & Registration**:
+  - Fixed 500 runtime panics (`nil.(uint)`) on all authenticated routes (`/account/*`, `/sync/*`, `/videos/explore`) by correcting request context key handling between middleware and handlers.
+  - Normalized email addresses (trimming and lowercasing) across registration and login to prevent casing/whitespace authentication errors.
+  - Added email format validation and username fallback on registration.
+- **Device Pairing (Pair Code)**:
+  - Added expired code cleanup and collision handling for 6-digit device pairing codes.
+  - Populated complete user claims (UserID + Email) in JWT tokens generated during device pairing.
+  - Added live status polling (every 2s) in web `DevicePairPage` so web UI updates immediately upon successful device connection.
+  - Supported two-way pairing on web: generating link codes for other devices and entering TV/device codes.
+- **Latest Movies Sorting**:
+  - Ensured backend API (`/videos/home`, `/videos/search`) and frontend views (`HomeContent`, `MovieRow`, `ChartColumns`, explore, and search suggestions) always sort and show latest movies first by release year descending.
+
+### Removed
+- Removed login promo banner from the home page.
+
+---
+
 ## [v9.2.3] - 2026-08-24
 ### Fixed
 - **Android app: saved movies disappearing from My List**: login triggered two concurrent remote syncs, and a sync response that was requested *before* a save but returned *after* it overwrote the local list with the stale server snapshot — wiping freshly saved movies from the UI (they reappeared only after an app restart). Syncs are now serialized against save/remove/history mutations and merge local + remote lists instead of blind overwrite.

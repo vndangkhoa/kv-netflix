@@ -25,7 +25,11 @@ type SavedMovieRequest struct {
 }
 
 func (h *Handler) GetSavedMovies(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var movies []models.SavedMovie
 	database.DB.Where("user_id = ?", userID).Order("saved_at DESC").Find(&movies)
@@ -35,7 +39,11 @@ func (h *Handler) GetSavedMovies(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AddSavedMovie(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req SavedMovieRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -76,7 +84,11 @@ func (h *Handler) AddSavedMovie(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) RemoveSavedMovie(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	movieID := r.URL.Query().Get("movie_id")
 
 	if movieID == "" {
@@ -110,7 +122,11 @@ type WatchHistoryRequest struct {
 }
 
 func (h *Handler) GetWatchHistory(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var history []models.WatchHistory
 	database.DB.Where("user_id = ?", userID).Order("watched_at DESC").Find(&history)
@@ -120,7 +136,11 @@ func (h *Handler) GetWatchHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateWatchProgress(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req WatchHistoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -186,7 +206,11 @@ type BulkSyncRequest struct {
 }
 
 func (h *Handler) BulkSync(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req BulkSyncRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

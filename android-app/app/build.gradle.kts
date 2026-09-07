@@ -11,8 +11,8 @@ android {
         applicationId = "com.kvnetflix.mobile"
         minSdk = 24
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.4.4"
+        versionCode = 16
+        versionName = "1.4.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

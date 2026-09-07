@@ -53,8 +53,11 @@ export const ChartColumns = () => {
             try {
                 const res = await fetch(`/api/videos/home?category=${category}&limit=10`);
                 if (!res.ok) return;
-                const data = await res.json();
-                if (!cancelled && Array.isArray(data)) setMovies(prev => ({ ...prev, [key]: data.slice(0, 10) }));
+                const data: Movie[] = await res.json();
+                if (!cancelled && Array.isArray(data)) {
+                    const sorted = [...data].sort((a, b) => (b.year || 0) - (a.year || 0));
+                    setMovies(prev => ({ ...prev, [key]: sorted.slice(0, 10) }));
+                }
             } catch { /* ignore */ }
         };
 

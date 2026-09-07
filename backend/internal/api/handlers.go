@@ -148,6 +148,10 @@ func (h *Handler) SearchVideos(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	sort.SliceStable(movies, func(i, j int) bool {
+		return movies[i].Year > movies[j].Year
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(movies)
 }
@@ -190,6 +194,12 @@ func (h *Handler) fetchAndMergeMovies(fetch movieFetcher) []models.RophimMovie {
 			filtered = append(filtered, m)
 		}
 	}
+
+	// Always sort latest movies first (by Year descending)
+	sort.SliceStable(filtered, func(i, j int) bool {
+		return filtered[i].Year > filtered[j].Year
+	})
+
 	return filtered
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown, Download, LayoutDashboard } from 'lucide-react';
+import { Search, X, User, Globe, ChevronDown, Download, LayoutDashboard, Tv } from 'lucide-react';
 import { CATEGORIES, GENRES, COUNTRIES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
@@ -101,7 +101,11 @@ const Navbar = () => {
         if (!q.trim()) { setSuggestions([]); return; }
         try {
             const res = await fetch(`/api/videos/search?q=${encodeURIComponent(q)}`);
-            if (res.ok) setSuggestions(((await res.json()) || []).slice(0, 8));
+            if (res.ok) {
+                const data: Movie[] = (await res.json()) || [];
+                data.sort((a, b) => (b.year || 0) - (a.year || 0));
+                setSuggestions(data.slice(0, 8));
+            }
         } catch { setSuggestions([]); }
     }, []);
 
@@ -348,6 +352,17 @@ const Navbar = () => {
                         >
                             <Globe size={18} />
                         </button>
+
+                        {/* Device Pairing Button */}
+                        {isAuthenticated && (
+                            <button
+                                onClick={() => setShowPairModal(true)}
+                                className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-accent transition-all active:scale-90"
+                                title={t.pairDevice as string}
+                            >
+                                <Tv size={18} />
+                            </button>
+                        )}
 
                         {/* User Login/Account */}
                         {isAuthenticated ? (

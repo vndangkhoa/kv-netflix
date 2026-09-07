@@ -123,7 +123,8 @@ function ExploreTab() {
             setError('');
         }
         try {
-            setMovies(await exploreAPI.getRelated());
+            const res = await exploreAPI.getRelated();
+            setMovies(Array.isArray(res) ? [...res].sort((a, b) => (b.year || 0) - (a.year || 0)) : []);
         } catch {
             setError(t.loadingError as string);
         }

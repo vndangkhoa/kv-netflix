@@ -15,7 +15,11 @@ import (
 // ── List Devices ──────────────────────────────────────────────────────
 
 func (h *Handler) GetDevices(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var devices []models.Device
 	database.DB.Where("user_id = ? AND is_paired = ?", userID, true).Find(&devices)
@@ -31,7 +35,11 @@ type RemoveDeviceRequest struct {
 }
 
 func (h *Handler) RemoveDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req RemoveDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -57,7 +65,11 @@ type ChangePasswordRequest struct {
 }
 
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req ChangePasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -109,7 +121,11 @@ func generateRecoveryKey() (string, error) {
 }
 
 func (h *Handler) GenerateRecoveryKey(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Invalidate any existing unused keys
 	database.DB.Where("user_id = ? AND used = ?", userID, false).Delete(&models.RecoveryKey{})

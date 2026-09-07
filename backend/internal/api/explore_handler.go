@@ -50,7 +50,11 @@ func normalizeGenreSlug(genre string) string {
 // ── Explore: Movies related to user's watch history ───────────────────
 
 func (h *Handler) ExploreMovies(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID, ok := GetUserIDFromRequest(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Get user's watch history
 	var history []models.WatchHistory

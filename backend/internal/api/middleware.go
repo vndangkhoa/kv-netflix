@@ -14,6 +14,21 @@ type contextKey string
 // ContextUserIDKey is the context key holding the authenticated user's ID.
 const ContextUserIDKey contextKey = "user_id"
 
+// GetUserIDFromRequest safely extracts the authenticated user ID from context.
+func GetUserIDFromRequest(r *http.Request) (uint, bool) {
+	if val := r.Context().Value(ContextUserIDKey); val != nil {
+		if id, ok := val.(uint); ok {
+			return id, true
+		}
+	}
+	if val := r.Context().Value("user_id"); val != nil {
+		if id, ok := val.(uint); ok {
+			return id, true
+		}
+	}
+	return 0, false
+}
+
 func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -39,6 +54,7 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), ContextUserIDKey, claims.UserID)
+		ctx = context.WithValue(ctx, "user_id", claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
