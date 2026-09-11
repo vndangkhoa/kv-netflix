@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.6] - 2026-09-11
+### Added
+- **Closed Captions (CC) & Multi-Language Subtitles**:
+  - Dedicated Subtitles / CC button added to player control bar with active track highlight.
+  - Interactive subtitle selection popup menu displaying all available stream subtitle tracks (Vietnamese, English, etc.) and an "Off" toggle.
+  - **Vietnamese Default Preference**:
+    - Automatically activates Vietnamese subtitle tracks (`vi`, `vie`, `Tiếng Việt`) by default whenever available in the stream manifest.
+    - Remembers user's preferred subtitle selection across movies and episodes via `localStorage`.
+  - **External Subtitle Upload (.srt / .vtt)**:
+    - User can upload custom `.srt` or `.vtt` files directly in the player.
+    - Automatic client-side SRT to WebVTT format conversion with normalized timestamp timing.
+  - **Keyboard Shortcut**:
+    - Press `c` or `C` to quickly toggle subtitles on/off during video playback.
+- **Enhanced Subtitle Typography & Styling**:
+  - Crisp readability with semi-transparent background (`rgba(0, 0, 0, 0.78)`), high-contrast white text, subtle text drop-shadow, and responsive font sizing for both Plyr captions and native HTML5 video cues (`::cue`).
+
 ## [v9.2.5] - 2026-09-11
 ### Added
 - **VSMOV Direct 4K/HD Streaming Provider**:

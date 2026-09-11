@@ -171,6 +171,13 @@ export interface Translations {
     savedToMyList: string;
     saveToSync: string;
     autoSwitchFaster: string;
+    subtitles: string;
+    subtitlesOff: string;
+    subtitlesVN: string;
+    subtitlesEN: string;
+    uploadSubtitle: string;
+    noSubtitlesFound: string;
+    subtitleLoaded: string;
 
     // Explore
     exploreTitle: string;
@@ -352,6 +359,13 @@ const vi: Translations = {
     savedToMyList: 'Đã lưu vào danh sách của bạn',
     saveToSync: 'Đăng nhập để đồng bộ danh sách phim đã lưu trên mọi thiết bị',
     autoSwitchFaster: 'Đang tự động chuyển sang nguồn phát nhanh hơn:',
+    subtitles: 'Phụ đề',
+    subtitlesOff: 'Tắt phụ đề',
+    subtitlesVN: 'Tiếng Việt (Mặc định)',
+    subtitlesEN: 'Tiếng Anh',
+    uploadSubtitle: 'Tải lên phụ đề (.srt, .vtt)',
+    noSubtitlesFound: 'Không có phụ đề rời (phim có sẵn Vietsub)',
+    subtitleLoaded: 'Đã tải phụ đề thành công',
 
     exploreTitle: 'Phim liên quan đến sở thích của bạn',
     exploreEmpty: 'Xem phim để nhận đề xuất',
@@ -530,6 +544,13 @@ const en: Translations = {
     savedToMyList: 'Saved to your list',
     saveToSync: 'Sign in to sync saved movies across devices',
     autoSwitchFaster: 'Auto-switching to faster stream:',
+    subtitles: 'Subtitles',
+    subtitlesOff: 'Off',
+    subtitlesVN: 'Vietnamese (Default)',
+    subtitlesEN: 'English',
+    uploadSubtitle: 'Upload subtitle (.srt, .vtt)',
+    noSubtitlesFound: 'No embedded subtitles (hardcoded Vietsub)',
+    subtitleLoaded: 'Subtitle loaded successfully',
 
     exploreTitle: 'Movies related to your taste',
     exploreEmpty: 'Watch movies to get recommendations',

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark, Gauge, Check, Volume1, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark, Gauge, Check, Volume1, Volume2, VolumeX, Subtitles, Upload } from 'lucide-react';
 import { useWatchMovie } from '../../hooks/useWatchMovie';
 import { usePiP } from '../../hooks/usePiP';
 import MovieRow from '../../components/MovieRow';
@@ -193,12 +193,15 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         playNextEpisode, dismissEndScreen,
         source,
         buffering, playerError, retryStream, levels, currentLevel, selectQuality,
+        subtitles, currentSubtitle, selectSubtitle, loadCustomSubtitle, toggleSubtitles,
     } = useWatchMovie(slug, episode, selectedServer, setSelectedServer, handleAutoSwitched);
     const [expanded, setExpanded] = useState(false);
     const togglePiPRef = useRef<(() => Promise<void>) | null>(null);
     const { togglePiP } = usePiP(videoRef);
     const [playerControlsVisible, setPlayerControlsVisible] = useState(true);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [subtitlesOpen, setSubtitlesOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [seekFlash, setSeekFlash] = useState<{ dir: 'back' | 'forward'; ts: number } | null>(null);
     const lastTapRef = useRef<{ x: number; t: number }>({ x: 0, t: 0 });
@@ -418,6 +421,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             invertTime: false,
             seekTime: 10,
             keyboard: { focused: true, global: true },
+            captions: { active: true, update: true },
             // Plyr's own fullscreen is unreliable on iPhone (it degrades to a
             // CSS "fill the viewport" zoom instead of a real fullscreen
             // player), so it is disabled here — a custom cross-platform
@@ -484,7 +488,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
 
         const onControlsShow = () => setPlayerControlsVisible(true);
-        const onControlsHide = () => { setPlayerControlsVisible(false); setSettingsOpen(false); };
+        const onControlsHide = () => { setPlayerControlsVisible(false); setSettingsOpen(false); setSubtitlesOpen(false); };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (player as any).on('controlsshown', onControlsShow);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -605,6 +609,22 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         window.addEventListener('keydown', handleTVMediaKey);
         return () => window.removeEventListener('keydown', handleTVMediaKey);
     }, [videoRef]);
+
+    // Keyboard shortcut: 'c' to toggle subtitles
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return;
+            }
+            if (e.key === 'c' || e.key === 'C') {
+                e.preventDefault();
+                toggleSubtitles();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [toggleSubtitles]);
 
     useEffect(() => {
         return registerWebOSBackHandler(() => {
@@ -828,6 +848,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                         <button
                                             onClick={() => {
                                                 setSettingsOpen(false);
+                                                setSubtitlesOpen(false);
                                                 retryStream();
                                             }}
                                             className="px-6 py-2.5 bg-accent hover:bg-accent/90 text-white rounded-full text-sm font-bold transition-colors shadow-[0_0_20px_var(--accent-glow-soft)]"
@@ -838,7 +859,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                 </div>
                             )}
 
-                            {/* Floating action bar: skip ±10s + settings (direct streams only) */}
+                            {/* Floating action bar: skip ±10s + subtitles + settings (direct streams only) */}
                             {!source?.isEmbed && !String(source?.stream_url || '').includes('embed') && !episodeEnded && (
                                 <>
                                     <div className="absolute bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 transition-opacity duration-300"
@@ -859,13 +880,121 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                         </button>
                                     </div>
 
-                                    {/* Volume + Settings */}
+                                    {/* Volume + Subtitles + Settings */}
                                     <div className="absolute bottom-24 md:bottom-28 right-3 md:right-6 z-40 flex items-center gap-3 transition-opacity duration-300"
                                          style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
                                         <VerticalVolume ref={videoRef} key={source?.stream_url} />
+
+                                        {/* Subtitles (CC) Button & Menu */}
                                         <div className="relative">
                                             <button
-                                                onClick={() => setSettingsOpen(o => !o)}
+                                                onClick={() => {
+                                                    setSubtitlesOpen(o => !o);
+                                                    setSettingsOpen(false);
+                                                }}
+                                                className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${
+                                                    currentSubtitle !== -1
+                                                        ? 'bg-accent border-accent text-white shadow-[0_0_15px_var(--accent-glow-soft)]'
+                                                        : subtitlesOpen
+                                                        ? 'bg-white/20 border-white text-white'
+                                                        : 'bg-black/60 hover:bg-black/80 border-white/20 text-white'
+                                                }`}
+                                                aria-label={t.subtitles}
+                                                title={t.subtitles}
+                                            >
+                                                <Subtitles className="w-5 h-5" />
+                                            </button>
+                                            {subtitlesOpen && (
+                                                <div className="absolute bottom-14 right-0 w-64 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in z-50">
+                                                    <div className="flex items-center justify-between px-3 pt-2 pb-1 border-b border-[var(--border-subtle)] mb-1">
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{t.subtitles}</span>
+                                                        <span className="text-[10px] text-[var(--text-dim)] font-mono">Phím 'C'</span>
+                                                    </div>
+
+                                                    <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
+                                                        {/* Off option */}
+                                                        <button
+                                                            onClick={() => {
+                                                                selectSubtitle(-1);
+                                                            }}
+                                                            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors text-left"
+                                                        >
+                                                            <span className={currentSubtitle === -1 ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
+                                                                {t.subtitlesOff}
+                                                            </span>
+                                                            {currentSubtitle === -1 && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
+                                                        </button>
+
+                                                        {/* Subtitle tracks */}
+                                                        {subtitles.map(sub => {
+                                                            const isVN = sub.lang.toLowerCase().startsWith('vi') || sub.name.toLowerCase().includes('việt') || sub.name.toLowerCase().includes('viet') || sub.name.toLowerCase().includes('vn');
+                                                            const isEN = sub.lang.toLowerCase().startsWith('en') || sub.name.toLowerCase().includes('eng');
+                                                            const displayName = isVN ? t.subtitlesVN : isEN ? t.subtitlesEN : sub.name;
+
+                                                            return (
+                                                                <button
+                                                                    key={sub.id}
+                                                                    onClick={() => selectSubtitle(sub.id)}
+                                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors text-left"
+                                                                >
+                                                                    <div className="flex flex-col min-w-0 pr-2">
+                                                                        <span className={`truncate ${currentSubtitle === sub.id ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}`}>
+                                                                            {displayName}
+                                                                        </span>
+                                                                        {sub.isCustom && (
+                                                                            <span className="text-[10px] text-[var(--text-dim)]">File người dùng tải lên</span>
+                                                                        )}
+                                                                    </div>
+                                                                    {currentSubtitle === sub.id && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
+                                                                </button>
+                                                            );
+                                                        })}
+
+                                                        {subtitles.length === 0 && (
+                                                            <div className="px-3 py-2 text-xs text-[var(--text-muted)] italic">
+                                                                {t.noSubtitlesFound}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Upload Custom Subtitle Button */}
+                                                    <div className="pt-2 mt-1 border-t border-[var(--border-subtle)]">
+                                                        <input
+                                                            ref={fileInputRef}
+                                                            type="file"
+                                                            accept=".vtt,.srt"
+                                                            className="hidden"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const ok = await loadCustomSubtitle(file);
+                                                                    if (ok) {
+                                                                        showToast(t.subtitleLoaded as string);
+                                                                    }
+                                                                    if (fileInputRef.current) {
+                                                                        fileInputRef.current.value = '';
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                        <button
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
+                                                        >
+                                                            <Upload className="w-4 h-4 text-accent" />
+                                                            <span>{t.uploadSubtitle}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => {
+                                                    setSettingsOpen(o => !o);
+                                                    setSubtitlesOpen(false);
+                                                }}
                                                 className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${settingsOpen ? 'bg-accent border-accent' : 'bg-black/60 hover:bg-black/80 border-white/20'}`}
                                                 aria-label="Settings"
                                             >

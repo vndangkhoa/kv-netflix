@@ -3,6 +3,21 @@ import Hls from 'hls.js';
 import type { MovieDetail, VideoSource } from '../types';
 import { useWatchProgress } from './useWatchProgress';
 
+export interface SubtitleTrack {
+    id: number;
+    name: string;
+    lang: string;
+    isCustom?: boolean;
+}
+
+export const convertSrtToVtt = (srtContent: string): string => {
+    let vtt = 'WEBVTT\n\n' + srtContent
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .trim();
+    return vtt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+};
+
 export const useWatchMovie = (
     slug: string | undefined,
     episode: string | undefined,
@@ -20,6 +35,9 @@ export const useWatchMovie = (
     const [retryKey, setRetryKey] = useState(0);
     const [levels, setLevels] = useState<{ index: number; height: number }[]>([]);
     const [currentLevel, setCurrentLevel] = useState(-1);
+    const [subtitles, setSubtitles] = useState<SubtitleTrack[]>([]);
+    const [currentSubtitle, setCurrentSubtitle] = useState<number>(-1);
+    const customTracksRef = useRef<{ el: HTMLTrackElement; url: string }[]>([]);
     const [currentEpisode, setCurrentEpisode] = useState(parseInt(episode || '1'));
     const [episodeEnded, setEpisodeEnded] = useState(false);
     const { getProgress, saveProgress, clearProgress } = useWatchProgress();
@@ -388,6 +406,15 @@ export const useWatchMovie = (
         setBuffering(true);
         setPlayerError(false);
 
+        // Reset subtitles and revoke custom tracks on source change
+        customTracksRef.current.forEach(({ el, url }) => {
+            try { el.remove(); } catch { }
+            URL.revokeObjectURL(url);
+        });
+        customTracksRef.current = [];
+        setSubtitles([]);
+        setCurrentSubtitle(-1);
+
         const getNearEndThreshold = (duration: number): number => {
             if (duration <= 0) return 0;
             if (duration > 1800) return 300;
@@ -543,6 +570,46 @@ export const useWatchMovie = (
                 hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
                     setCurrentLevel(data.level ?? -1);
                 });
+                hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_e, data) => {
+                    const hlsTracks: SubtitleTrack[] = (data.subtitleTracks || []).map((t, idx) => ({
+                        id: t.id ?? idx,
+                        name: t.name || t.lang || `Track ${idx + 1}`,
+                        lang: t.lang || '',
+                        isCustom: false,
+                    }));
+
+                    setSubtitles(prev => {
+                        const customs = prev.filter(p => p.isCustom);
+                        return [...hlsTracks, ...customs];
+                    });
+
+                    const pref = localStorage.getItem('preferred_subtitle_lang') || 'vi';
+                    if (pref !== 'off') {
+                        const viTrack = hlsTracks.find(t =>
+                            t.lang.toLowerCase().startsWith('vi') ||
+                            t.name.toLowerCase().includes('việt') ||
+                            t.name.toLowerCase().includes('viet') ||
+                            t.name.toLowerCase().includes('vn')
+                        );
+                        if (viTrack) {
+                            if (hlsRef.current) {
+                                hlsRef.current.subtitleTrack = viTrack.id;
+                            }
+                            setCurrentSubtitle(viTrack.id);
+                        } else if (pref !== 'vi') {
+                            const prefTrack = hlsTracks.find(t => t.lang.toLowerCase().startsWith(pref.toLowerCase()));
+                            if (prefTrack) {
+                                if (hlsRef.current) {
+                                    hlsRef.current.subtitleTrack = prefTrack.id;
+                                }
+                                setCurrentSubtitle(prefTrack.id);
+                            }
+                        }
+                    }
+                });
+                hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_e, data) => {
+                    setCurrentSubtitle(data.id);
+                });
                 let hlsRecoveryAttempts = 0;
                 hls.on(Hls.Events.ERROR, (_e, data) => {
                     console.error('[player] hls error:', JSON.stringify({
@@ -586,6 +653,47 @@ export const useWatchMovie = (
             }
         }, 0);
 
+        const syncNativeTracks = () => {
+            if (!video) return;
+            const textTracks = video.textTracks;
+            if (!textTracks || textTracks.length === 0) return;
+            const tracks: SubtitleTrack[] = [];
+            for (let i = 0; i < textTracks.length; i++) {
+                const t = textTracks[i];
+                if (t.kind === 'subtitles' || t.kind === 'captions') {
+                    tracks.push({
+                        id: i,
+                        name: t.label || t.language || `Track ${i + 1}`,
+                        lang: t.language || '',
+                        isCustom: false,
+                    });
+                }
+            }
+            if (tracks.length > 0) {
+                setSubtitles(prev => {
+                    const customs = prev.filter(p => p.isCustom);
+                    return [...tracks, ...customs];
+                });
+                const pref = localStorage.getItem('preferred_subtitle_lang') || 'vi';
+                if (pref !== 'off') {
+                    const viIndex = tracks.findIndex(t =>
+                        t.lang.toLowerCase().startsWith('vi') ||
+                        t.name.toLowerCase().includes('việt') ||
+                        t.name.toLowerCase().includes('viet') ||
+                        t.name.toLowerCase().includes('vn')
+                    );
+                    const target = viIndex !== -1 ? viIndex : (pref !== 'vi' ? tracks.findIndex(t => t.lang.toLowerCase().startsWith(pref.toLowerCase())) : -1);
+                    if (target !== -1) {
+                        for (let i = 0; i < textTracks.length; i++) {
+                            textTracks[i].mode = i === target ? 'showing' : 'disabled';
+                        }
+                        setCurrentSubtitle(target);
+                    }
+                }
+            }
+        };
+        video.addEventListener('loadedmetadata', syncNativeTracks);
+
         video.addEventListener('canplay', onCanPlay);
         video.addEventListener('pause', onPause);
         video.addEventListener('ended', onEnded);
@@ -607,6 +715,7 @@ export const useWatchMovie = (
             clearTimeout(initTimer);
             if (hls) hls.destroy();
             if (hlsRef.current === hls) hlsRef.current = null;
+            video.removeEventListener('loadedmetadata', syncNativeTracks);
             video.removeEventListener('canplay', onCanPlay);
             video.removeEventListener('pause', onPause);
             video.removeEventListener('ended', onEnded);
@@ -619,6 +728,12 @@ export const useWatchMovie = (
                 clearInterval(saveIntervalRef.current);
                 saveIntervalRef.current = null;
             }
+            // Revoke and clear custom subtitle tracks
+            customTracksRef.current.forEach(({ el, url }) => {
+                try { el.remove(); } catch { }
+                URL.revokeObjectURL(url);
+            });
+            customTracksRef.current = [];
             // Save final progress on unmount
             saveCurrentProgress();
         };
@@ -668,6 +783,125 @@ export const useWatchMovie = (
         setRetryKey(k => k + 1);
     }, []);
 
+    const selectSubtitle = useCallback((id: number) => {
+        const video = videoRef.current;
+        const hls = hlsRef.current;
+
+        if (id === -1) {
+            if (hls) hls.subtitleTrack = -1;
+            if (video && video.textTracks) {
+                for (let i = 0; i < video.textTracks.length; i++) {
+                    video.textTracks[i].mode = 'disabled';
+                }
+            }
+            setCurrentSubtitle(-1);
+            localStorage.setItem('preferred_subtitle_lang', 'off');
+            return;
+        }
+
+        const track = subtitles.find(t => t.id === id);
+        if (!track) return;
+
+        if (track.isCustom) {
+            if (hls) hls.subtitleTrack = -1;
+            if (video && video.textTracks) {
+                for (let i = 0; i < video.textTracks.length; i++) {
+                    const t = video.textTracks[i];
+                    t.mode = (t.label === track.name) ? 'showing' : 'disabled';
+                }
+            }
+            setCurrentSubtitle(id);
+        } else {
+            if (video && video.textTracks) {
+                for (let i = 0; i < video.textTracks.length; i++) {
+                    if (!hls) {
+                        video.textTracks[i].mode = (i === id) ? 'showing' : 'disabled';
+                    } else {
+                        video.textTracks[i].mode = 'disabled';
+                    }
+                }
+            }
+            if (hls) {
+                hls.subtitleTrack = id;
+            }
+            setCurrentSubtitle(id);
+            if (track.lang) {
+                localStorage.setItem('preferred_subtitle_lang', track.lang);
+            }
+        }
+    }, [subtitles]);
+
+    const loadCustomSubtitle = useCallback(async (file: File): Promise<boolean> => {
+        try {
+            const text = await file.text();
+            const vttContent = file.name.endsWith('.srt')
+                ? convertSrtToVtt(text)
+                : (text.startsWith('WEBVTT') ? text : 'WEBVTT\n\n' + text);
+            const blob = new Blob([vttContent], { type: 'text/vtt' });
+            const blobUrl = URL.createObjectURL(blob);
+
+            const video = videoRef.current;
+            if (!video) return false;
+
+            const trackLabel = file.name.replace(/\.[^/.]+$/, '');
+            const trackEl = document.createElement('track');
+            trackEl.kind = 'subtitles';
+            trackEl.label = trackLabel;
+            trackEl.srclang = 'custom';
+            trackEl.src = blobUrl;
+            trackEl.default = true;
+
+            video.appendChild(trackEl);
+            customTracksRef.current.push({ el: trackEl, url: blobUrl });
+
+            const customId = 1000 + Math.floor(Math.random() * 9000);
+            const newTrack: SubtitleTrack = {
+                id: customId,
+                name: trackLabel,
+                lang: 'custom',
+                isCustom: true,
+            };
+
+            setSubtitles(prev => [...prev, newTrack]);
+
+            setTimeout(() => {
+                if (hlsRef.current) {
+                    hlsRef.current.subtitleTrack = -1;
+                }
+                if (video.textTracks) {
+                    for (let i = 0; i < video.textTracks.length; i++) {
+                        const t = video.textTracks[i];
+                        if (t.label === trackLabel) {
+                            t.mode = 'showing';
+                        } else {
+                            t.mode = 'disabled';
+                        }
+                    }
+                }
+                setCurrentSubtitle(customId);
+            }, 100);
+
+            return true;
+        } catch (err) {
+            console.error('Failed to load custom subtitle', err);
+            return false;
+        }
+    }, []);
+
+    const toggleSubtitles = useCallback(() => {
+        if (currentSubtitle !== -1) {
+            selectSubtitle(-1);
+        } else if (subtitles.length > 0) {
+            const viTrack = subtitles.find(t =>
+                t.lang.toLowerCase().startsWith('vi') ||
+                t.name.toLowerCase().includes('việt') ||
+                t.name.toLowerCase().includes('viet') ||
+                t.name.toLowerCase().includes('vn')
+            );
+            selectSubtitle(viTrack ? viTrack.id : subtitles[0].id);
+        }
+    }, [currentSubtitle, subtitles, selectSubtitle]);
+
     // Reset episodeEnded when episode changes
     useEffect(() => {
         setEpisodeEnded(false);
@@ -695,5 +929,10 @@ export const useWatchMovie = (
         levels,
         currentLevel,
         selectQuality,
+        subtitles,
+        currentSubtitle,
+        selectSubtitle,
+        loadCustomSubtitle,
+        toggleSubtitles,
     };
 };

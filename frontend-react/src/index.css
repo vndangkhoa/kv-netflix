@@ -338,3 +338,33 @@ button:focus-visible,
   overflow: hidden;
 }
 
+/* Subtitle / Caption styling for Plyr and HTML5 video */
+.plyr__captions {
+  font-size: 1.15rem;
+  line-height: 1.4;
+  padding: 10px 20px;
+  pointer-events: none;
+  text-align: center;
+  z-index: 25;
+}
+
+.plyr__caption {
+  background: rgba(0, 0, 0, 0.78) !important;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  color: #ffffff !important;
+  font-weight: 500;
+  padding: 4px 10px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: pre-wrap;
+}
+
+video::cue {
+  background-color: rgba(0, 0, 0, 0.78);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
