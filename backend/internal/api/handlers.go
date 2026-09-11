@@ -63,7 +63,10 @@ func NewHandler(
 	jwtSecret string,
 ) *Handler {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
 	}
 	streamClient := &http.Client{
 		Transport: tr,
@@ -479,7 +482,16 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 			return false
 		}
 
-		// Prioritize direct HLS servers
+		// Prioritize fast direct HLS servers (VSMOV first, then KKPhim / direct m3u8)
+		isVsmovI := strings.Contains(epI.ServerName, "VSMOV")
+		isVsmovJ := strings.Contains(epJ.ServerName, "VSMOV")
+		if isVsmovI && !isVsmovJ {
+			return true
+		}
+		if !isVsmovI && isVsmovJ {
+			return false
+		}
+
 		isDirectI := strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.URL, ".m3u8")
 		isDirectJ := strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.URL, ".m3u8")
 		if isDirectI && !isDirectJ {
@@ -653,12 +665,25 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Stream responses must never be cached: stale/truncated bodies served
-	// from the browser cache after an upstream hiccup break hls.js playback.
-	w.Header().Set("Cache-Control", "no-store")
 	for k, v := range resp.Header {
 		w.Header()[k] = v
 	}
+
+	// Immutable media segments (.ts, .m4s, .png, .mp4) can be safely cached
+	// by browser cache to avoid repeated roundtrips during playback/seeking.
+	isSegment := strings.HasSuffix(parsedURL.Path, ".ts") ||
+		strings.HasSuffix(parsedURL.Path, ".m4s") ||
+		strings.HasSuffix(parsedURL.Path, ".png") ||
+		strings.HasSuffix(parsedURL.Path, ".mp4") ||
+		strings.Contains(contentType, "video/") ||
+		strings.Contains(contentType, "octet-stream")
+
+	if isSegment && resp.StatusCode == http.StatusOK {
+		w.Header().Set("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600")
+	} else {
+		w.Header().Set("Cache-Control", "no-store")
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)

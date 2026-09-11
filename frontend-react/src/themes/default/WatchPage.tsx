@@ -169,17 +169,32 @@ const VerticalVolume = ({ ref }: { ref: React.RefObject<HTMLVideoElement | null>
 
 export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) => {
     const navigate = useNavigate();
+    const { t } = useLang();
     const [selectedServer, setSelectedServer] = useState<string>('');
+    const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+    const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const showToast = useCallback((message: string) => {
+        setToast({ message, visible: true });
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => {
+            setToast({ message: '', visible: false });
+        }, 3500);
+    }, []);
+
+    const handleAutoSwitched = useCallback((newServer: string) => {
+        setSelectedServer(newServer);
+        showToast(`${t.autoSwitchFaster} ${newServer}`);
+    }, [t.autoSwitchFaster, showToast]);
+
     const {
         movie, loading, currentEpisode, setCurrentEpisode, videoRef,
         episodeEnded, videoActuallyEnded, hasNextEpisode, hasPrevEpisode,
         playNextEpisode, dismissEndScreen,
         source,
         buffering, playerError, retryStream, levels, currentLevel, selectQuality,
-    } = useWatchMovie(slug, episode, selectedServer, setSelectedServer);
+    } = useWatchMovie(slug, episode, selectedServer, setSelectedServer, handleAutoSwitched);
     const [expanded, setExpanded] = useState(false);
-    const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
-    const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const togglePiPRef = useRef<(() => Promise<void>) | null>(null);
     const { togglePiP } = usePiP(videoRef);
     const [playerControlsVisible, setPlayerControlsVisible] = useState(true);
@@ -191,20 +206,11 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     useEffect(() => {
         togglePiPRef.current = togglePiP;
     }, [togglePiP]);
-    const { t } = useLang();
     const { isSaved, addToList, removeFromList } = useMyList();
     const { isAuthenticated } = useAuth();
 
     const movieId = movie?.id || slug;
     const isMovieSaved = isSaved(movieId);
-
-    const showToast = (message: string) => {
-        setToast({ message, visible: true });
-        if (toastTimer.current) clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => {
-            setToast({ message: '', visible: false });
-        }, 3500);
-    };
 
     const handleToggleSave = useCallback(() => {
         if (!movie) return;

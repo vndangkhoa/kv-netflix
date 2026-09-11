@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.5] - 2026-09-11
+### Added
+- **VSMOV Direct 4K/HD Streaming Provider**:
+  - Integrated high-speed video provider (`https://vsmov.com/api`) delivering direct master HLS (`.m3u8`) playlists with open CORS and real video chunks.
+  - Mitigates peak evening hours (7–9 PM) slowdowns caused by dead mirrors and congested single-provider CDNs.
+- **Concurrent Stream Latency Probing**:
+  - Web player concurrently probes all available server streams in parallel using byte-range manifest requests (`bytes=0-127`) and `performance.now()`.
+  - Automatically selects the fastest responding source when no server is manually pinned.
+- **Automatic Buffering Stall & Network Failover**:
+  - Added continuous buffer stall monitoring (`onWaiting` > 6s) and fatal HLS network error failover.
+  - Automatically saves current playback position (`currentTime`), switches to the alternative server candidate, and seamlessly resumes playback without user interruption.
+- **Auto-Switch Notification**:
+  - Toast alert notifies users when the player switches to a faster stream (`Đang tự động chuyển sang nguồn phát nhanh hơn: [Tên Server]`).
+
+### Optimized
+- **Backend Proxy Connection Pooling**:
+  - Configured HTTP transport pooling (`MaxIdleConns: 100`, `MaxIdleConnsPerHost: 20`, `IdleConnTimeout: 90s`) to eliminate repeated TCP+TLS handshake latency on streaming segments.
+- **Browser Segment Caching**:
+  - Enabled 24-hour browser caching (`Cache-Control: public, max-age=86400, stale-while-revalidate=3600`) for immutable video chunks (`.ts`, `.m4s`, `.mp4`).
+- **Player HLS Buffering Cushion**:
+  - Increased `maxBufferLength` to 60s and `maxMaxBufferLength` to 120s to absorb peak-hour network jitter, and lowered fragment timeout to 12s.
+- **Scraper Timeout Resilience**:
+  - Lowered Ophim mirror timeout from 30s to 5s so dead external mirrors fail fast without delaying aggregation.
+
+---
+
 ## [v9.2.4] - 2026-09-07
 ### Fixed
 - **Authentication & Registration**:

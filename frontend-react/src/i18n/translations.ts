@@ -170,6 +170,7 @@ export interface Translations {
     savedMovie: string;
     savedToMyList: string;
     saveToSync: string;
+    autoSwitchFaster: string;
 
     // Explore
     exploreTitle: string;
@@ -350,6 +351,7 @@ const vi: Translations = {
     savedMovie: 'Đã lưu',
     savedToMyList: 'Đã lưu vào danh sách của bạn',
     saveToSync: 'Đăng nhập để đồng bộ danh sách phim đã lưu trên mọi thiết bị',
+    autoSwitchFaster: 'Đang tự động chuyển sang nguồn phát nhanh hơn:',
 
     exploreTitle: 'Phim liên quan đến sở thích của bạn',
     exploreEmpty: 'Xem phim để nhận đề xuất',
@@ -527,6 +529,7 @@ const en: Translations = {
     savedMovie: 'Saved',
     savedToMyList: 'Saved to your list',
     saveToSync: 'Sign in to sync saved movies across devices',
+    autoSwitchFaster: 'Auto-switching to faster stream:',
 
     exploreTitle: 'Movies related to your taste',
     exploreEmpty: 'Watch movies to get recommendations',

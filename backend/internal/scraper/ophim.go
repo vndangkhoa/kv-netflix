@@ -27,7 +27,7 @@ func NewOphimScraper() *OphimScraper {
 	return &OphimScraper{
 		client: &http.Client{
 			Transport: tr,
-			Timeout:   30 * time.Second,
+			Timeout:   5 * time.Second,
 		},
 	}
 }
