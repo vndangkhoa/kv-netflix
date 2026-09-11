@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,10 +31,18 @@ func (e *AudioExtractor) ExtractAudio(ctx context.Context, streamURL string, out
 
 	tempFile := filepath.Join(outputDir, fmt.Sprintf("audio_%d.mp3", time.Now().UnixNano()))
 
+	referer := "https://phimmoichill.my/"
+	if parsed, err := url.Parse(streamURL); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		referer = fmt.Sprintf("%s://%s/", parsed.Scheme, parsed.Host)
+	}
+
 	args := []string{
 		"-y",
+		"-allowed_extensions", "ALL",
+		"-allowed_segment_extensions", "ALL",
+		"-extension_picky", "0",
 		"-user_agent", e.UserAgent,
-		"-headers", "Referer: https://phimmoichill.my/\r\n",
+		"-headers", fmt.Sprintf("Referer: %s\r\nOrigin: %s\r\n", referer, referer),
 	}
 
 	if maxDurationSec > 0 {

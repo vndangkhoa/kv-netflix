@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.9] - 2026-09-11
+### Fixed
+- **AI Subtitle Generation Failure & Timeout**:
+  - **Asynchronous Background Processing**: Refactored `POST /api/videos/{slug}/subtitles/generate` to return `HTTP 202 Accepted` immediately, running audio extraction, Whisper ASR, and Llama 3.3 translation in a decoupled background task with a 10-minute timeout. This prevents Synology DSM Nginx reverse proxy 60-second timeouts (`504 Gateway Timeout`).
+  - **Proxy Stream URL Unwrapping**: Added automatic extraction of raw upstream stream URLs from `/api/stream?url=...` query parameters, resolving the immediate `500 No such file or directory` error.
+  - **Non-Standard HLS Segments**: Added FFmpeg flags `-allowed_extensions ALL -allowed_segment_extensions ALL -extension_picky 0` and dynamic upstream `Referer`/`Origin` headers to support providers that disguise HLS segments as `.png` images (e.g. VSMOV).
+  - **Multi-Provider Fallback**: Backend now automatically aggregates stream URLs across all available providers for an episode and falls back sequentially if any stream fails to extract audio.
+  - **Frontend Auto-Polling**: The player actively polls subtitle status every 3s upon receiving `HTTP 202` and automatically mounts and activates the subtitle track when ready.
+
 ## [v9.2.8] - 2026-09-11
 ### Added
 - **Groq Cloud AI Auto CC (Whisper Large-v3 + Llama 3.3 Vietsub)**:

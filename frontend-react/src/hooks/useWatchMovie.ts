@@ -963,12 +963,24 @@ export const useWatchMovie = (
         if (!slug) return { ok: false, error: 'No movie selected' };
         setIsGeneratingAI(true);
         try {
+            // Unwrap proxy URL if present
+            let cleanStreamUrl = source?.stream_url || '';
+            if (cleanStreamUrl.includes('url=')) {
+                try {
+                    const u = new URL(cleanStreamUrl, window.location.origin);
+                    cleanStreamUrl = u.searchParams.get('url') || cleanStreamUrl;
+                } catch { }
+            }
+
+            const currentServer = currentServerRef.current || selectedServer || '';
+
             const res = await fetch(`/api/videos/${slug}/subtitles/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     episode: currentEpisode,
-                    stream_url: source?.stream_url,
+                    stream_url: cleanStreamUrl,
+                    server_name: currentServer,
                     target_lang: targetLang,
                     source_lang: sourceLang,
                 }),
@@ -979,41 +991,74 @@ export const useWatchMovie = (
                 throw new Error(data.error || `HTTP ${res.status}`);
             }
 
-            const video = videoRef.current;
-            const newId = 2000 + (data.id || Math.floor(Math.random() * 8000));
-            const newTrack: SubtitleTrack = {
-                id: newId,
-                name: data.label || 'Tiếng Việt (AI Auto CC)',
-                lang: data.language || targetLang,
-                isCustom: true,
-                isAI: true,
-                vttUrl: data.vtt_url,
+            const applyTrack = (item: any) => {
+                const video = videoRef.current;
+                const newId = 2000 + (item.id || Math.floor(Math.random() * 8000));
+                const newTrack: SubtitleTrack = {
+                    id: newId,
+                    name: item.label || 'Tiếng Việt (AI Auto CC)',
+                    lang: item.language || targetLang,
+                    isCustom: true,
+                    isAI: true,
+                    vttUrl: item.vtt_url,
+                };
+
+                if (video && item.vtt_url) {
+                    const exists = Array.from(video.querySelectorAll('track')).some(t => t.src.includes(item.vtt_url));
+                    if (!exists) {
+                        const trackEl = document.createElement('track');
+                        trackEl.kind = 'subtitles';
+                        trackEl.label = item.label || 'Tiếng Việt (AI Auto CC)';
+                        trackEl.srclang = item.language || targetLang;
+                        trackEl.src = item.vtt_url;
+                        trackEl.default = true;
+                        video.appendChild(trackEl);
+                        customTracksRef.current.push({ el: trackEl, url: item.vtt_url });
+                    }
+                }
+
+                setSubtitles(prev => [...prev.filter(t => t.name !== newTrack.name), newTrack]);
+
+                setTimeout(() => {
+                    selectSubtitle(newId);
+                }, 100);
             };
 
-            if (video && data.vtt_url) {
-                const trackEl = document.createElement('track');
-                trackEl.kind = 'subtitles';
-                trackEl.label = data.label || 'Tiếng Việt (AI Auto CC)';
-                trackEl.srclang = data.language || targetLang;
-                trackEl.src = data.vtt_url;
-                trackEl.default = true;
-                video.appendChild(trackEl);
-                customTracksRef.current.push({ el: trackEl, url: data.vtt_url });
+            // If subtitle was already generated or completed synchronously
+            if (data.vtt_url) {
+                applyTrack(data);
+                setIsGeneratingAI(false);
+                return { ok: true };
             }
 
-            setSubtitles(prev => [...prev.filter(t => t.name !== newTrack.name), newTrack]);
+            // If background processing (HTTP 202), poll until ready
+            const maxPollAttempts = 80; // ~4 minutes
+            for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
+                await new Promise(r => setTimeout(r, 3000));
+                try {
+                    const pollRes = await fetch(`/api/videos/${slug}/subtitles?episode=${currentEpisode}`);
+                    if (pollRes.ok) {
+                        const pollData = await pollRes.json();
+                        if (Array.isArray(pollData) && pollData.length > 0) {
+                            const found = pollData.find((s: any) => s.language === targetLang || s.is_ai);
+                            if (found && found.vtt_url) {
+                                applyTrack(found);
+                                setIsGeneratingAI(false);
+                                return { ok: true };
+                            }
+                        }
+                    }
+                } catch {
+                    // Continue polling on transient fetch errors
+                }
+            }
 
-            setTimeout(() => {
-                selectSubtitle(newId);
-            }, 100);
-
-            setIsGeneratingAI(false);
-            return { ok: true };
+            throw new Error('AI subtitle generation timed out. Please try again.');
         } catch (err: any) {
             setIsGeneratingAI(false);
             return { ok: false, error: err.message || 'Failed to generate AI subtitle' };
         }
-    }, [slug, currentEpisode, source, selectSubtitle]);
+    }, [slug, currentEpisode, source, selectedServer, selectSubtitle]);
 
     // Reset episodeEnded when episode changes
     useEffect(() => {

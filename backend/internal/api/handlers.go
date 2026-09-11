@@ -2,10 +2,12 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -845,9 +847,12 @@ func validateURL(rawURL string) error {
 	return nil
 }
 
+var aiSubJobs sync.Map
+
 type GenerateSubtitleRequest struct {
 	Episode    int    `json:"episode"`
 	StreamURL  string `json:"stream_url"`
+	ServerName string `json:"server_name"`
 	SourceLang string `json:"source_lang"`
 	TargetLang string `json:"target_lang"`
 }
@@ -887,6 +892,9 @@ func (h *Handler) GenerateAISubtitle(w http.ResponseWriter, r *http.Request) {
 	if req.StreamURL == "" {
 		req.StreamURL = r.URL.Query().Get("stream_url")
 	}
+	if req.ServerName == "" {
+		req.ServerName = r.URL.Query().Get("server_name")
+	}
 	if req.SourceLang == "" {
 		req.SourceLang = r.URL.Query().Get("source_lang")
 	}
@@ -919,93 +927,169 @@ func (h *Handler) GenerateAISubtitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Resolve stream URL if not provided directly
-	streamURL := req.StreamURL
-	if streamURL == "" {
-		for _, provider := range h.Providers {
-			m, err := provider.GetMovieDetail(slug)
-			if err == nil && m != nil && len(m.Episodes) > 0 {
-				for _, ep := range m.Episodes {
-					if ep.Number == req.Episode && ep.URL != "" {
-						streamURL = ep.URL
-						break
+	jobKey := fmt.Sprintf("%s:%d:%s", slug, req.Episode, req.TargetLang)
+	if _, loaded := aiSubJobs.LoadOrStore(jobKey, "processing"); loaded {
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "processing",
+			"message": "AI subtitles are currently being generated. Please poll status.",
+			"slug":    slug,
+			"episode": req.Episode,
+		})
+		return
+	}
+
+	// 3. Launch background generation job with independent 10-minute timeout
+	go func(targetSlug string, ep int, targetLang, sourceLang, clientStreamURL, serverName string) {
+		defer aiSubJobs.Delete(jobKey)
+
+		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+
+		if h.SubtitlesDir == "" {
+			h.SubtitlesDir = "cache/subtitles"
+		}
+		_ = os.MkdirAll(h.SubtitlesDir, 0755)
+
+		// Helper to unwrap proxy URLs
+		unwrapURL := func(raw string) string {
+			raw = strings.TrimSpace(raw)
+			if strings.Contains(raw, "url=") {
+				if parsed, err := url.Parse(raw); err == nil {
+					if u := parsed.Query().Get("url"); u != "" {
+						return u
 					}
 				}
-				if streamURL != "" {
-					break
+				if idx := strings.Index(raw, "url="); idx != -1 {
+					q := raw[idx+4:]
+					if end := strings.IndexByte(q, '&'); end != -1 {
+						q = q[:end]
+					}
+					if unescaped, err := url.QueryUnescape(q); err == nil && unescaped != "" {
+						return unescaped
+					}
+				}
+			}
+			return raw
+		}
+
+		// Collect candidate stream URLs across providers
+		var candidates []string
+		if direct := unwrapURL(clientStreamURL); direct != "" && strings.HasPrefix(direct, "http") {
+			candidates = append(candidates, direct)
+		}
+
+		for _, provider := range h.Providers {
+			m, err := provider.GetMovieDetail(targetSlug)
+			if err == nil && m != nil && len(m.Episodes) > 0 {
+				for _, episodeItem := range m.Episodes {
+					if episodeItem.Number == ep && episodeItem.URL != "" {
+						u := unwrapURL(episodeItem.URL)
+						if strings.HasPrefix(u, "http") {
+							// If server matches requested serverName, prioritize it first
+							if serverName != "" && strings.Contains(strings.ToLower(episodeItem.ServerName), strings.ToLower(serverName)) {
+								candidates = append([]string{u}, candidates...)
+							} else {
+								candidates = append(candidates, u)
+							}
+						}
+					}
 				}
 			}
 		}
-	}
 
-	if streamURL == "" {
-		http.Error(w, `{"error":"Unable to locate stream URL for this episode"}`, http.StatusBadRequest)
-		return
-	}
+		// Deduplicate candidates preserving order
+		var uniqueCandidates []string
+		seen := make(map[string]bool)
+		for _, c := range candidates {
+			if !seen[c] {
+				seen[c] = true
+				uniqueCandidates = append(uniqueCandidates, c)
+			}
+		}
 
-	// 4. Extract audio via ffmpeg
-	if h.SubtitlesDir == "" {
-		h.SubtitlesDir = "cache/subtitles"
-	}
-	_ = os.MkdirAll(h.SubtitlesDir, 0755)
-
-	audioPath, err := h.Groq.AudioExtractor.ExtractAudio(r.Context(), streamURL, h.SubtitlesDir, 0)
-	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"Audio extraction failed: %s"}`, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	defer os.Remove(audioPath)
-
-	// 5. Transcribe with Groq Whisper Large-v3
-	sourceVTT, err := h.Groq.TranscribeAudio(r.Context(), audioPath, req.SourceLang)
-	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"Groq Whisper transcription failed: %s"}`, err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	// 6. Translate with Groq Llama 3.3 70B (Korean -> Vietnamese with natural pronouns)
-	translatedVTT := sourceVTT
-	if req.TargetLang != req.SourceLang {
-		translated, err := h.Groq.TranslateSubtitles(r.Context(), sourceVTT, req.SourceLang, req.TargetLang)
-		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"Groq Llama 3.3 translation failed: %s"}`, err.Error()), http.StatusInternalServerError)
+		if len(uniqueCandidates) == 0 {
+			log.Printf("[GenerateAISubtitle] No candidate streams found for %s ep %d", targetSlug, ep)
 			return
 		}
-		translatedVTT = translated
-	}
 
-	// 7. Save WebVTT to disk
-	vttFilename := fmt.Sprintf("%s_ep%d_%s.vtt", slug, req.Episode, req.TargetLang)
-	vttFilePath := filepath.Join(h.SubtitlesDir, vttFilename)
-	if err := os.WriteFile(vttFilePath, []byte(translatedVTT), 0644); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"Failed to save subtitle file: %s"}`, err.Error()), http.StatusInternalServerError)
-		return
-	}
+		// Try extracting audio from candidates until one succeeds
+		var audioPath string
+		var lastExtractErr error
+		for _, cand := range uniqueCandidates {
+			log.Printf("[GenerateAISubtitle] Attempting audio extraction for %s ep %d from %s", targetSlug, ep, cand)
+			audioPath, lastExtractErr = h.Groq.AudioExtractor.ExtractAudio(bgCtx, cand, h.SubtitlesDir, 0)
+			if lastExtractErr == nil && audioPath != "" {
+				log.Printf("[GenerateAISubtitle] Audio extracted successfully from %s", cand)
+				break
+			}
+			log.Printf("[GenerateAISubtitle] Audio extraction failed for %s: %v", cand, lastExtractErr)
+		}
 
-	// 8. Save record in database
-	label := "Tiếng Việt (AI Auto CC)"
-	if req.TargetLang == "en" {
-		label = "English (AI Auto CC)"
-	}
-	vttURL := fmt.Sprintf("/api/subtitles/%s", vttFilename)
+		if audioPath == "" {
+			log.Printf("[GenerateAISubtitle] Failed to extract audio from all candidates for %s ep %d: %v", targetSlug, ep, lastExtractErr)
+			return
+		}
+		defer os.Remove(audioPath)
 
-	sub := models.MovieSubtitle{
-		Slug:      slug,
-		Episode:   req.Episode,
-		Language:  req.TargetLang,
-		Label:     label,
-		VTTPath:   vttFilePath,
-		VTTURL:    vttURL,
-		IsAI:      true,
-		CreatedAt: time.Now(),
-	}
+		// Transcribe with Groq Whisper Large-v3
+		sourceVTT, err := h.Groq.TranscribeAudio(bgCtx, audioPath, sourceLang)
+		if err != nil {
+			log.Printf("[GenerateAISubtitle] Groq Whisper transcription failed for %s ep %d: %v", targetSlug, ep, err)
+			return
+		}
 
-	if err := database.DB.Create(&sub).Error; err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"Failed to save subtitle to DB: %s"}`, err.Error()), http.StatusInternalServerError)
-		return
-	}
+		// Translate with Groq Llama 3.3
+		translatedVTT := sourceVTT
+		if targetLang != sourceLang {
+			translated, err := h.Groq.TranslateSubtitles(bgCtx, sourceVTT, sourceLang, targetLang)
+			if err != nil {
+				log.Printf("[GenerateAISubtitle] Groq Llama translation failed for %s ep %d: %v", targetSlug, ep, err)
+				return
+			}
+			translatedVTT = translated
+		}
 
-	_ = json.NewEncoder(w).Encode(sub)
+		// Save WebVTT to disk
+		vttFilename := fmt.Sprintf("%s_ep%d_%s.vtt", targetSlug, ep, targetLang)
+		vttFilePath := filepath.Join(h.SubtitlesDir, vttFilename)
+		if err := os.WriteFile(vttFilePath, []byte(translatedVTT), 0644); err != nil {
+			log.Printf("[GenerateAISubtitle] Failed to write subtitle file %s: %v", vttFilePath, err)
+			return
+		}
+
+		// Save record in database
+		label := "Tiếng Việt (AI Auto CC)"
+		if targetLang == "en" {
+			label = "English (AI Auto CC)"
+		}
+		vttURL := fmt.Sprintf("/api/subtitles/%s", vttFilename)
+
+		sub := models.MovieSubtitle{
+			Slug:      targetSlug,
+			Episode:   ep,
+			Language:  targetLang,
+			Label:     label,
+			VTTPath:   vttFilePath,
+			VTTURL:    vttURL,
+			IsAI:      true,
+			CreatedAt: time.Now(),
+		}
+
+		if err := database.DB.Create(&sub).Error; err != nil {
+			log.Printf("[GenerateAISubtitle] Failed to save subtitle record to DB: %v", err)
+			return
+		}
+		log.Printf("[GenerateAISubtitle] Subtitle generated successfully for %s ep %d: %s", targetSlug, ep, vttURL)
+	}(slug, req.Episode, req.TargetLang, req.SourceLang, req.StreamURL, req.ServerName)
+
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "processing",
+		"message": "AI subtitles generation started in background",
+		"slug":    slug,
+		"episode": req.Episode,
+	})
 }
 
 func (h *Handler) ServeSubtitle(w http.ResponseWriter, r *http.Request) {
