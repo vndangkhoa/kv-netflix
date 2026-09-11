@@ -21,7 +21,6 @@ backend/server
 
 # Frontend
 frontend-react/node_modules/
-frontend-react/dist/
 
 # Node
 node_modules/
