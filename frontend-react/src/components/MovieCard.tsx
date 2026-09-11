@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Image as ImageIcon } from 'lucide-react';
 import type { Movie } from '../types';
@@ -14,8 +14,7 @@ interface MovieCardProps {
 }
 
 export const MovieCard = ({ movie, className = '', isDragging = false, aspectRatio = 'poster', rank }: MovieCardProps) => {
-    const targetUrl = aspectRatio === 'landscape' ? (movie.backdrop || movie.thumbnail) : movie.thumbnail;
-    const getRawImageUrl = (url: string) => {
+    const getCleanUrl = (url?: string) => {
         if (!url) return '';
         if (url.includes('{') && url.includes('}')) {
             try {
@@ -34,29 +33,58 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
         return url;
     };
 
-    const rawUrl = getRawImageUrl(targetUrl);
     const imageWidth = aspectRatio === 'landscape' ? 480 : 300;
-    const proxyUrl = rawUrl ? `/api/images/proxy?url=${encodeURIComponent(rawUrl)}&width=${imageWidth}` : '';
+    const primaryRaw = getCleanUrl(aspectRatio === 'landscape' ? (movie.backdrop || movie.thumbnail) : (movie.thumbnail || movie.backdrop));
+    const secondaryRaw = getCleanUrl(aspectRatio === 'landscape' ? movie.thumbnail : movie.backdrop);
 
-    const isAlreadyCached = loadedImageCache.has(proxyUrl) || loadedImageCache.has(rawUrl);
+    // Build fallback candidates cascade:
+    // 1. Primary via backend proxy
+    // 2. Primary direct
+    // 3. Secondary via backend proxy (if different)
+    // 4. Secondary direct (if different)
+    const candidates: string[] = [];
+    if (primaryRaw) {
+        candidates.push(`/api/images/proxy?url=${encodeURIComponent(primaryRaw)}&width=${imageWidth}`);
+        candidates.push(primaryRaw);
+    }
+    if (secondaryRaw && secondaryRaw !== primaryRaw) {
+        candidates.push(`/api/images/proxy?url=${encodeURIComponent(secondaryRaw)}&width=${imageWidth}`);
+        candidates.push(secondaryRaw);
+    }
 
-    const [imgSrc, setImgSrc] = useState(proxyUrl);
-    const [imgLoaded, setImgLoaded] = useState(isAlreadyCached);
+    const [candidateIndex, setCandidateIndex] = useState(0);
+    const [imgLoaded, setImgLoaded] = useState(() => {
+        return candidates.length > 0 && loadedImageCache.has(candidates[0]);
+    });
     const [imgError, setImgError] = useState(false);
-    const [isVisible, setIsVisible] = useState(isAlreadyCached);
-    const cardRef = useRef<HTMLDivElement>(null);
 
+    const currentCandidate = candidates[candidateIndex] || '';
+
+    // Reset image state whenever candidate URLs change (e.g. card re-used for different movie)
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
-        if (isAlreadyCached) return;
-        const el = cardRef.current;
-        if (!el) return;
-        const observer = new IntersectionObserver(
-            ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
-            { rootMargin: '400px' }
-        );
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, [isAlreadyCached]);
+        setCandidateIndex(0);
+        setImgError(candidates.length === 0);
+        if (candidates[0] && loadedImageCache.has(candidates[0])) {
+            setImgLoaded(true);
+        } else {
+            setImgLoaded(false);
+        }
+    }, [primaryRaw, secondaryRaw]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    const handleImgLoad = () => {
+        if (currentCandidate) loadedImageCache.add(currentCandidate);
+        setImgLoaded(true);
+    };
+
+    const handleImgError = () => {
+        if (candidateIndex + 1 < candidates.length) {
+            setCandidateIndex(i => i + 1);
+        } else {
+            setImgError(true);
+        }
+    };
 
     const progressPercent = movie.watchedTimestamp && movie.duration
         ? (movie.watchedTimestamp / movie.duration) * 100
@@ -74,38 +102,10 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
         ? movie.duration - movie.watchedTimestamp
         : 0;
 
-    // Reset image state whenever the movie's image URL changes (cards are
-    // reused across rows with different movies). Intentional prop sync.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    useEffect(() => {
-        setImgSrc(proxyUrl);
-        setImgError(false);
-        if (loadedImageCache.has(proxyUrl) || loadedImageCache.has(rawUrl)) {
-            setImgLoaded(true);
-        } else {
-            setImgLoaded(false);
-        }
-    }, [proxyUrl, rawUrl]);
-    /* eslint-enable react-hooks/set-state-in-effect */
-
-    const handleImgLoad = () => {
-        if (proxyUrl) loadedImageCache.add(proxyUrl);
-        if (rawUrl) loadedImageCache.add(rawUrl);
-        setImgLoaded(true);
-    };
-
-    const handleImgError = () => {
-        if (imgSrc !== rawUrl && rawUrl) {
-            setImgSrc(rawUrl);
-        } else {
-            setImgError(true);
-        }
-    };
-
     const aspectClass = aspectRatio === 'landscape' ? 'aspect-video' : 'aspect-[2/3]';
 
     return (
-        <div ref={cardRef} className={`group/card relative flex flex-col h-full ${className}`}>
+        <div className={`group/card relative flex flex-col h-full ${className}`}>
             <Link
                 to={`/watch/${movie.slug}`}
                 tabIndex={0}
@@ -115,21 +115,27 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                 className={`block relative ${aspectClass} clip-mamphim overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-[var(--accent)]/15 transition-all duration-500 tv-card-focus focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${isDragging ? 'pointer-events-none' : ''}`}
                 draggable={false}
             >
-                {isVisible && !imgError ? (
+                {!imgError ? (
                     <>
-                        <div
-                            className={`absolute inset-0 bg-[var(--bg-tertiary)] transition-opacity duration-300 ${imgLoaded ? 'opacity-0' : 'opacity-100'}`}
-                        />
-                        <img
-                            src={imgSrc || rawUrl}
-                            alt={movie.title}
-                            loading="lazy"
-                            decoding="async"
-                            onLoad={handleImgLoad}
-                            onError={handleImgError}
-                            className={`w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110 group-focus-within/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-                            draggable={false}
-                        />
+                        {/* Animated loading skeleton */}
+                        {!imgLoaded && (
+                            <div className="absolute inset-0 bg-[var(--bg-tertiary)] animate-pulse flex items-center justify-center">
+                                <ImageIcon className="w-8 h-8 text-[var(--text-dim)] opacity-20" />
+                            </div>
+                        )}
+                        {currentCandidate && (
+                            <img
+                                src={currentCandidate}
+                                alt={movie.title}
+                                loading="lazy"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                                onLoad={handleImgLoad}
+                                onError={handleImgError}
+                                className={`w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110 group-focus-within/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                draggable={false}
+                            />
+                        )}
                         {/* Gold hover mask (mamphim .v-thumbnail:hover .mask) */}
                         <div className="absolute inset-0 bg-[var(--accent)] opacity-0 group-hover/card:opacity-25 group-focus-within/card:opacity-25 transition-opacity duration-500 pointer-events-none" />
                     </>

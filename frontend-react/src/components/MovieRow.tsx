@@ -247,7 +247,7 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
                     >
                         {movies.map((movie) => (
                             <div 
-                                key={movie.id} 
+                                key={`${rowId || title}-${movie.id || movie.slug || movie.title}`} 
                                 className={`${cardWidthClass} flex-shrink-0 snap-start`}
                             >
                                 <MovieCard
@@ -272,7 +272,7 @@ const MovieRow = ({ rowId, title, category, searchQuery, limit, layout = 'row', 
             ) : (
                 <div className={`grid ${gridColsClass} gap-2 md:gap-4`}>
                     {movies.map((movie) => (
-                        <MovieCard key={movie.id} movie={movie} aspectRatio={cardAspect} />
+                        <MovieCard key={`${rowId || title}-${movie.id || movie.slug || movie.title}`} movie={movie} aspectRatio={cardAspect} />
                     ))}
                 </div>
             )}

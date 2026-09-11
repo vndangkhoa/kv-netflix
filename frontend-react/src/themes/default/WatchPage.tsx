@@ -16,6 +16,8 @@ import { registerWebOSBackHandler, WEBOS_KEY_CODES } from '../../hooks/useWebOS'
 const NEXT_EPISODE_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" x2="19" y1="5" y2="19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
 const FULLSCREEN_ICON_ENTER = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/></svg>';
 const FULLSCREEN_ICON_EXIT = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor"/></svg>';
+const SUBTITLES_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>';
+const SETTINGS_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>';
 
 function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
     const [count, setCount] = useState(10);
@@ -341,11 +343,23 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     const toggleFullscreenRef = useRef<(() => void) | null>(null);
     const playNextEpisodeRef = useRef(playNextEpisode);
     const hasNextEpisodeRef = useRef(hasNextEpisode);
+    const toggleSubtitlesRef = useRef<() => void>(() => {});
+    const toggleSettingsRef = useRef<() => void>(() => {});
     // Latest-value refs so the DOM buttons injected into the Plyr bar never
-    // capture stale episode state (the Plyr init effect only re-runs when the
+    // capture stale episode or modal state (the Plyr init effect only re-runs when the
     // stream URL changes). Kept above the init effect that reads them.
     useEffect(() => { playNextEpisodeRef.current = playNextEpisode; });
     useEffect(() => { hasNextEpisodeRef.current = hasNextEpisode; });
+    useEffect(() => {
+        toggleSubtitlesRef.current = () => {
+            setSubtitlesOpen(o => !o);
+            setSettingsOpen(false);
+        };
+        toggleSettingsRef.current = () => {
+            setSettingsOpen(o => !o);
+            setSubtitlesOpen(false);
+        };
+    });
 
     // Cross-platform fullscreen toggle.
     // - iPhone/iPod: the Fullscreen API only supports <video> elements there,
@@ -417,7 +431,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
 
         const player = new Plyr(videoRef.current, {
-            controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time'],
+            controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume'],
             invertTime: false,
             seekTime: 10,
             keyboard: { focused: true, global: true },
@@ -435,6 +449,38 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ctrl = (player as any).elements?.controls as HTMLElement | undefined;
             if (!ctrl) return;
+
+            // Subtitles (CC) button
+            if (!ctrl.querySelector('[data-kv-subtitles]')) {
+                const ccBtn = document.createElement('button');
+                ccBtn.className = 'plyr__controls__item plyr__control';
+                ccBtn.setAttribute('data-kv-subtitles', '');
+                ccBtn.setAttribute('type', 'button');
+                ccBtn.setAttribute('aria-label', 'Subtitles');
+                ccBtn.title = 'Subtitles (C)';
+                ccBtn.innerHTML = SUBTITLES_ICON;
+                ccBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleSubtitlesRef.current?.();
+                });
+                ctrl.appendChild(ccBtn);
+            }
+
+            // Settings button (Quality & Speed)
+            if (!ctrl.querySelector('[data-kv-settings]')) {
+                const settingsBtn = document.createElement('button');
+                settingsBtn.className = 'plyr__controls__item plyr__control';
+                settingsBtn.setAttribute('data-kv-settings', '');
+                settingsBtn.setAttribute('type', 'button');
+                settingsBtn.setAttribute('aria-label', 'Settings');
+                settingsBtn.title = 'Settings';
+                settingsBtn.innerHTML = SETTINGS_ICON;
+                settingsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleSettingsRef.current?.();
+                });
+                ctrl.appendChild(settingsBtn);
+            }
 
             // Picture-in-Picture (native API only)
             if (document.pictureInPictureEnabled && !ctrl.querySelector('[data-plyr="pip"]')) {
@@ -508,6 +554,14 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         const btn = document.querySelector<HTMLElement>('.plyr__controls [data-kv-next]');
         if (btn) btn.style.display = hasNextEpisode ? '' : 'none';
     }, [hasNextEpisode]);
+
+    // Highlight CC button in Plyr bar when subtitles are active
+    useEffect(() => {
+        const ccBtn = document.querySelector<HTMLElement>('.plyr__controls [data-kv-subtitles]');
+        if (ccBtn) {
+            ccBtn.style.color = currentSubtitle !== -1 ? 'var(--accent)' : '';
+        }
+    }, [currentSubtitle]);
 
     // Apply playback speed to the video element (survives HLS re-creation)
     useEffect(() => {
@@ -859,10 +913,10 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                 </div>
                             )}
 
-                            {/* Floating action bar: skip ±10s + subtitles + settings (direct streams only) */}
+                            {/* Floating action bar: skip ±10s + subtitles + settings (mobile touch screens only, hidden on desktop) */}
                             {!source?.isEmbed && !String(source?.stream_url || '').includes('embed') && !episodeEnded && (
                                 <>
-                                    <div className="absolute bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 transition-opacity duration-300"
+                                    <div className="md:hidden absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 transition-opacity duration-300"
                                          style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
                                         <button
                                             onClick={() => seekRelative(-10)}
@@ -880,164 +934,165 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                         </button>
                                     </div>
 
-                                    {/* Volume + Subtitles + Settings */}
-                                    <div className="absolute bottom-24 md:bottom-28 right-3 md:right-6 z-40 flex items-center gap-3 transition-opacity duration-300"
+                                    {/* Volume + Subtitles + Settings (mobile touch screens only, hidden on desktop) */}
+                                    <div className="md:hidden absolute bottom-24 right-3 z-40 flex items-center gap-3 transition-opacity duration-300"
                                          style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
                                         <VerticalVolume ref={videoRef} key={source?.stream_url} />
 
-                                        {/* Subtitles (CC) Button & Menu */}
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => {
-                                                    setSubtitlesOpen(o => !o);
-                                                    setSettingsOpen(false);
-                                                }}
-                                                className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${
-                                                    currentSubtitle !== -1
-                                                        ? 'bg-accent border-accent text-white shadow-[0_0_15px_var(--accent-glow-soft)]'
-                                                        : subtitlesOpen
-                                                        ? 'bg-white/20 border-white text-white'
-                                                        : 'bg-black/60 hover:bg-black/80 border-white/20 text-white'
-                                                }`}
-                                                aria-label={t.subtitles}
-                                                title={t.subtitles}
-                                            >
-                                                <Subtitles className="w-5 h-5" />
-                                            </button>
-                                            {subtitlesOpen && (
-                                                <div className="absolute bottom-14 right-0 w-64 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in z-50">
-                                                    <div className="flex items-center justify-between px-3 pt-2 pb-1 border-b border-[var(--border-subtle)] mb-1">
-                                                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{t.subtitles}</span>
-                                                        <span className="text-[10px] text-[var(--text-dim)] font-mono">Phím 'C'</span>
-                                                    </div>
+                                        {/* Subtitles (CC) Button (Mobile) */}
+                                        <button
+                                            onClick={() => {
+                                                setSubtitlesOpen(o => !o);
+                                                setSettingsOpen(false);
+                                            }}
+                                            className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${
+                                                currentSubtitle !== -1
+                                                    ? 'bg-accent border-accent text-white shadow-[0_0_15px_var(--accent-glow-soft)]'
+                                                    : subtitlesOpen
+                                                    ? 'bg-white/20 border-white text-white'
+                                                    : 'bg-black/60 hover:bg-black/80 border-white/20 text-white'
+                                            }`}
+                                            aria-label={t.subtitles}
+                                            title={t.subtitles}
+                                        >
+                                            <Subtitles className="w-5 h-5" />
+                                        </button>
 
-                                                    <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
-                                                        {/* Off option */}
+                                        {/* Settings Button (Mobile) */}
+                                        <button
+                                            onClick={() => {
+                                                setSettingsOpen(o => !o);
+                                                setSubtitlesOpen(false);
+                                            }}
+                                            className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${settingsOpen ? 'bg-accent border-accent' : 'bg-black/60 hover:bg-black/80 border-white/20'}`}
+                                            aria-label="Settings"
+                                        >
+                                            <Gauge className="w-5 h-5 text-white" />
+                                        </button>
+                                    </div>
+
+                                    {/* Subtitles Dropdown Menu (Accessible on both Desktop & Mobile) */}
+                                    {subtitlesOpen && (
+                                        <div className="absolute bottom-16 md:bottom-20 right-3 md:right-8 w-64 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in z-50">
+                                            <div className="flex items-center justify-between px-3 pt-2 pb-1 border-b border-[var(--border-subtle)] mb-1">
+                                                <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{t.subtitles}</span>
+                                                <span className="text-[10px] text-[var(--text-dim)] font-mono">Phím 'C'</span>
+                                            </div>
+
+                                            <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
+                                                {/* Off option */}
+                                                <button
+                                                    onClick={() => {
+                                                        selectSubtitle(-1);
+                                                    }}
+                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors text-left"
+                                                >
+                                                    <span className={currentSubtitle === -1 ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
+                                                        {t.subtitlesOff}
+                                                    </span>
+                                                    {currentSubtitle === -1 && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
+                                                </button>
+
+                                                {/* Subtitle tracks */}
+                                                {subtitles.map(sub => {
+                                                    const isVN = sub.lang.toLowerCase().startsWith('vi') || sub.name.toLowerCase().includes('việt') || sub.name.toLowerCase().includes('viet') || sub.name.toLowerCase().includes('vn');
+                                                    const isEN = sub.lang.toLowerCase().startsWith('en') || sub.name.toLowerCase().includes('eng');
+                                                    const displayName = isVN ? t.subtitlesVN : isEN ? t.subtitlesEN : sub.name;
+
+                                                    return (
                                                         <button
-                                                            onClick={() => {
-                                                                selectSubtitle(-1);
-                                                            }}
+                                                            key={sub.id}
+                                                            onClick={() => selectSubtitle(sub.id)}
                                                             className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors text-left"
                                                         >
-                                                            <span className={currentSubtitle === -1 ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
-                                                                {t.subtitlesOff}
-                                                            </span>
-                                                            {currentSubtitle === -1 && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
-                                                        </button>
-
-                                                        {/* Subtitle tracks */}
-                                                        {subtitles.map(sub => {
-                                                            const isVN = sub.lang.toLowerCase().startsWith('vi') || sub.name.toLowerCase().includes('việt') || sub.name.toLowerCase().includes('viet') || sub.name.toLowerCase().includes('vn');
-                                                            const isEN = sub.lang.toLowerCase().startsWith('en') || sub.name.toLowerCase().includes('eng');
-                                                            const displayName = isVN ? t.subtitlesVN : isEN ? t.subtitlesEN : sub.name;
-
-                                                            return (
-                                                                <button
-                                                                    key={sub.id}
-                                                                    onClick={() => selectSubtitle(sub.id)}
-                                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors text-left"
-                                                                >
-                                                                    <div className="flex flex-col min-w-0 pr-2">
-                                                                        <span className={`truncate ${currentSubtitle === sub.id ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}`}>
-                                                                            {displayName}
-                                                                        </span>
-                                                                        {sub.isCustom && (
-                                                                            <span className="text-[10px] text-[var(--text-dim)]">File người dùng tải lên</span>
-                                                                        )}
-                                                                    </div>
-                                                                    {currentSubtitle === sub.id && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
-                                                                </button>
-                                                            );
-                                                        })}
-
-                                                        {subtitles.length === 0 && (
-                                                            <div className="px-3 py-2 text-xs text-[var(--text-muted)] italic">
-                                                                {t.noSubtitlesFound}
+                                                            <div className="flex flex-col min-w-0 pr-2">
+                                                                <span className={`truncate ${currentSubtitle === sub.id ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}`}>
+                                                                    {displayName}
+                                                                </span>
+                                                                {sub.isCustom && (
+                                                                    <span className="text-[10px] text-[var(--text-dim)]">File người dùng tải lên</span>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Upload Custom Subtitle Button */}
-                                                    <div className="pt-2 mt-1 border-t border-[var(--border-subtle)]">
-                                                        <input
-                                                            ref={fileInputRef}
-                                                            type="file"
-                                                            accept=".vtt,.srt"
-                                                            className="hidden"
-                                                            onChange={async (e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    const ok = await loadCustomSubtitle(file);
-                                                                    if (ok) {
-                                                                        showToast(t.subtitleLoaded as string);
-                                                                    }
-                                                                    if (fileInputRef.current) {
-                                                                        fileInputRef.current.value = '';
-                                                                    }
-                                                                }
-                                                            }}
-                                                        />
-                                                        <button
-                                                            onClick={() => fileInputRef.current?.click()}
-                                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
-                                                        >
-                                                            <Upload className="w-4 h-4 text-accent" />
-                                                            <span>{t.uploadSubtitle}</span>
+                                                            {currentSubtitle === sub.id && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
                                                         </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                                    );
+                                                })}
 
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => {
-                                                    setSettingsOpen(o => !o);
-                                                    setSubtitlesOpen(false);
-                                                }}
-                                                className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${settingsOpen ? 'bg-accent border-accent' : 'bg-black/60 hover:bg-black/80 border-white/20'}`}
-                                                aria-label="Settings"
-                                            >
-                                                <Gauge className="w-5 h-5 text-white" />
-                                            </button>
-                                            {settingsOpen && (
-                                                <div className="absolute bottom-14 right-0 w-52 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in">
-                                                {levels.length > 0 && (
-                                                    <>
-                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-3 pt-2 pb-1">Quality</p>
-                                                        {[-1, ...levels].map(lv => {
-                                                            const index = typeof lv === 'number' ? lv : lv.index;
-                                                            const height = typeof lv === 'number' ? 0 : lv.height;
-                                                            return (
-                                                                <button
-                                                                    key={index}
-                                                                    onClick={() => selectQuality(index)}
-                                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
-                                                                >
-                                                                    <span className={currentLevel === index ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
-                                                                        {index === -1 ? 'Auto' : qualityLabel(height)}
-                                                                    </span>
-                                                                    {currentLevel === index && <Check className="w-4 h-4 text-accent" />}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </>
+                                                {subtitles.length === 0 && (
+                                                    <div className="px-3 py-2 text-xs text-[var(--text-muted)] italic">
+                                                        {t.noSubtitlesFound}
+                                                    </div>
                                                 )}
-                                                <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Speed</p>
-                                                {[0.5, 0.75, 1, 1.25, 1.5, 2].map(spd => (
-                                                    <button
-                                                        key={spd}
-                                                        onClick={() => setPlaybackSpeed(spd)}
-                                                        className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
-                                                    >
-                                                        <span className={playbackSpeed === spd ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>{spd}x</span>
-                                                        {playbackSpeed === spd && <Check className="w-4 h-4 text-accent" />}
-                                                    </button>
-                                                ))}
                                             </div>
-                                        )}
+
+                                            {/* Upload Custom Subtitle Button */}
+                                            <div className="pt-2 mt-1 border-t border-[var(--border-subtle)]">
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept=".vtt,.srt"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const ok = await loadCustomSubtitle(file);
+                                                            if (ok) {
+                                                                showToast(t.subtitleLoaded as string);
+                                                            }
+                                                            if (fileInputRef.current) {
+                                                                fileInputRef.current.value = '';
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
+                                                >
+                                                    <Upload className="w-4 h-4 text-accent" />
+                                                    <span>{t.uploadSubtitle}</span>
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
+
+                                    {/* Settings Dropdown Menu (Accessible on both Desktop & Mobile) */}
+                                    {settingsOpen && (
+                                        <div className="absolute bottom-16 md:bottom-20 right-3 md:right-8 w-52 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in z-50">
+                                            {levels.length > 0 && (
+                                                <>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-3 pt-2 pb-1">Quality</p>
+                                                    {[-1, ...levels].map(lv => {
+                                                        const index = typeof lv === 'number' ? lv : lv.index;
+                                                        const height = typeof lv === 'number' ? 0 : lv.height;
+                                                        return (
+                                                            <button
+                                                                key={index}
+                                                                onClick={() => selectQuality(index)}
+                                                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
+                                                            >
+                                                                <span className={currentLevel === index ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>
+                                                                    {index === -1 ? 'Auto' : qualityLabel(height)}
+                                                                </span>
+                                                                {currentLevel === index && <Check className="w-4 h-4 text-accent" />}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </>
+                                            )}
+                                            <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Speed</p>
+                                            {[0.5, 0.75, 1, 1.25, 1.5, 2].map(spd => (
+                                                <button
+                                                    key={spd}
+                                                    onClick={() => setPlaybackSpeed(spd)}
+                                                    className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-sm hover:bg-[var(--bg-elevated)] transition-colors"
+                                                >
+                                                    <span className={playbackSpeed === spd ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}>{spd}x</span>
+                                                    {playbackSpeed === spd && <Check className="w-4 h-4 text-accent" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </>
                             )}
 

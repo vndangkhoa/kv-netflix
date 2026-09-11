@@ -11,6 +11,7 @@ import (
 	_ "golang.org/x/image/webp"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -38,18 +39,20 @@ func NewImageService() *ImageService {
 	_ = os.MkdirAll(CacheDir, 0755)
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		MaxIdleConns:    20,
-		IdleConnTimeout: 90 * time.Second,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		MaxConnsPerHost:     50,
+		IdleConnTimeout:     90 * time.Second,
 	}
 
 	svc := &ImageService{
 		client: &http.Client{
 			Transport: tr,
-			Timeout:   10 * time.Second,
+			Timeout:   15 * time.Second,
 		},
 		memCache:    make(map[string]*cacheEntry),
-		memCacheMax: 500,
+		memCacheMax: 1000,
 	}
 
 	// Evict stale memcache entries periodically
@@ -75,8 +78,8 @@ func (s *ImageService) evictMemCache() {
 	}
 }
 
-func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, error) {
-	hash := md5.Sum([]byte(fmt.Sprintf("%s_%d", url, width)))
+func (s *ImageService) GetProxiedImage(urlStr string, width int) ([]byte, string, error) {
+	hash := md5.Sum([]byte(fmt.Sprintf("%s_%d", urlStr, width)))
 	cacheKey := fmt.Sprintf("%x", hash)
 
 	// 1. Check in-memory cache (fast path)
@@ -95,12 +98,15 @@ func (s *ImageService) GetProxiedImage(url string, width int) ([]byte, string, e
 	}
 
 	// 3. Fetch from upstream
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
 		return nil, "", err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+	if parsedU, err := url.Parse(urlStr); err == nil && parsedU.Host != "" {
+		req.Header.Set("Referer", fmt.Sprintf("%s://%s/", parsedU.Scheme, parsedU.Host))
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {

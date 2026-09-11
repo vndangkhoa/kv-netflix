@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.7] - 2026-09-11
+### Changed
+- **Desktop Player UI Optimization**:
+  - Removed redundant floating mobile buttons (`[|<] [>|]` skip buttons and floating volume/settings buttons) on desktop viewports (`md:hidden`).
+  - Integrated native volume control slider (`'mute'`, `'volume'`) directly into Plyr's bottom control bar.
+  - Injected Subtitles (`CC`) and Settings (`Gauge`) buttons into Plyr's bottom control bar on desktop, matching Netflix/YouTube player layout.
+  - Decoupled Subtitles and Quality/Speed settings popup menus to anchor cleanly above the bottom control bar on both desktop and mobile.
+
+### Fixed
+- **Missing Thumbnails & Placeholder Lock**:
+  - Fixed race condition in `MovieCard.tsx` where duplicate movies across rows (e.g. "Mới Cập Nhật" and "Top Phim Bộ") caused `isAlreadyCached` state transitions to disconnect the `IntersectionObserver` before `isVisible` was set, permanently trapping cards in the error placeholder state.
+  - Replaced error placeholder with an animated skeleton loader while images are downloading.
+  - Implemented 4-tier image fallback cascade: proxy primary -> direct primary -> proxy secondary (backdrop) -> direct secondary, before showing error state.
+  - Added `referrerPolicy="no-referrer"` to `<img>` tags to prevent cross-origin referrer CDN blocks.
+  - Made movie keys unique per row in `MovieRow.tsx` (`${rowId || title}-${movie.id || movie.slug || movie.title}`).
+  - Increased backend image service timeout to 15s, raised connection pool limits (`MaxIdleConns: 100`, `MaxConnsPerHost: 50`), and added upstream `Referer` headers to proxy requests.
+
 ## [v9.2.6] - 2026-09-11
 ### Added
 - **Closed Captions (CC) & Multi-Language Subtitles**:
