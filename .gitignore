@@ -20,6 +20,8 @@ frontend-react/dist/
 # Debug files and temp outputs
 *.png
 !**/res/**/*.png
+!synology/**/*.PNG
+*.spk
 debug_*.py
 build_log*.txt
 *.log

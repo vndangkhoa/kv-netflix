@@ -1,0 +1,10 @@
+{
+  "defaults": {
+    "run-as": "package"
+  },
+  "username": "sc-kvnetflix",
+  "groupname": "sc-kvnetflix",
+  "join-group": [
+    "http"
+  ]
+}

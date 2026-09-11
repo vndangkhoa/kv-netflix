@@ -1,0 +1,9 @@
+#!/bin/sh
+# postuninst: runs after uninstallation
+
+# If user chooses to remove package, clean up temporary runtime files
+if [ "$SYNOPKG_PKG_STATUS" = "UNINSTALL" ]; then
+    rm -f /tmp/kv-netflix*.tmp
+fi
+
+exit 0

@@ -1,0 +1,9 @@
+#!/bin/sh
+# preinst: runs before package files are unpacked
+
+# Verify DSM environment
+if [ -z "$SYNOPKG_PKGDEST" ]; then
+    echo "SYNOPKG_PKGDEST is not set" >&2
+fi
+
+exit 0

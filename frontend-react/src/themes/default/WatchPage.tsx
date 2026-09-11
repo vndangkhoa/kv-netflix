@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark, Gauge, Check, Volume1, Volume2, VolumeX, Subtitles, Upload } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, SkipForward, SkipBack, X, Heart, Bookmark, Settings, Check, Volume1, Volume2, VolumeX, Subtitles, Upload, Sparkles, Loader2 } from 'lucide-react';
 import { useWatchMovie } from '../../hooks/useWatchMovie';
 import { usePiP } from '../../hooks/usePiP';
 import MovieRow from '../../components/MovieRow';
@@ -16,8 +16,8 @@ import { registerWebOSBackHandler, WEBOS_KEY_CODES } from '../../hooks/useWebOS'
 const NEXT_EPISODE_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" x2="19" y1="5" y2="19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
 const FULLSCREEN_ICON_ENTER = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/></svg>';
 const FULLSCREEN_ICON_EXIT = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor"/></svg>';
-const SUBTITLES_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>';
-const SETTINGS_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>';
+const SUBTITLES_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h4v1.5H7.5v2H10V15H6c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1zm8 0h4v1.5h-2.5v2H18V15h-4c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1z" fill="currentColor" fill-rule="evenodd"/></svg>';
+const SETTINGS_ICON = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="currentColor" fill-rule="evenodd"/></svg>';
 
 function AutoPlayCountdown({ onComplete }: { onComplete: () => void }) {
     const [count, setCount] = useState(10);
@@ -196,6 +196,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         source,
         buffering, playerError, retryStream, levels, currentLevel, selectQuality,
         subtitles, currentSubtitle, selectSubtitle, loadCustomSubtitle, toggleSubtitles,
+        isGeneratingAI, generateAISubtitle,
     } = useWatchMovie(slug, episode, selectedServer, setSelectedServer, handleAutoSwitched);
     const [expanded, setExpanded] = useState(false);
     const togglePiPRef = useRef<(() => Promise<void>) | null>(null);
@@ -556,12 +557,24 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
     }, [hasNextEpisode]);
 
     // Highlight CC button in Plyr bar when subtitles are active
+    // Highlight CC button in Plyr bar when subtitles are active or open
     useEffect(() => {
         const ccBtn = document.querySelector<HTMLElement>('.plyr__controls [data-kv-subtitles]');
         if (ccBtn) {
-            ccBtn.style.color = currentSubtitle !== -1 ? 'var(--accent)' : '';
+            const isActive = currentSubtitle !== -1;
+            ccBtn.style.color = (isActive || subtitlesOpen) ? 'var(--accent)' : '';
+            ccBtn.style.filter = (isActive || subtitlesOpen) ? 'drop-shadow(0 0 6px var(--accent))' : '';
         }
-    }, [currentSubtitle]);
+    }, [currentSubtitle, subtitlesOpen]);
+
+    // Highlight Settings button in Plyr bar when settings menu is open
+    useEffect(() => {
+        const setBtn = document.querySelector<HTMLElement>('.plyr__controls [data-kv-settings]');
+        if (setBtn) {
+            setBtn.style.color = settingsOpen ? 'var(--accent)' : '';
+            setBtn.style.filter = settingsOpen ? 'drop-shadow(0 0 6px var(--accent))' : '';
+        }
+    }, [settingsOpen]);
 
     // Apply playback speed to the video element (survives HLS re-creation)
     useEffect(() => {
@@ -967,7 +980,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                             className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${settingsOpen ? 'bg-accent border-accent' : 'bg-black/60 hover:bg-black/80 border-white/20'}`}
                                             aria-label="Settings"
                                         >
-                                            <Gauge className="w-5 h-5 text-white" />
+                                            <Settings className="w-5 h-5 text-white" />
                                         </button>
                                     </div>
 
@@ -1009,7 +1022,9 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                                                 <span className={`truncate ${currentSubtitle === sub.id ? 'text-accent font-semibold' : 'text-[var(--text-secondary)]'}`}>
                                                                     {displayName}
                                                                 </span>
-                                                                {sub.isCustom && (
+                                                                {sub.isAI ? (
+                                                                    <span className="text-[10px] text-[var(--accent)] font-medium">✨ AI Auto CC (Groq)</span>
+                                                                ) : sub.isCustom && (
                                                                     <span className="text-[10px] text-[var(--text-dim)]">File người dùng tải lên</span>
                                                                 )}
                                                             </div>
@@ -1025,8 +1040,30 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                                 )}
                                             </div>
 
-                                            {/* Upload Custom Subtitle Button */}
-                                            <div className="pt-2 mt-1 border-t border-[var(--border-subtle)]">
+                                            {/* Subtitle Actions: AI Auto CC + Upload */}
+                                            <div className="pt-2 mt-1 border-t border-[var(--border-subtle)] space-y-1">
+                                                {/* AI Auto CC Button (Groq) */}
+                                                <button
+                                                    disabled={isGeneratingAI}
+                                                    onClick={async () => {
+                                                        showToast(t.generatingAiCc as string);
+                                                        const res = await generateAISubtitle('vi', 'ko');
+                                                        if (res.ok) {
+                                                            showToast(t.aiCcSuccess as string);
+                                                        } else {
+                                                            showToast(res.error || (t.aiCcFailed as string));
+                                                        }
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[var(--accent)] bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 transition-all disabled:opacity-50"
+                                                >
+                                                    {isGeneratingAI ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin flex-shrink-0 text-accent" />
+                                                    ) : (
+                                                        <Sparkles className="w-4 h-4 flex-shrink-0 text-accent" />
+                                                    )}
+                                                    <span className="truncate">{isGeneratingAI ? t.generatingAiCc : t.generateAiCc}</span>
+                                                </button>
+
                                                 <input
                                                     ref={fileInputRef}
                                                     type="file"

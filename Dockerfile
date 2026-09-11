@@ -24,7 +24,7 @@ FROM --platform=linux/amd64 alpine:latest AS final
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache sqlite ca-certificates tzdata mpv python3
+RUN apk add --no-cache sqlite ca-certificates tzdata mpv python3 ffmpeg
 
 # Install yt-dlp nightly (recommended channel - daily extractor updates)
 COPY scripts/yt-dlp* /usr/local/bin/

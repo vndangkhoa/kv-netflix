@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -52,6 +54,8 @@ type Handler struct {
 	JWTSecret    []byte
 	StreamClient *http.Client
 	PublicURL    string
+	Groq         *service.GroqService
+	SubtitlesDir string
 }
 
 func NewHandler(
@@ -81,6 +85,7 @@ func NewHandler(
 		Image:        image,
 		JWTSecret:    []byte(jwtSecret),
 		StreamClient: streamClient,
+		SubtitlesDir: "cache/subtitles",
 	}
 }
 
@@ -839,3 +844,189 @@ func validateURL(rawURL string) error {
 
 	return nil
 }
+
+type GenerateSubtitleRequest struct {
+	Episode    int    `json:"episode"`
+	StreamURL  string `json:"stream_url"`
+	SourceLang string `json:"source_lang"`
+	TargetLang string `json:"target_lang"`
+}
+
+func (h *Handler) GetSubtitles(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	epStr := r.URL.Query().Get("episode")
+	episode, _ := strconv.Atoi(epStr)
+	if episode <= 0 {
+		episode = 1
+	}
+
+	var subs []models.MovieSubtitle
+	database.DB.Where("slug = ? AND episode = ?", slug, episode).Order("created_at asc").Find(&subs)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(subs)
+}
+
+func (h *Handler) GenerateAISubtitle(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		http.Error(w, `{"error":"slug required"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req GenerateSubtitleRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	// Fallback to query parameters if fields are missing in body
+	if req.Episode <= 0 {
+		epStr := r.URL.Query().Get("episode")
+		req.Episode, _ = strconv.Atoi(epStr)
+	}
+	if req.StreamURL == "" {
+		req.StreamURL = r.URL.Query().Get("stream_url")
+	}
+	if req.SourceLang == "" {
+		req.SourceLang = r.URL.Query().Get("source_lang")
+	}
+	if req.TargetLang == "" {
+		req.TargetLang = r.URL.Query().Get("target_lang")
+	}
+
+	if req.Episode <= 0 {
+		req.Episode = 1
+	}
+	if req.TargetLang == "" {
+		req.TargetLang = "vi"
+	}
+	if req.SourceLang == "" {
+		req.SourceLang = "ko"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// 1. Check if subtitle already exists in cache/DB
+	var existing models.MovieSubtitle
+	if err := database.DB.Where("slug = ? AND episode = ? AND language = ?", slug, req.Episode, req.TargetLang).First(&existing).Error; err == nil {
+		_ = json.NewEncoder(w).Encode(existing)
+		return
+	}
+
+	// 2. Check Groq Service configuration
+	if h.Groq == nil || h.Groq.APIKey == "" {
+		http.Error(w, `{"error":"GROQ_API_KEY is not configured. Please configure it in the Synology Package Wizard or environment variables."}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	// 3. Resolve stream URL if not provided directly
+	streamURL := req.StreamURL
+	if streamURL == "" {
+		for _, provider := range h.Providers {
+			m, err := provider.GetMovieDetail(slug)
+			if err == nil && m != nil && len(m.Episodes) > 0 {
+				for _, ep := range m.Episodes {
+					if ep.Number == req.Episode && ep.URL != "" {
+						streamURL = ep.URL
+						break
+					}
+				}
+				if streamURL != "" {
+					break
+				}
+			}
+		}
+	}
+
+	if streamURL == "" {
+		http.Error(w, `{"error":"Unable to locate stream URL for this episode"}`, http.StatusBadRequest)
+		return
+	}
+
+	// 4. Extract audio via ffmpeg
+	if h.SubtitlesDir == "" {
+		h.SubtitlesDir = "cache/subtitles"
+	}
+	_ = os.MkdirAll(h.SubtitlesDir, 0755)
+
+	audioPath, err := h.Groq.AudioExtractor.ExtractAudio(r.Context(), streamURL, h.SubtitlesDir, 0)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Audio extraction failed: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(audioPath)
+
+	// 5. Transcribe with Groq Whisper Large-v3
+	sourceVTT, err := h.Groq.TranscribeAudio(r.Context(), audioPath, req.SourceLang)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Groq Whisper transcription failed: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Translate with Groq Llama 3.3 70B (Korean -> Vietnamese with natural pronouns)
+	translatedVTT := sourceVTT
+	if req.TargetLang != req.SourceLang {
+		translated, err := h.Groq.TranslateSubtitles(r.Context(), sourceVTT, req.SourceLang, req.TargetLang)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"Groq Llama 3.3 translation failed: %s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		translatedVTT = translated
+	}
+
+	// 7. Save WebVTT to disk
+	vttFilename := fmt.Sprintf("%s_ep%d_%s.vtt", slug, req.Episode, req.TargetLang)
+	vttFilePath := filepath.Join(h.SubtitlesDir, vttFilename)
+	if err := os.WriteFile(vttFilePath, []byte(translatedVTT), 0644); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Failed to save subtitle file: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// 8. Save record in database
+	label := "Tiếng Việt (AI Auto CC)"
+	if req.TargetLang == "en" {
+		label = "English (AI Auto CC)"
+	}
+	vttURL := fmt.Sprintf("/api/subtitles/%s", vttFilename)
+
+	sub := models.MovieSubtitle{
+		Slug:      slug,
+		Episode:   req.Episode,
+		Language:  req.TargetLang,
+		Label:     label,
+		VTTPath:   vttFilePath,
+		VTTURL:    vttURL,
+		IsAI:      true,
+		CreatedAt: time.Now(),
+	}
+
+	if err := database.DB.Create(&sub).Error; err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Failed to save subtitle to DB: %s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(sub)
+}
+
+func (h *Handler) ServeSubtitle(w http.ResponseWriter, r *http.Request) {
+	filename := chi.URLParam(r, "filename")
+	if filename == "" || strings.Contains(filename, "..") || !strings.HasSuffix(filename, ".vtt") {
+		http.Error(w, "invalid subtitle filename", http.StatusBadRequest)
+		return
+	}
+
+	if h.SubtitlesDir == "" {
+		h.SubtitlesDir = "cache/subtitles"
+	}
+	filePath := filepath.Join(h.SubtitlesDir, filename)
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, "subtitle not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	http.ServeFile(w, r, filePath)
+}
+

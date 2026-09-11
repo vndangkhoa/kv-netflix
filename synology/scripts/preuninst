@@ -1,0 +1,9 @@
+#!/bin/sh
+# preuninst: stops the service before uninstallation
+
+PKG_DIR="$SYNOPKG_PKGDEST"
+if [ -f "$PKG_DIR/scripts/start-stop-status" ]; then
+    "$PKG_DIR/scripts/start-stop-status" stop
+fi
+
+exit 0

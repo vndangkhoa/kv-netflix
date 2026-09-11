@@ -1,0 +1,101 @@
+#!/bin/sh
+# start-stop-status: daemon lifecycle manager for Synology Package Center
+
+PKG_DIR="$SYNOPKG_PKGDEST"
+VAR_DIR="$PKG_DIR/var"
+PID_FILE="$VAR_DIR/kv-netflix.pid"
+LOG_FILE="$VAR_DIR/kv-netflix.log"
+ENV_FILE="$PKG_DIR/etc/config.env"
+SERVER_BIN="$PKG_DIR/server"
+
+start_daemon() {
+    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+        echo "Kv-Netflix is already running."
+        exit 0
+    fi
+
+    if [ -f "$ENV_FILE" ]; then
+        set -a
+        # shellcheck disable=SC1090
+        . "$ENV_FILE"
+        set +a
+    fi
+
+    export PATH="$PKG_DIR/scripts:$PATH"
+
+    cd "$PKG_DIR" || exit 1
+    nohup "$SERVER_BIN" >> "$LOG_FILE" 2>&1 &
+    PID=$!
+
+    echo "$PID" > "$PID_FILE"
+    sleep 1
+
+    if kill -0 "$PID" 2>/dev/null; then
+        echo "Kv-Netflix started successfully (PID: $PID)."
+        exit 0
+    else
+        echo "Failed to start Kv-Netflix. Check $LOG_FILE for details."
+        rm -f "$PID_FILE"
+        exit 1
+    fi
+}
+
+stop_daemon() {
+    if [ ! -f "$PID_FILE" ]; then
+        echo "Kv-Netflix is not running."
+        exit 0
+    fi
+
+    PID=$(cat "$PID_FILE")
+    if kill -0 "$PID" 2>/dev/null; then
+        kill -TERM "$PID"
+        # Wait up to 10 seconds for graceful shutdown
+        TIMEOUT=10
+        while kill -0 "$PID" 2>/dev/null && [ $TIMEOUT -gt 0 ]; do
+            sleep 1
+            TIMEOUT=$((TIMEOUT - 1))
+        done
+
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "Process did not terminate gracefully, forcing kill..."
+            kill -KILL "$PID" 2>/dev/null
+        fi
+    fi
+
+    rm -f "$PID_FILE"
+    echo "Kv-Netflix stopped."
+    exit 0
+}
+
+daemon_status() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "Kv-Netflix is running (PID: $PID)."
+            exit 0
+        fi
+    fi
+    echo "Kv-Netflix is stopped."
+    exit 3
+}
+
+case "$1" in
+    start)
+        start_daemon
+        ;;
+    stop)
+        stop_daemon
+        ;;
+    status)
+        daemon_status
+        ;;
+    restart)
+        stop_daemon
+        sleep 1
+        start_daemon
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+        ;;
+esac

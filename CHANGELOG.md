@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.2.8] - 2026-09-11
+### Added
+- **Groq Cloud AI Auto CC (Whisper Large-v3 + Llama 3.3 Vietsub)**:
+  - Built-in audio extraction from HLS streams via `ffmpeg` into lightweight 16kHz mono compressed MP3.
+  - Integrated Groq Whisper Large-v3 for fast speech recognition with frame-accurate WebVTT timestamps.
+  - Integrated Groq Llama 3.3 70B for contextual Korean-to-Vietnamese Vietsub translation with natural pronoun handling (*anh/em, mày/tao, sếp/tôi*).
+  - Subtitle caching in SQLite and local disk (`cache/subtitles/`), ensuring each episode is transcribed only once and shared across all devices.
+  - Interactive player control button `✨ Tạo Vietsub tự động (AI Groq)` with live spinner and progress notifications.
+- **Synology NAS SPK Package & Setup Wizard**:
+  - Production-grade Synology DSM 7.0+ `.spk` package with service isolation (`sc-kvnetflix`).
+  - Interactive Package Center setup wizard (`WIZARD_UIFILES/install_uifile`) providing step-by-step guidance on obtaining and injecting a free Groq Cloud API key.
+  - One-command packaging script (`synology/build_spk.sh`).
+
+### Changed
+- **Player Visual Icons Overhaul**:
+  - Fixed Plyr control bar SVG rendering bug that turned outline icons into solid white shapes.
+  - Replaced subtitle and settings icons with sharp, compound SVG paths (`fill-rule="evenodd"`): crisp `[ CC ]` badge and 8-tooth gear `⚙`.
+  - Added active glow and accent highlight (`var(--accent)`) when subtitles are enabled or menus are open.
+  - Standardized settings icon across desktop and mobile controls.
+
 ## [v9.2.7] - 2026-09-11
 ### Changed
 - **Desktop Player UI Optimization**:

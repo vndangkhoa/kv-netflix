@@ -116,3 +116,16 @@ type RecoveryKey struct {
 	Used      bool      `json:"used" gorm:"default:false"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type MovieSubtitle struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Slug      string    `json:"slug" gorm:"index;size:255"`
+	Episode   int       `json:"episode" gorm:"index"`
+	Language  string    `json:"language" gorm:"size:20"`
+	Label     string    `json:"label" gorm:"size:100"`
+	VTTPath   string    `json:"vtt_path" gorm:"size:500"`
+	VTTURL    string    `json:"vtt_url" gorm:"size:500"`
+	IsAI      bool      `json:"is_ai" gorm:"default:true"`
+	CreatedAt time.Time `json:"created_at"`
+}
+

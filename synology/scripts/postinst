@@ -1,0 +1,75 @@
+#!/bin/sh
+# postinst: runs after package files are extracted to SYNOPKG_PKGDEST
+
+PKG_DIR="$SYNOPKG_PKGDEST"
+ETC_DIR="$PKG_DIR/etc"
+VAR_DIR="$PKG_DIR/var"
+SUBTITLES_DIR="$VAR_DIR/subtitles"
+
+mkdir -p "$ETC_DIR" "$VAR_DIR" "$SUBTITLES_DIR"
+
+GROQ_KEY=""
+WEB_PORT="8000"
+
+# Parse wizard variables from SYNOPKG_TEMP_LOGFILE
+if [ -n "$SYNOPKG_TEMP_LOGFILE" ] && [ -f "$SYNOPKG_TEMP_LOGFILE" ]; then
+    GROQ_KEY=$(grep "^wizard_groq_api_key=" "$SYNOPKG_TEMP_LOGFILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    PORT_VAL=$(grep "^wizard_port=" "$SYNOPKG_TEMP_LOGFILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    if [ -n "$PORT_VAL" ]; then
+        WEB_PORT="$PORT_VAL"
+    fi
+fi
+
+ENV_FILE="$ETC_DIR/config.env"
+
+# Preserve existing configuration if upgrading and no new key was provided
+if [ -f "$ENV_FILE" ]; then
+    if [ -z "$GROQ_KEY" ]; then
+        EXISTING_KEY=$(grep "^GROQ_API_KEY=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [ -n "$EXISTING_KEY" ]; then
+            GROQ_KEY="$EXISTING_KEY"
+        fi
+    fi
+    if [ "$WEB_PORT" = "8000" ]; then
+        EXISTING_PORT=$(grep "^PORT=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [ -n "$EXISTING_PORT" ]; then
+            WEB_PORT="$EXISTING_PORT"
+        fi
+    fi
+fi
+
+# Write environment configuration
+cat <<EOF > "$ENV_FILE"
+PORT=${WEB_PORT}
+GROQ_API_KEY=${GROQ_KEY}
+DATABASE_URL=${VAR_DIR}/streamflow.db
+TZ=Asia/Ho_Chi_Minh
+GIN_MODE=release
+ALLOWED_ORIGINS=*
+EOF
+
+chmod 600 "$ENV_FILE"
+
+# Write port configuration for Synology DSM Firewall / Reverse Proxy
+cat <<EOF > "$ETC_DIR/port.conf"
+[kv-netflix]
+title="Kv-Netflix"
+desc="Kv-Netflix Streaming with AI CC"
+port_forward="yes"
+dst.ports="${WEB_PORT}/tcp"
+EOF
+
+# Ensure executable permissions on binaries
+chmod +x "$PKG_DIR/server"
+if [ -f "$PKG_DIR/scripts/yt-dlp" ]; then
+    chmod +x "$PKG_DIR/scripts/yt-dlp"
+fi
+
+# Set ownership to package service account (DSM 7 uses sc-kvnetflix)
+if id "sc-kvnetflix" >/dev/null 2>&1; then
+    chown -R sc-kvnetflix:sc-kvnetflix "$VAR_DIR" "$ETC_DIR"
+elif id "http" >/dev/null 2>&1; then
+    chown -R http:http "$VAR_DIR" "$ETC_DIR"
+fi
+
+exit 0

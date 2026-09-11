@@ -178,6 +178,10 @@ export interface Translations {
     uploadSubtitle: string;
     noSubtitlesFound: string;
     subtitleLoaded: string;
+    generateAiCc: string;
+    generatingAiCc: string;
+    aiCcSuccess: string;
+    aiCcFailed: string;
 
     // Explore
     exploreTitle: string;
@@ -366,6 +370,10 @@ const vi: Translations = {
     uploadSubtitle: 'Tải lên phụ đề (.srt, .vtt)',
     noSubtitlesFound: 'Không có phụ đề rời (phim có sẵn Vietsub)',
     subtitleLoaded: 'Đã tải phụ đề thành công',
+    generateAiCc: '✨ Tạo Vietsub tự động (AI Groq)',
+    generatingAiCc: 'Đang tạo Vietsub bằng AI (Groq Whisper + Llama 3.3)...',
+    aiCcSuccess: 'Đã tạo Vietsub AI thành công!',
+    aiCcFailed: 'Không thể tạo Vietsub AI. Vui lòng kiểm tra API Key.',
 
     exploreTitle: 'Phim liên quan đến sở thích của bạn',
     exploreEmpty: 'Xem phim để nhận đề xuất',
@@ -551,6 +559,10 @@ const en: Translations = {
     uploadSubtitle: 'Upload subtitle (.srt, .vtt)',
     noSubtitlesFound: 'No embedded subtitles (hardcoded Vietsub)',
     subtitleLoaded: 'Subtitle loaded successfully',
+    generateAiCc: '✨ Generate AI Subtitles (Groq)',
+    generatingAiCc: 'Generating AI subtitles (Groq Whisper + Llama 3.3)...',
+    aiCcSuccess: 'AI subtitles generated successfully!',
+    aiCcFailed: 'Failed to generate AI subtitles. Please check API Key.',
 
     exploreTitle: 'Movies related to your taste',
     exploreEmpty: 'Watch movies to get recommendations',

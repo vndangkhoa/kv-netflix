@@ -12,6 +12,7 @@ type Config struct {
 	GINMode        string
 	AllowedOrigins []string
 	PublicURL      string
+	GroqAPIKey     string
 }
 
 func Load() *Config {
@@ -23,6 +24,7 @@ func Load() *Config {
 		GINMode:        getEnv("GIN_MODE", "debug"),
 		AllowedOrigins: getEnvSlice("ALLOWED_ORIGINS", []string{"*"}),
 		PublicURL:      os.Getenv("PUBLIC_URL"),
+		GroqAPIKey:     os.Getenv("GROQ_API_KEY"),
 	}
 }
 

@@ -8,6 +8,8 @@ export interface SubtitleTrack {
     name: string;
     lang: string;
     isCustom?: boolean;
+    isAI?: boolean;
+    vttUrl?: string;
 }
 
 export const convertSrtToVtt = (srtContent: string): string => {
@@ -409,7 +411,7 @@ export const useWatchMovie = (
         // Reset subtitles and revoke custom tracks on source change
         customTracksRef.current.forEach(({ el, url }) => {
             try { el.remove(); } catch { }
-            URL.revokeObjectURL(url);
+            if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
         });
         customTracksRef.current = [];
         setSubtitles([]);
@@ -731,7 +733,7 @@ export const useWatchMovie = (
             // Revoke and clear custom subtitle tracks
             customTracksRef.current.forEach(({ el, url }) => {
                 try { el.remove(); } catch { }
-                URL.revokeObjectURL(url);
+                if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
             });
             customTracksRef.current = [];
             // Save final progress on unmount
@@ -902,6 +904,117 @@ export const useWatchMovie = (
         }
     }, [currentSubtitle, subtitles, selectSubtitle]);
 
+    const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+    // Fetch existing AI and server-cached subtitles for this movie & episode
+    useEffect(() => {
+        if (!slug) return;
+        let cancelled = false;
+
+        const fetchSubtitles = async () => {
+            try {
+                const res = await fetch(`/api/videos/${slug}/subtitles?episode=${currentEpisode}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (cancelled || !Array.isArray(data) || data.length === 0) return;
+
+                const video = videoRef.current;
+                const newTracks: SubtitleTrack[] = [];
+
+                for (const item of data) {
+                    const trackId = 2000 + item.id;
+                    newTracks.push({
+                        id: trackId,
+                        name: item.label || 'Tiếng Việt (AI Auto CC)',
+                        lang: item.language || 'vi',
+                        isCustom: true,
+                        isAI: true,
+                        vttUrl: item.vtt_url,
+                    });
+
+                    if (video && item.vtt_url) {
+                        const exists = Array.from(video.querySelectorAll('track')).some(t => t.src.includes(item.vtt_url));
+                        if (!exists) {
+                            const trackEl = document.createElement('track');
+                            trackEl.kind = 'subtitles';
+                            trackEl.label = item.label || 'Tiếng Việt (AI Auto CC)';
+                            trackEl.srclang = item.language || 'vi';
+                            trackEl.src = item.vtt_url;
+                            video.appendChild(trackEl);
+                            customTracksRef.current.push({ el: trackEl, url: item.vtt_url });
+                        }
+                    }
+                }
+
+                setSubtitles(prev => {
+                    const nonAI = prev.filter(p => !p.isAI);
+                    return [...nonAI, ...newTracks];
+                });
+            } catch {
+                // Ignore background fetch errors
+            }
+        };
+
+        fetchSubtitles();
+        return () => { cancelled = true; };
+    }, [slug, currentEpisode, source]);
+
+    const generateAISubtitle = useCallback(async (targetLang = 'vi', sourceLang = 'ko'): Promise<{ ok: boolean; error?: string }> => {
+        if (!slug) return { ok: false, error: 'No movie selected' };
+        setIsGeneratingAI(true);
+        try {
+            const res = await fetch(`/api/videos/${slug}/subtitles/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    episode: currentEpisode,
+                    stream_url: source?.stream_url,
+                    target_lang: targetLang,
+                    source_lang: sourceLang,
+                }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || `HTTP ${res.status}`);
+            }
+
+            const video = videoRef.current;
+            const newId = 2000 + (data.id || Math.floor(Math.random() * 8000));
+            const newTrack: SubtitleTrack = {
+                id: newId,
+                name: data.label || 'Tiếng Việt (AI Auto CC)',
+                lang: data.language || targetLang,
+                isCustom: true,
+                isAI: true,
+                vttUrl: data.vtt_url,
+            };
+
+            if (video && data.vtt_url) {
+                const trackEl = document.createElement('track');
+                trackEl.kind = 'subtitles';
+                trackEl.label = data.label || 'Tiếng Việt (AI Auto CC)';
+                trackEl.srclang = data.language || targetLang;
+                trackEl.src = data.vtt_url;
+                trackEl.default = true;
+                video.appendChild(trackEl);
+                customTracksRef.current.push({ el: trackEl, url: data.vtt_url });
+            }
+
+            setSubtitles(prev => [...prev.filter(t => t.name !== newTrack.name), newTrack]);
+
+            setTimeout(() => {
+                selectSubtitle(newId);
+            }, 100);
+
+            setIsGeneratingAI(false);
+            return { ok: true };
+        } catch (err: any) {
+            setIsGeneratingAI(false);
+            return { ok: false, error: err.message || 'Failed to generate AI subtitle' };
+        }
+    }, [slug, currentEpisode, source, selectSubtitle]);
+
     // Reset episodeEnded when episode changes
     useEffect(() => {
         setEpisodeEnded(false);
@@ -934,5 +1047,7 @@ export const useWatchMovie = (
         selectSubtitle,
         loadCustomSubtitle,
         toggleSubtitles,
+        isGeneratingAI,
+        generateAISubtitle,
     };
 };
