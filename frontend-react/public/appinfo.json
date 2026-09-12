@@ -8,8 +8,8 @@
   "icon": "favicon.png",
   "largeIcon": "apple-touch-icon.png",
   "bgImage": "pwa-512x512.png",
-  "bgColor": "#141414",
-  "iconColor": "#E50914",
+  "bgColor": "#191b24",
+  "iconColor": "#ffd875",
   "resolution": "1920x1080",
   "handlesPageVisibilityInStateChange": true,
   "requiredPermissions": [

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.1] - 2026-09-12
+### Added
+- **Visual Branding & App Icons Overhaul**:
+  - Replaced legacy icons with newly styled, modern vector SVG icons and favicons (`favicon.ico`, `favicon.svg`, `icon.svg`, `mask-icon.svg`, `appinfo.json`).
+  - Updated Android Mobile launcher icon and logo assets (`ic_launcher_foreground.xml`, `ic_logo.xml`).
+  - Updated Android TV launcher banner and mipmap icons (`app_banner.xml`, `ic_launcher.xml`, `ic_logo.xml`).
+  - Updated PWA manifest theme and background colors to cinematic dark `#191b24`.
+
+### Changed
+- **WatchPage Player Controls & Responsive Optimization**:
+  - Streamlined player action bar with responsive button wrapping and compact styling for mobile screens.
+  - Enhanced layout resilience for Theater mode, Skip Intro, Auto Next, and Share toggles.
+  - Optimized spacing and border contrast for episode grids, movie summary box, and comments.
+
 ## [v9.3.0] - 2026-09-12
 ### Added
 - **Actor Profiles & Filmography**:

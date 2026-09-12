@@ -7,13 +7,23 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'favicon.svg'],
+      includeAssets: [
+        'favicon.ico',
+        'favicon.svg',
+        'favicon-32x32.png',
+        'favicon-16x16.png',
+        'apple-touch-icon.png',
+        'mask-icon.svg',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'pwa-maskable-512x512.png'
+      ],
       manifest: {
         name: 'KV Netflix',
         short_name: 'KV',
         description: 'Modern Movie Streaming Service',
-        theme_color: '#141414',
-        background_color: '#141414',
+        theme_color: '#191b24',
+        background_color: '#191b24',
         display: 'standalone',
         icons: [
           {
@@ -29,10 +39,11 @@ export default defineConfig({
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-maskable-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'

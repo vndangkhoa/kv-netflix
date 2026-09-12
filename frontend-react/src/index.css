@@ -231,6 +231,8 @@ body {
   height: 100%;
   min-width: 0;
   min-height: 0;
+  --plyr-color-main: var(--accent);
+  --plyr-video-control-color-hover: #191b24;
 }
 
 .plyr video {
@@ -239,8 +241,39 @@ body {
   object-fit: contain;
 }
 
+/* ── Modern 2-Row Video Controls ── */
 .plyr__controls {
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7)) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)) !important;
+  padding: 8px 12px 10px !important;
+  gap: 4px !important;
+}
+
+/* Row 1: Timeline Scrubber takes 100% full width */
+.plyr__controls .plyr__controls__item.plyr__progress__container {
+  flex: 1 0 100% !important;
+  order: -1 !important;
+  margin: 0 0 4px 0 !important;
+  padding: 0 !important;
+  min-width: 100% !important;
+}
+
+/* Push right-side controls (CC, settings, pip, next, fullscreen) to the far right */
+.plyr__controls .plyr__controls__item[data-kv-subtitles] {
+  margin-left: auto !important;
+}
+
+/* Center overlaid play button: theme accent + smooth glow */
+.plyr__control--overlaid {
+  background: var(--accent) !important;
+  color: #191b24 !important;
+  box-shadow: 0 0 30px var(--accent-glow) !important;
+  transition: transform 0.2s ease, opacity 0.2s ease !important;
+}
+.plyr__control--overlaid:hover {
+  transform: translate(-50%, -50%) scale(1.1) !important;
 }
 
 .plyr [data-plyr="pip"] {
@@ -361,6 +394,12 @@ button:focus-visible,
   pointer-events: none;
   text-align: center;
   z-index: 25;
+  transition: transform 0.25s ease;
+}
+
+/* Push captions up cleanly when player controls are visible */
+.plyr--video.plyr--show-controls .plyr__captions {
+  transform: translateY(-68px);
 }
 
 .plyr__caption {
@@ -372,6 +411,36 @@ button:focus-visible,
   padding: 4px 10px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .plyr__captions {
+    font-size: 0.95rem;
+    padding: 4px 12px;
+    bottom: 8px;
+  }
+  .plyr--video.plyr--show-controls .plyr__captions {
+    transform: translateY(-72px);
+  }
+  .plyr__controls {
+    padding: 6px 10px 8px !important;
+    gap: 2px !important;
+  }
+  .plyr__controls .plyr__controls__item {
+    padding: 4px 6px !important;
+  }
+  /* Hide volume slider on mobile (phone hardware buttons control volume) */
+  .plyr__volume {
+    display: none !important;
+  }
+  /* Hide PiP button on mobile phones */
+  .plyr [data-plyr="pip"] {
+    display: none !important;
+  }
+  .plyr__time {
+    font-size: 11px !important;
+    padding: 0 4px !important;
+  }
 }
 
 video::cue {

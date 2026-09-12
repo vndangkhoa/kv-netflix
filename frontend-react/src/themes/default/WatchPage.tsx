@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react
 import { useNavigate, Link } from 'react-router-dom';
 import {
     ArrowLeft, ChevronDown, ChevronUp, ChevronRight, SkipForward, SkipBack, X,
-    Heart, Bookmark, Settings, Check, Volume1, Volume2, VolumeX, Subtitles, Upload,
+    Heart, Bookmark, Settings, Check, Subtitles, Upload,
     Share2, Users, AlertTriangle, Star, ArrowUp, Send, ThumbsUp, MessageSquare, Film, Play
 } from 'lucide-react';
 import { useWatchMovie } from '../../hooks/useWatchMovie';
@@ -115,66 +115,6 @@ const PlyrVideo = ({ ref, className, poster }: { ref: React.Ref<HTMLVideoElement
     );
 };
 
-const VerticalVolume = ({ ref }: { ref: React.RefObject<HTMLVideoElement | null> }) => {
-    const [volume, setVolume] = useState(1);
-    const [muted, setMuted] = useState(false);
-
-    useEffect(() => {
-        const video = ref.current;
-        if (!video) return;
-        const sync = () => {
-            setVolume(video.volume);
-            setMuted(video.muted);
-        };
-        sync();
-        video.addEventListener('volumechange', sync);
-        return () => video.removeEventListener('volumechange', sync);
-    }, [ref]);
-
-    const setVol = (v: number) => {
-        const video = ref.current;
-        if (!video) return;
-        video.volume = v;
-        video.muted = v === 0;
-    };
-
-    const toggleMute = () => {
-        const video = ref.current;
-        if (!video) return;
-        video.muted = !video.muted;
-    };
-
-    const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
-
-    return (
-        <div className="group/vol relative">
-            {/* Vertical volume slider, revealed on hover */}
-            <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center justify-center opacity-0 translate-y-2 pointer-events-none transition-all duration-200 group-hover/vol:opacity-100 group-hover/vol:translate-y-0 group-hover/vol:pointer-events-auto focus-within:opacity-100 focus-within:translate-y-0 focus-within:pointer-events-auto">
-                <div className="bg-black/70 backdrop-blur-md border border-white/20 rounded-2xl py-3 px-1.5 shadow-2xl">
-                    <div className="relative h-36 w-8">
-                        <input
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            value={muted ? 0 : volume}
-                            onChange={(e) => setVol(parseFloat(e.target.value))}
-                            aria-label="Volume"
-                            className="absolute top-1/2 left-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90 accent-[var(--accent)] cursor-pointer"
-                        />
-                    </div>
-                </div>
-            </div>
-            <button
-                onClick={toggleMute}
-                aria-label={muted ? 'Unmute' : 'Mute'}
-                className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all hover:scale-110"
-            >
-                <VolumeIcon className="w-5 h-5 text-white" />
-            </button>
-        </div>
-    );
-};
 
 export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) => {
     const navigate = useNavigate();
@@ -504,7 +444,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         }
 
         const player = new Plyr(videoRef.current, {
-            controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume'],
+            controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume'],
             invertTime: false,
             seekTime: 10,
             keyboard: { focused: true, global: true },
@@ -858,19 +798,19 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
             <div className={`flex-1 pt-14 ${theaterMode ? 'w-full px-0' : 'max-w-7xl mx-auto px-4 md:px-6 w-full'}`}>
                 {/* Breadcrumb / Back Link */}
-                <div className={`py-3 flex items-center justify-between ${theaterMode ? 'max-w-7xl mx-auto px-4' : ''}`}>
+                <div className={`py-2.5 sm:py-3 flex items-center justify-between gap-3 ${theaterMode ? 'max-w-7xl mx-auto px-4' : ''}`}>
                     <Link
                         to={`/phim/${movie.slug}`}
-                        className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-300 hover:text-[#ffd875] transition-colors group"
+                        className="flex items-center gap-1.5 sm:gap-2 text-sm md:text-base font-semibold text-gray-300 hover:text-[#ffd875] transition-colors group min-w-0"
                     >
-                        <ArrowLeft className="w-4 h-4 text-[#ffd875] group-hover:-translate-x-1 transition-transform" />
-                        <span>Xem phim <strong className="text-white">{movie.title}</strong></span>
+                        <ArrowLeft className="w-4 h-4 text-[#ffd875] group-hover:-translate-x-1 transition-transform shrink-0" />
+                        <span className="truncate">Xem phim <strong className="text-white">{movie.title}</strong></span>
                     </Link>
-                    <div className="flex items-center gap-2">
-                        <span className="bg-[#202331] text-xs text-gray-300 px-2.5 py-1 rounded-md font-medium border border-white/5">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="bg-[#202331] text-[11px] sm:text-xs text-gray-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md font-medium border border-white/5">
                             {movie.quality || 'FHD'}
                         </span>
-                        <span className="bg-[#202331] text-xs text-[#ffd875] px-2.5 py-1 rounded-md font-medium border border-[#ffd875]/20">
+                        <span className="bg-[#202331] text-[11px] sm:text-xs text-[#ffd875] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md font-medium border border-[#ffd875]/20">
                             {movie.year || '2025'}
                         </span>
                     </div>
@@ -1016,65 +956,9 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                                     </div>
                                 </div>
                             )}
-
-                            {/* Floating action bar: skip ±10s + subtitles + settings (mobile touch screens only, hidden on desktop) */}
+                            {/* Subtitles & Settings Dropdown Menus (Accessible on both Desktop & Mobile via Plyr control bar) */}
                             {!source?.isEmbed && !String(source?.stream_url || '').includes('embed') && !episodeEnded && (
                                 <>
-                                    <div className="md:hidden absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 transition-opacity duration-300"
-                                         style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
-                                        <button
-                                            onClick={() => seekRelative(-10)}
-                                            className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all hover:scale-110"
-                                            aria-label="Back 10 seconds"
-                                        >
-                                            <SkipBack className="w-5 h-5 text-white" />
-                                        </button>
-                                        <button
-                                            onClick={() => seekRelative(10)}
-                                            className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all hover:scale-110"
-                                            aria-label="Forward 10 seconds"
-                                        >
-                                            <SkipForward className="w-5 h-5 text-white" />
-                                        </button>
-                                    </div>
-
-                                    {/* Volume + Subtitles + Settings (mobile touch screens only, hidden on desktop) */}
-                                    <div className="md:hidden absolute bottom-24 right-3 z-40 flex items-center gap-3 transition-opacity duration-300"
-                                         style={{ opacity: playerControlsVisible ? 1 : 0, pointerEvents: playerControlsVisible ? 'auto' : 'none' }}>
-                                        <VerticalVolume ref={videoRef} key={source?.stream_url} />
-
-                                        {/* Subtitles (CC) Button (Mobile) */}
-                                        <button
-                                            onClick={() => {
-                                                setSubtitlesOpen(o => !o);
-                                                setSettingsOpen(false);
-                                            }}
-                                            className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${
-                                                currentSubtitle !== -1
-                                                    ? 'bg-accent border-accent text-white shadow-[0_0_15px_var(--accent-glow-soft)]'
-                                                    : subtitlesOpen
-                                                    ? 'bg-white/20 border-white text-white'
-                                                    : 'bg-black/60 hover:bg-black/80 border-white/20 text-white'
-                                            }`}
-                                            aria-label={t.subtitles}
-                                            title={t.subtitles}
-                                        >
-                                            <Subtitles className="w-5 h-5" />
-                                        </button>
-
-                                        {/* Settings Button (Mobile) */}
-                                        <button
-                                            onClick={() => {
-                                                setSettingsOpen(o => !o);
-                                                setSubtitlesOpen(false);
-                                            }}
-                                            className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all hover:scale-110 ${settingsOpen ? 'bg-accent border-accent' : 'bg-black/60 hover:bg-black/80 border-white/20'}`}
-                                            aria-label="Settings"
-                                        >
-                                            <Settings className="w-5 h-5 text-white" />
-                                        </button>
-                                    </div>
-
                                     {/* Subtitles Dropdown Menu (Accessible on both Desktop & Mobile) */}
                                     {subtitlesOpen && (
                                         <div className="absolute bottom-16 md:bottom-20 right-3 md:right-8 w-64 glass-panel bg-[var(--bg-secondary)]/95 backdrop-blur-xl rounded-2xl border border-[var(--border-primary)] shadow-2xl p-2 animate-fade-in z-50">
@@ -1289,111 +1173,115 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             </div>
 
             {/* Player Toolbar directly beneath player */}
-            <div className={`my-3 py-2.5 px-3 bg-[#202331] rounded-xl border border-white/5 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none text-xs ${
-                theaterMode ? 'max-w-7xl mx-auto' : ''
-            }`}>
-                {/* Left button group */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                        onClick={handleToggleSave}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all border ${
-                            isMovieSaved
-                                ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
-                                : 'bg-[#282b3a] text-gray-300 border-white/5 hover:bg-[#323649] hover:text-white'
-                        }`}
-                    >
-                        <Heart className={`w-3.5 h-3.5 ${isMovieSaved ? 'fill-current text-[#ffd875]' : ''}`} />
-                        <span>{isMovieSaved ? 'Đã thích' : 'Yêu thích'}</span>
-                    </button>
+            <div className="relative my-3">
+                <div className={`py-2 px-2.5 sm:px-3 bg-[#202331] rounded-xl border border-white/5 flex items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none text-xs touch-pan-x ${
+                    theaterMode ? 'max-w-7xl mx-auto' : ''
+                }`}>
+                    {/* Left / Main button group */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                        {/* Yêu thích (deduplicated) */}
+                        <button
+                            onClick={handleToggleSave}
+                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all border shrink-0 ${
+                                isMovieSaved
+                                    ? 'bg-[#ffd875]/15 text-[#ffd875] border-[#ffd875]/40 shadow-sm shadow-[#ffd875]/10'
+                                    : 'bg-[#282b3a] text-gray-300 border-white/5 hover:bg-[#323649] hover:text-white'
+                            }`}
+                        >
+                            <Heart className={`w-3.5 h-3.5 ${isMovieSaved ? 'fill-current text-[#ffd875]' : ''}`} />
+                            <span>{isMovieSaved ? 'Đã thích' : 'Yêu thích'}</span>
+                        </button>
 
-                    <button
-                        onClick={handleToggleSave}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-[#282b3a] text-gray-300 border border-white/5 hover:bg-[#323649] hover:text-white transition-all"
-                    >
-                        <Bookmark className="w-3.5 h-3.5" />
-                        <span>Thêm vào</span>
-                    </button>
+                        {/* Tự chuyển tập */}
+                        <button
+                            onClick={() => {
+                                setAutoNext(v => !v);
+                                showToast(`Tự chuyển tập: ${!autoNext ? 'BẬT' : 'TẮT'}`);
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border shrink-0 ${
+                                autoNext
+                                    ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
+                                    : 'bg-[#282b3a] text-gray-400 border-white/5 hover:bg-[#323649]'
+                            }`}
+                        >
+                            <SkipForward className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Chuyển tập: <strong>{autoNext ? 'BẬT' : 'TẮT'}</strong></span>
+                            <span className="sm:hidden">Tự chuyển</span>
+                            <span className={`sm:hidden w-1.5 h-1.5 rounded-full ${autoNext ? 'bg-[#ffd875]' : 'bg-gray-500'}`} />
+                        </button>
 
-                    <button
-                        onClick={() => {
-                            setAutoNext(v => !v);
-                            showToast(`Tự chuyển tập: ${!autoNext ? 'BẬT' : 'TẮT'}`);
-                        }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all border ${
-                            autoNext
-                                ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
-                                : 'bg-[#282b3a] text-gray-400 border-white/5 hover:bg-[#323649]'
-                        }`}
-                    >
-                        <SkipForward className="w-3.5 h-3.5" />
-                        <span>Chuyển tập: <strong>{autoNext ? 'BẬT' : 'TẮT'}</strong></span>
-                    </button>
+                        {/* Bỏ qua intro */}
+                        <button
+                            onClick={() => {
+                                setSkipIntro(v => !v);
+                                showToast(`Bỏ qua giới thiệu: ${!skipIntro ? 'BẬT' : 'TẮT'}`);
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border shrink-0 ${
+                                skipIntro
+                                    ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
+                                    : 'bg-[#282b3a] text-gray-400 border-white/5 hover:bg-[#323649]'
+                            }`}
+                        >
+                            <Play className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Bỏ qua intro: <strong>{skipIntro ? 'BẬT' : 'TẮT'}</strong></span>
+                            <span className="sm:hidden">Bỏ intro</span>
+                            <span className={`sm:hidden w-1.5 h-1.5 rounded-full ${skipIntro ? 'bg-[#ffd875]' : 'bg-gray-500'}`} />
+                        </button>
 
-                    <button
-                        onClick={() => {
-                            setSkipIntro(v => !v);
-                            showToast(`Bỏ qua giới thiệu: ${!skipIntro ? 'BẬT' : 'TẮT'}`);
-                        }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all border ${
-                            skipIntro
-                                ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
-                                : 'bg-[#282b3a] text-gray-400 border-white/5 hover:bg-[#323649]'
-                        }`}
-                    >
-                        <Play className="w-3.5 h-3.5" />
-                        <span>Bỏ qua intro: <strong>{skipIntro ? 'BẬT' : 'TẮT'}</strong></span>
-                    </button>
+                        {/* Rạp phim (hidden on small mobile screens where viewport is already 100% width) */}
+                        <button
+                            onClick={() => {
+                                setTheaterMode(v => !v);
+                                showToast(`Chế độ rạp phim: ${!theaterMode ? 'BẬT' : 'TẮT'}`);
+                            }}
+                            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border shrink-0 ${
+                                theaterMode
+                                    ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
+                                    : 'bg-[#282b3a] text-gray-400 border-white/5 hover:bg-[#323649]'
+                            }`}
+                        >
+                            <Film className="w-3.5 h-3.5" />
+                            <span>Rạp phim: <strong>{theaterMode ? 'BẬT' : 'TẮT'}</strong></span>
+                        </button>
 
-                    <button
-                        onClick={() => {
-                            setTheaterMode(v => !v);
-                            showToast(`Chế độ rạp phim: ${!theaterMode ? 'BẬT' : 'TẮT'}`);
-                        }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all border ${
-                            theaterMode
-                                ? 'bg-[#ffd875]/10 text-[#ffd875] border-[#ffd875]/30'
-                                : 'bg-[#282b3a] text-gray-400 border-white/5 hover:bg-[#323649]'
-                        }`}
-                    >
-                        <Film className="w-3.5 h-3.5" />
-                        <span>Rạp phim: <strong>{theaterMode ? 'BẬT' : 'TẮT'}</strong></span>
-                    </button>
+                        {/* Chia sẻ */}
+                        <button
+                            onClick={handleShare}
+                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap bg-[#282b3a] text-gray-300 border border-white/5 hover:bg-[#323649] hover:text-white transition-all shrink-0"
+                        >
+                            <Share2 className="w-3.5 h-3.5" />
+                            <span>Chia sẻ</span>
+                        </button>
 
-                    <button
-                        onClick={handleShare}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-[#282b3a] text-gray-300 border border-white/5 hover:bg-[#323649] hover:text-white transition-all"
-                    >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>Chia sẻ</span>
-                    </button>
+                        {/* Xem chung */}
+                        <button
+                            onClick={() => showToast('Tính năng Xem chung sắp ra mắt!')}
+                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap bg-[#282b3a] text-gray-300 border border-white/5 hover:bg-[#323649] hover:text-white transition-all shrink-0"
+                        >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>Xem chung</span>
+                        </button>
+                    </div>
 
-                    <button
-                        onClick={() => showToast('Tính năng Xem chung sắp ra mắt!')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-[#282b3a] text-gray-300 border border-white/5 hover:bg-[#323649] hover:text-white transition-all"
-                    >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Xem chung</span>
-                    </button>
-                </div>
-
-                {/* Right button group */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                        onClick={handleReport}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all"
-                    >
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>Báo lỗi</span>
-                    </button>
+                    {/* Right button group */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-2">
+                        <button
+                            onClick={handleReport}
+                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all shrink-0"
+                        >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Báo lỗi</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* 2. Main 2-Column Section */}
-            <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 my-6 ${theaterMode ? 'max-w-7xl mx-auto px-4' : ''}`}>
+            <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 my-4 sm:my-6 ${theaterMode ? 'max-w-7xl mx-auto px-4' : ''}`}>
                 {/* Left Column: 8 cols (Episodes, Movie summary, Comments) */}
-                <div className="lg:col-span-8 space-y-6">
+                <div className="lg:col-span-8 space-y-4 sm:space-y-6">
                     {/* Mini summary box */}
-                    <div className="bg-[#202331] rounded-2xl p-5 border border-white/5 space-y-3">
+                    <div className="bg-[#202331] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-white/5 space-y-3">
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{movie.title}</h1>
@@ -1437,7 +1325,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
 
                     {/* Episodes Grid */}
                     {currentServerEpisodes.length > 0 && (
-                        <div className="bg-[#202331] rounded-2xl p-5 border border-white/5 space-y-4">
+                        <div className="bg-[#202331] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-white/5 space-y-3 sm:space-y-4">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
                                     <span className="w-1.5 h-4 bg-[#ffd875] rounded-full inline-block"></span>
@@ -1485,7 +1373,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     )}
 
                     {/* Comments Section */}
-                    <div className="bg-[#202331] rounded-2xl p-5 border border-white/5 space-y-5">
+                    <div className="bg-[#202331] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-white/5 space-y-4 sm:space-y-5">
                         <div className="flex items-center justify-between border-b border-white/5 pb-3">
                             <div className="flex items-center gap-2">
                                 <MessageSquare className="w-5 h-5 text-[#ffd875]" />

@@ -58,7 +58,7 @@ export default function DeviceLoginPage() {
                         type="submit"
                         disabled={code.length < 6 || loading}
                         tabIndex={0}
-                        className="w-full py-3 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105"
+                        className="w-full py-3 bg-accent hover:bg-accent-hover disabled:opacity-50 text-[var(--accent-contrast)] text-sm font-bold rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105"
                     >
                         {loading ? t.loggingIn : t.login}
                     </button>

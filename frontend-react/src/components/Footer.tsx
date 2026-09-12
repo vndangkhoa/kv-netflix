@@ -22,7 +22,10 @@ export const Footer: React.FC = () => {
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-10 border-b border-[var(--border-subtle)]">
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-3">
-                            <Link to="/" className="flex items-center gap-2 group">
+                            <Link to="/" className="flex items-center gap-2.5 group">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#fecf59] to-[#fff1cc] flex items-center justify-center shadow-md shadow-[#fecf59]/20 group-hover:scale-105 transition-transform">
+                                    <span className="font-black text-[#191b24] text-[11px] tracking-tighter">KV</span>
+                                </div>
                                 <span className="text-xl font-black tracking-tight text-white group-hover:text-[var(--accent)] transition-colors">
                                     KV<span className="text-[var(--accent)]">-NETFLIX</span>
                                 </span>
