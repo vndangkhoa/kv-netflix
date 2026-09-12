@@ -14,10 +14,18 @@ import (
 	"streamflow-backend/internal/models"
 )
 
-const OphimBaseURL = "https://ophim1.com"
+var defaultOphimMirrors = []string{
+	"https://ophim17.cc",
+	"https://ophim.live",
+	"https://ophim.cc",
+	"https://ophim6.cc",
+	"https://ophim1.com",
+}
 
 type OphimScraper struct {
-	client *http.Client
+	client    *http.Client
+	mirrors   []string
+	activeIdx int
 }
 
 func NewOphimScraper() *OphimScraper {
@@ -27,9 +35,44 @@ func NewOphimScraper() *OphimScraper {
 	return &OphimScraper{
 		client: &http.Client{
 			Transport: tr,
-			Timeout:   5 * time.Second,
+			Timeout:   8 * time.Second,
 		},
+		mirrors:   defaultOphimMirrors,
+		activeIdx: 0,
 	}
+}
+
+func (s *OphimScraper) fetchFromMirrors(path string) (*http.Response, error) {
+	var lastErr error
+	n := len(s.mirrors)
+	start := s.activeIdx
+	for i := 0; i < n; i++ {
+		idx := (start + i) % n
+		baseURL := s.mirrors[idx]
+		targetURL := fmt.Sprintf("%s/%s", baseURL, strings.TrimPrefix(path, "/"))
+
+		req, err := http.NewRequest("GET", targetURL, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		req.Header.Set("Accept", "application/json, text/plain, */*")
+		req.Header.Set("Referer", baseURL+"/")
+
+		resp, err := s.client.Do(req)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			s.activeIdx = idx
+			return resp, nil
+		}
+		if resp != nil {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("status %d from %s", resp.StatusCode, baseURL)
+		} else {
+			lastErr = err
+		}
+	}
+	return nil, fmt.Errorf("all ophim mirrors failed: %v", lastErr)
 }
 
 // Response structs for Ophim API
@@ -145,8 +188,8 @@ func (s *OphimScraper) GetHomepageMovies(page int) ([]models.RophimMovie, error)
 
 func (s *OphimScraper) Search(query string, page int) ([]models.RophimMovie, error) {
 	encodedQuery := url.QueryEscape(query)
-	url := fmt.Sprintf("%s/v1/api/tim-kiem?keyword=%s&page=%d", OphimBaseURL, encodedQuery, page)
-	return s.fetchAndParseList(url)
+	path := fmt.Sprintf("v1/api/tim-kiem?keyword=%s&page=%d", encodedQuery, page)
+	return s.fetchAndParseList(path)
 }
 
 func (s *OphimScraper) GetGenres() ([]models.Category, error) {
@@ -158,8 +201,7 @@ func (s *OphimScraper) GetCountries() ([]models.Category, error) {
 }
 
 func (s *OphimScraper) fetchCategories(path string) ([]models.Category, error) {
-	url := fmt.Sprintf("%s/%s", OphimBaseURL, path)
-	resp, err := s.client.Get(url)
+	resp, err := s.fetchFromMirrors(path)
 	if err != nil {
 		return nil, err
 	}
@@ -189,12 +231,12 @@ func (s *OphimScraper) fetchCategories(path string) ([]models.Category, error) {
 }
 
 func (s *OphimScraper) getList(path string, page int) ([]models.RophimMovie, error) {
-	url := fmt.Sprintf("%s/%s?page=%d", OphimBaseURL, path, page)
-	return s.fetchAndParseList(url)
+	subPath := fmt.Sprintf("%s?page=%d", strings.TrimPrefix(path, "/"), page)
+	return s.fetchAndParseList(subPath)
 }
 
-func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, error) {
-	resp, err := s.client.Get(url)
+func (s *OphimScraper) fetchAndParseList(path string) ([]models.RophimMovie, error) {
+	resp, err := s.fetchFromMirrors(path)
 	if err != nil {
 		return nil, err
 	}
@@ -208,23 +250,6 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
-
-	// API usually returns items in "items" (homepage/list) or "data" sometimes?
-	// The struct OphimResponse has "items".
-	// Search API structure verification:
-	// My previous curl showed "data": { "items": [...] } structure for search?
-	// Wait, checking the curled output from Step 256.
-	// Output: `{"status":true,"msg":"","data":{"seoOnPage":...,"breadCrumb":...,"titlePage":...,"items":[...]`
-	// So Search returns data -> items.
-	// My OphimResponse struct has "Items []OphimItem" at top level.
-	// I need to adjust struct to handle "data" wrapper if present, or "items" if direct.
-	// The homepage returns "items" directly?
-	// Let's check homepage struct. I previously assumed it was directly status, items.
-	// If search has "data", generic parsing might need adjustment.
-
-	// Let's look at the previous successful homepage request.
-	// If it worked, then homepage returns "items" at top level.
-	// If Search returns "data" -> "items", I need a wrapper struct.
 
 	var movies []models.RophimMovie
 	
@@ -250,7 +275,7 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 			Backdrop:      backdrop,
 			Year:          item.Year,
 			Category:      "movies",
-			Provider:      "Ophim",
+			Provider:      "OPhim",
 			Time:          item.Time,
 			Quality:       item.Quality,
 			Lang:          item.Lang,
@@ -261,9 +286,8 @@ func (s *OphimScraper) fetchAndParseList(url string) ([]models.RophimMovie, erro
 }
 
 func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) {
-	// Correct API endpoint is v1/api/phim/{slug}
-	url := fmt.Sprintf("%s/v1/api/phim/%s", OphimBaseURL, slug)
-	resp, err := s.client.Get(url)
+	path := fmt.Sprintf("v1/api/phim/%s", slug)
+	resp, err := s.fetchFromMirrors(path)
 	if err != nil {
 		return nil, err
 	}
@@ -354,6 +378,7 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		Quality:       movie.Quality,
 		Duration:      0, // String parse needed if we want "90 phut"
 		Category:      "movies",
+		Provider:      "OPhim",
 		Episodes:      episodes,
 		Country:       safeGetName(movie.Country),
 		Director:      strings.Join(movie.Director, ", "),

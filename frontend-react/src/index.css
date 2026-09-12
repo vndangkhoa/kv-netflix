@@ -32,11 +32,26 @@
   --border-primary: rgba(255, 255, 255, 0.1);
   --border-subtle: rgba(255, 255, 255, 0.05);
   --gradient-mask: #202331;
-  --accent: #e50914;
-  --accent-hover: #f40b17;
-  --accent-bg: rgba(229, 9, 20, 0.1);
-  --accent-bg-hover: rgba(229, 9, 20, 0.25);
-  --accent-contrast: #ffffff;
+  --accent: #ffd875;
+  --accent-hover: #fecf59;
+  --accent-bg: rgba(255, 216, 117, 0.15);
+  --accent-bg-hover: rgba(255, 216, 117, 0.25);
+  --accent-contrast: #191b24;
+  --accent-glow: rgba(255, 216, 117, 0.4);
+  --accent-glow-soft: rgba(255, 216, 117, 0.25);
+  --accent-glow-faint: rgba(255, 216, 117, 0.12);
+}
+
+/* Golden yellowness accent (KV-Netflix signature theme) */
+html.accent-golden, :root.accent-golden, .accent-golden {
+  --accent: #ffd875;
+  --accent-hover: #fecf59;
+  --accent-bg: rgba(255, 216, 117, 0.15);
+  --accent-bg-hover: rgba(255, 216, 117, 0.25);
+  --accent-contrast: #191b24;
+  --accent-glow: rgba(255, 216, 117, 0.4);
+  --accent-glow-soft: rgba(255, 216, 117, 0.25);
+  --accent-glow-faint: rgba(255, 216, 117, 0.12);
 }
 
 /* Crimson accent (classic Netflix theme) */
@@ -367,4 +382,55 @@ video::cue {
   line-height: 1.4;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
+
+/* ── RoPhim Signature Design System ───────────────────────── */
+.primary-gradient {
+  background: linear-gradient(39deg, #fecf59, #fff1cc) !important;
+  color: #191b24 !important;
+}
+
+.btn-play-rophim {
+  background: linear-gradient(39deg, #fecf59, #fff1cc);
+  color: #191b24;
+  box-shadow: 0 5px 15px 3px rgba(255, 218, 125, 0.25);
+  transition: all 0.25s ease;
+}
+.btn-play-rophim:hover {
+  box-shadow: 0 6px 20px 6px rgba(255, 218, 125, 0.35);
+  transform: scale(1.03);
+}
+
+.tag-imdb {
+  background-color: transparent;
+  border: 1px solid #f0d25c;
+  border-radius: 0.33rem;
+  color: #fff;
+  font-weight: 600;
+  cursor: default;
+  line-height: 22px;
+  font-size: 11px;
+  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+}
+.tag-imdb::before {
+  content: "IMDb ";
+  color: #f0d25c;
+  font-weight: 700;
+  margin-right: 3px;
+  font-size: 10px;
+}
+
+.glass-rophim {
+  background-color: rgba(25, 27, 36, 0.65);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.glass-rophim-dark {
+  background-color: rgba(25, 27, 36, 0.85);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
 

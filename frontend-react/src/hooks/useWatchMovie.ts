@@ -8,8 +8,6 @@ export interface SubtitleTrack {
     name: string;
     lang: string;
     isCustom?: boolean;
-    isAI?: boolean;
-    vttUrl?: string;
 }
 
 export const convertSrtToVtt = (srtContent: string): string => {
@@ -193,74 +191,131 @@ export const useWatchMovie = (
                     }
                 };
 
-                // If user pinned a specific server, probe that preferred server first
+                // If user pinned a specific server, probe/load that preferred server first
                 if (selectedServer) {
                     const preferredEp = movie.episodes?.find(e =>
                         e.number === currentEpisode &&
                         (e.serverName || e.server_name) === selectedServer
                     );
-                    if (preferredEp?.url && (preferredEp.url.includes('.m3u8') || preferredEp.url.includes('index.m3u8'))) {
-                        const probeRes = await probeDirectServer(selectedServer, preferredEp.url);
-                        if (probeRes) {
-                            currentServerRef.current = selectedServer;
-                            if (activeStreamUrlRef.current === probeRes.proxyUrl) {
+                    if (preferredEp?.url) {
+                        const rawUrl = preferredEp.url;
+                        const isDirectM3U8 = rawUrl.includes('.m3u8') || rawUrl.includes('index.m3u8');
+                        const isEmbed = rawUrl.includes('vidlink.pro') ||
+                            rawUrl.includes('vidsrc') ||
+                            rawUrl.includes('autoembed') ||
+                            rawUrl.includes('embed.php') ||
+                            rawUrl.includes('/embed/') ||
+                            rawUrl.includes('streamc.xyz/embed');
+
+                        if (isDirectM3U8) {
+                            const probeRes = await probeDirectServer(selectedServer, rawUrl);
+                            if (probeRes) {
+                                currentServerRef.current = selectedServer;
+                                if (activeStreamUrlRef.current === probeRes.proxyUrl) {
+                                    setLoading(false);
+                                    return;
+                                }
+                                activeStreamUrlRef.current = probeRes.proxyUrl;
+                                setSource({
+                                    stream_url: probeRes.proxyUrl,
+                                    resolution: 'HD',
+                                    format_id: 'hls'
+                                });
                                 setLoading(false);
                                 return;
                             }
-                            activeStreamUrlRef.current = probeRes.proxyUrl;
+                        } else if (isEmbed) {
+                            currentServerRef.current = selectedServer;
+                            if (activeStreamUrlRef.current === rawUrl) {
+                                setLoading(false);
+                                return;
+                            }
+                            activeStreamUrlRef.current = rawUrl;
                             setSource({
-                                stream_url: probeRes.proxyUrl,
+                                stream_url: rawUrl,
+                                isEmbed: true,
+                                format_id: 'embed',
+                                resolution: '1080p'
+                            });
+                            setLoading(false);
+                            return;
+                        } else {
+                            // Non-m3u8 embed page: resolve via backend
+                            const res = await fetch(`/api/extract`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url: rawUrl })
+                            }).catch(() => null);
+
+                            if (res && res.ok) {
+                                const data = await res.json();
+                                const rawStreamUrl = data.url || data.stream_url || '';
+                                if (rawStreamUrl) {
+                                    const isEmbedPage = data.format_id === 'embed' || data.ext === 'embed' || data.isEmbed === true;
+                                    const needsProxy = !isEmbedPage && rawStreamUrl.startsWith('http');
+                                    const finalUrl = needsProxy
+                                        ? `/api/stream?url=${encodeURIComponent(rawStreamUrl)}`
+                                        : rawStreamUrl;
+
+                                    if (isEmbedPage || (await probeManifest(finalUrl))) {
+                                        currentServerRef.current = selectedServer;
+                                        if (activeStreamUrlRef.current === finalUrl) {
+                                            setLoading(false);
+                                            return;
+                                        }
+                                        activeStreamUrlRef.current = finalUrl;
+                                        setSource({
+                                            ...data,
+                                            stream_url: finalUrl
+                                        });
+                                        setLoading(false);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Concurrent probing: ONLY run on initial load when user hasn't selected a server (!selectedServer)
+                if (!selectedServer) {
+                    const directCandidates: { server: string; url: string }[] = [];
+                    for (const server of allServerNames) {
+                        const ep = movie.episodes?.find(e =>
+                            e.number === currentEpisode &&
+                            (e.serverName || e.server_name) === server
+                        );
+                        if (ep?.url && (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8'))) {
+                            directCandidates.push({ server, url: ep.url });
+                        }
+                    }
+
+                    if (directCandidates.length > 0) {
+                        const probeResults = await Promise.all(
+                            directCandidates.map(c => probeDirectServer(c.server, c.url))
+                        );
+                        const validProbes = probeResults
+                            .filter((p): p is { server: string; proxyUrl: string; latency: number } => p !== null)
+                            .sort((a, b) => a.latency - b.latency);
+
+                        if (validProbes.length > 0) {
+                            const fastest = validProbes[0];
+                            currentServerRef.current = fastest.server;
+                            onServerFallbackRef.current?.(fastest.server);
+
+                            if (activeStreamUrlRef.current === fastest.proxyUrl) {
+                                setLoading(false);
+                                return;
+                            }
+                            activeStreamUrlRef.current = fastest.proxyUrl;
+                            setSource({
+                                stream_url: fastest.proxyUrl,
                                 resolution: 'HD',
                                 format_id: 'hls'
                             });
                             setLoading(false);
                             return;
                         }
-                    }
-                }
-
-                // Concurrent probing: probe all available direct HLS servers in parallel
-                // to automatically pick the stream with lowest latency.
-                const directCandidates: { server: string; url: string }[] = [];
-                for (const server of allServerNames) {
-                    const ep = movie.episodes?.find(e =>
-                        e.number === currentEpisode &&
-                        (e.serverName || e.server_name) === server
-                    );
-                    if (ep?.url && (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8'))) {
-                        directCandidates.push({ server, url: ep.url });
-                    }
-                }
-
-                if (directCandidates.length > 0) {
-                    const probeResults = await Promise.all(
-                        directCandidates.map(c => probeDirectServer(c.server, c.url))
-                    );
-                    const validProbes = probeResults
-                        .filter((p): p is { server: string; proxyUrl: string; latency: number } => p !== null)
-                        .sort((a, b) => a.latency - b.latency);
-
-                    if (validProbes.length > 0) {
-                        const fastest = validProbes[0];
-                        currentServerRef.current = fastest.server;
-                        if (selectedServer && selectedServer !== fastest.server) {
-                            onServerFallbackRef.current?.(fastest.server);
-                        } else if (!selectedServer && fastest.server !== allServerNames[0]) {
-                            onServerFallbackRef.current?.(fastest.server);
-                        }
-
-                        if (activeStreamUrlRef.current === fastest.proxyUrl) {
-                            setLoading(false);
-                            return;
-                        }
-                        activeStreamUrlRef.current = fastest.proxyUrl;
-                        setSource({
-                            stream_url: fastest.proxyUrl,
-                            resolution: 'HD',
-                            format_id: 'hls'
-                        });
-                        setLoading(false);
-                        return;
                     }
                 }
 
@@ -275,10 +330,17 @@ export const useWatchMovie = (
                         (e.serverName || e.server_name) === server
                     ) || movie.episodes?.find(e => e.number === currentEpisode) || movie.episodes?.[0];
 
-                    if (!ep?.url) continue;
+                    const rawUrl = ep.url;
+                    const isDirectM3U8 = rawUrl.includes('.m3u8') || rawUrl.includes('index.m3u8');
+                    const isEmbed = rawUrl.includes('vidlink.pro') ||
+                        rawUrl.includes('vidsrc') ||
+                        rawUrl.includes('autoembed') ||
+                        rawUrl.includes('embed.php') ||
+                        rawUrl.includes('/embed/') ||
+                        rawUrl.includes('streamc.xyz/embed');
 
-                    if (ep.url.includes('.m3u8') || ep.url.includes('index.m3u8')) {
-                        const proxyUrl = `/api/stream?url=${encodeURIComponent(ep.url)}`;
+                    if (isDirectM3U8) {
+                        const proxyUrl = `/api/stream?url=${encodeURIComponent(rawUrl)}`;
                         if (!(await probeManifest(proxyUrl))) continue;
                         currentServerRef.current = server;
                         if (server !== selectedServer) onServerFallbackRef.current?.(server);
@@ -291,6 +353,22 @@ export const useWatchMovie = (
                             stream_url: proxyUrl,
                             resolution: 'HD',
                             format_id: 'hls'
+                        });
+                        setLoading(false);
+                        return;
+                    } else if (isEmbed) {
+                        currentServerRef.current = server;
+                        if (server !== selectedServer) onServerFallbackRef.current?.(server);
+                        if (activeStreamUrlRef.current === rawUrl) {
+                            setLoading(false);
+                            return;
+                        }
+                        activeStreamUrlRef.current = rawUrl;
+                        setSource({
+                            stream_url: rawUrl,
+                            isEmbed: true,
+                            format_id: 'embed',
+                            resolution: '1080p'
                         });
                         setLoading(false);
                         return;
@@ -344,10 +422,11 @@ export const useWatchMovie = (
 
     // Automatic stream switching on stall or fatal network errors
     const triggerAutoSwitch = useCallback((reason: string): boolean => {
-        if (!movieRef.current?.episodes) return false;
         const now = Date.now();
-        // Cooldown of 15 seconds to prevent rapid ping-pong
-        if (now - lastSwitchTimeRef.current < 15000) return false;
+        // Fast fallback for fatal stream errors (2s cooldown); 10s cooldown for transient stalls
+        const isFatal = reason.includes('fatal') || reason.includes('error') || reason.includes('recovery');
+        if (!isFatal && (now - lastSwitchTimeRef.current < 10000)) return false;
+        if (isFatal && (now - lastSwitchTimeRef.current < 2000)) return false;
 
         const currentServer = currentServerRef.current || selectedServer || '';
         if (currentServer) {
@@ -904,162 +983,6 @@ export const useWatchMovie = (
         }
     }, [currentSubtitle, subtitles, selectSubtitle]);
 
-    const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-
-    // Fetch existing AI and server-cached subtitles for this movie & episode
-    useEffect(() => {
-        if (!slug) return;
-        let cancelled = false;
-
-        const fetchSubtitles = async () => {
-            try {
-                const res = await fetch(`/api/videos/${slug}/subtitles?episode=${currentEpisode}`);
-                if (!res.ok) return;
-                const data = await res.json();
-                if (cancelled || !Array.isArray(data) || data.length === 0) return;
-
-                const video = videoRef.current;
-                const newTracks: SubtitleTrack[] = [];
-
-                for (const item of data) {
-                    const trackId = 2000 + item.id;
-                    newTracks.push({
-                        id: trackId,
-                        name: item.label || 'Tiếng Việt (AI Auto CC)',
-                        lang: item.language || 'vi',
-                        isCustom: true,
-                        isAI: true,
-                        vttUrl: item.vtt_url,
-                    });
-
-                    if (video && item.vtt_url) {
-                        const exists = Array.from(video.querySelectorAll('track')).some(t => t.src.includes(item.vtt_url));
-                        if (!exists) {
-                            const trackEl = document.createElement('track');
-                            trackEl.kind = 'subtitles';
-                            trackEl.label = item.label || 'Tiếng Việt (AI Auto CC)';
-                            trackEl.srclang = item.language || 'vi';
-                            trackEl.src = item.vtt_url;
-                            video.appendChild(trackEl);
-                            customTracksRef.current.push({ el: trackEl, url: item.vtt_url });
-                        }
-                    }
-                }
-
-                setSubtitles(prev => {
-                    const nonAI = prev.filter(p => !p.isAI);
-                    return [...nonAI, ...newTracks];
-                });
-            } catch {
-                // Ignore background fetch errors
-            }
-        };
-
-        fetchSubtitles();
-        return () => { cancelled = true; };
-    }, [slug, currentEpisode, source]);
-
-    const generateAISubtitle = useCallback(async (targetLang = 'vi', sourceLang = 'ko'): Promise<{ ok: boolean; error?: string }> => {
-        if (!slug) return { ok: false, error: 'No movie selected' };
-        setIsGeneratingAI(true);
-        try {
-            // Unwrap proxy URL if present
-            let cleanStreamUrl = source?.stream_url || '';
-            if (cleanStreamUrl.includes('url=')) {
-                try {
-                    const u = new URL(cleanStreamUrl, window.location.origin);
-                    cleanStreamUrl = u.searchParams.get('url') || cleanStreamUrl;
-                } catch { }
-            }
-
-            const currentServer = currentServerRef.current || selectedServer || '';
-
-            const res = await fetch(`/api/videos/${slug}/subtitles/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    episode: currentEpisode,
-                    stream_url: cleanStreamUrl,
-                    server_name: currentServer,
-                    target_lang: targetLang,
-                    source_lang: sourceLang,
-                }),
-            });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                throw new Error(data.error || `HTTP ${res.status}`);
-            }
-
-            const applyTrack = (item: any) => {
-                const video = videoRef.current;
-                const newId = 2000 + (item.id || Math.floor(Math.random() * 8000));
-                const newTrack: SubtitleTrack = {
-                    id: newId,
-                    name: item.label || 'Tiếng Việt (AI Auto CC)',
-                    lang: item.language || targetLang,
-                    isCustom: true,
-                    isAI: true,
-                    vttUrl: item.vtt_url,
-                };
-
-                if (video && item.vtt_url) {
-                    const exists = Array.from(video.querySelectorAll('track')).some(t => t.src.includes(item.vtt_url));
-                    if (!exists) {
-                        const trackEl = document.createElement('track');
-                        trackEl.kind = 'subtitles';
-                        trackEl.label = item.label || 'Tiếng Việt (AI Auto CC)';
-                        trackEl.srclang = item.language || targetLang;
-                        trackEl.src = item.vtt_url;
-                        trackEl.default = true;
-                        video.appendChild(trackEl);
-                        customTracksRef.current.push({ el: trackEl, url: item.vtt_url });
-                    }
-                }
-
-                setSubtitles(prev => [...prev.filter(t => t.name !== newTrack.name), newTrack]);
-
-                setTimeout(() => {
-                    selectSubtitle(newId);
-                }, 100);
-            };
-
-            // If subtitle was already generated or completed synchronously
-            if (data.vtt_url) {
-                applyTrack(data);
-                setIsGeneratingAI(false);
-                return { ok: true };
-            }
-
-            // If background processing (HTTP 202), poll until ready
-            const maxPollAttempts = 80; // ~4 minutes
-            for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
-                await new Promise(r => setTimeout(r, 3000));
-                try {
-                    const pollRes = await fetch(`/api/videos/${slug}/subtitles?episode=${currentEpisode}`);
-                    if (pollRes.ok) {
-                        const pollData = await pollRes.json();
-                        if (Array.isArray(pollData) && pollData.length > 0) {
-                            const found = pollData.find((s: any) => s.language === targetLang || s.is_ai);
-                            if (found && found.vtt_url) {
-                                applyTrack(found);
-                                setIsGeneratingAI(false);
-                                return { ok: true };
-                            }
-                        }
-                    }
-                } catch {
-                    // Continue polling on transient fetch errors
-                }
-            }
-
-            throw new Error('AI subtitle generation timed out. Please try again.');
-        } catch (err: any) {
-            setIsGeneratingAI(false);
-            return { ok: false, error: err.message || 'Failed to generate AI subtitle' };
-        }
-    }, [slug, currentEpisode, source, selectedServer, selectSubtitle]);
-
     // Reset episodeEnded when episode changes
     useEffect(() => {
         setEpisodeEnded(false);
@@ -1092,7 +1015,5 @@ export const useWatchMovie = (
         selectSubtitle,
         loadCustomSubtitle,
         toggleSubtitles,
-        isGeneratingAI,
-        generateAISubtitle,
     };
 };

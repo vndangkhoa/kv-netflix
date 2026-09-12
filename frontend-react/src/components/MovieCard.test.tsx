@@ -23,8 +23,8 @@ describe('MovieCard', () => {
         );
 
         expect(screen.getByText('Phim Test Đầu Xuân')).toBeInTheDocument();
-        const link = screen.getByRole('link');
-        expect(link).toHaveAttribute('href', '/watch/phim-test-dau-xuan');
+        const links = screen.getAllByRole('link');
+        expect(links[0]).toHaveAttribute('href', '/phim/phim-test-dau-xuan');
     });
 
     it('renders img with lazy loading, no-referrer policy, and proxy url', () => {

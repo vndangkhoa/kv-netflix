@@ -12,11 +12,8 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/categories/genres", h.GetGenres)
 	r.Get("/categories/countries", h.GetCountries)
 	r.Get("/stream", h.StreamVideo)
-
-	// Subtitles
-	r.Get("/videos/{slug}/subtitles", h.GetSubtitles)
-	r.Post("/videos/{slug}/subtitles/generate", h.GenerateAISubtitle)
-	r.Get("/subtitles/{filename}", h.ServeSubtitle)
+	r.Get("/actors", h.GetActors)
+	r.Get("/actors/{slug}", h.GetActorDetail)
 
 	// Auth routes (public)
 	r.Post("/auth/register", h.Register)

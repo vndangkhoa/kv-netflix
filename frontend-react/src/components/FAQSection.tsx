@@ -12,7 +12,7 @@ export const FAQSection = () => {
     const [open, setOpen] = useState<number>(0);
 
     return (
-        <section className="px-4 sm:px-6 lg:px-12 my-12 max-w-5xl mx-auto">
+        <section id="faq" className="px-4 sm:px-6 lg:px-12 my-12 max-w-5xl mx-auto scroll-mt-24">
             <div className="mb-6 text-center">
                 <div className="flex items-center justify-center gap-2 text-[var(--accent)] mb-1">
                     <HelpCircle size={18} />

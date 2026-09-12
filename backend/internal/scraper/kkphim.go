@@ -86,6 +86,14 @@ type kkPhimMovie struct {
 	} `json:"country"`
 	Episodes   []kkPhimEpisodeServer `json:"episodes"`
 	TrailerURL string                `json:"trailer_url"`
+	TMDB       struct {
+		Type   string          `json:"type"`
+		ID     json.RawMessage `json:"id"`
+		Season int             `json:"season"`
+	} `json:"tmdb"`
+	IMDb struct {
+		ID string `json:"id"`
+	} `json:"imdb"`
 }
 
 type kkPhimEpisodeServer struct {
@@ -275,9 +283,6 @@ func (s *KKPhimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error)
 
 			streamURL := ep.LinkM3U8
 			if streamURL == "" {
-				streamURL = ep.LinkEmbed
-			}
-			if streamURL == "" {
 				continue
 			}
 
@@ -310,6 +315,8 @@ func (s *KKPhimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error)
 		Quality:       movie.Quality,
 		Category:      "movies",
 		Provider:      "KKPhim",
+		TMDBID:        parseRawID(movie.TMDB.ID),
+		IMDbID:        movie.IMDb.ID,
 		Episodes:      episodes,
 		TrailerURL:    movie.TrailerURL,
 	}, nil
@@ -326,4 +333,12 @@ func cleanKKPhimImageURL(raw string) string {
 		return "https:" + raw
 	}
 	return "https://phimimg.com/" + strings.TrimPrefix(raw, "/")
+}
+
+func parseRawID(raw json.RawMessage) string {
+	s := strings.Trim(string(raw), "\"")
+	if s == "null" || s == "" {
+		return ""
+	}
+	return s
 }

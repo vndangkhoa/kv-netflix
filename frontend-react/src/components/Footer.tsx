@@ -1,150 +1,251 @@
-import React from 'react';
-import { Tv, Smartphone, Download, Github, ExternalLink, Send, MessageCircle, Newspaper, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Tv, Smartphone, Globe, Github, Download, Sparkles, ExternalLink, HelpCircle, Film, Layers } from 'lucide-react';
 import { useLatestRelease } from '../hooks/useLatestRelease';
-
-const FOOTER_LINKS = [
-    { key: 'Hỏi-Đáp', href: '#faq' },
-    { key: 'Chính sách bảo mật', href: '#' },
-    { key: 'Điều khoản sử dụng', href: '#' },
-    { key: 'Giới thiệu', href: '#' },
-    { key: 'Liên hệ', href: '#' },
-];
-
-const PARTNERS = ['Dongphim', 'Ghienphim', 'Motphim', 'Subnhanh'];
-
-const SOCIALS = [
-    { icon: Send, label: 'Telegram', href: '#' },
-    { icon: MessageCircle, label: 'Discord', href: '#' },
-    { icon: Newspaper, label: 'News', href: '#' },
-    { icon: User, label: 'Community', href: '/my-list' },
-];
+import { useLang } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { AppDownloadModal } from './AppDownloadModal';
 
 export const Footer: React.FC = () => {
     const { downloads } = useLatestRelease();
+    const { lang, toggleLang } = useLang();
+    const { layoutTheme, toggleLayoutTheme } = useTheme();
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
+
+    const isVi = lang === 'vi';
 
     return (
-        <footer className="w-full mt-16 py-12 px-4 md:px-8 text-[var(--text-secondary)]" style={{ background: 'var(--footer-bg)' }}>
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Brand & Socials */}
-                    <div>
-                        <h3 className="text-xl font-black tracking-wider text-[var(--accent)] mb-3">KV-NETFLIX</h3>
-                        <p className="text-xs leading-relaxed text-[var(--text-muted)] max-w-sm">
-                            Streaming application for Movies, Anime, K-Dramas & TV Shows. Watch seamless content across Web, Android TV, and Mobile devices.
-                        </p>
-                        <div className="mt-5 flex items-center gap-3">
-                            {SOCIALS.map(s => (
-                                <a
-                                    key={s.label}
-                                    href={s.href}
-                                    target={s.href.startsWith('http') ? '_blank' : undefined}
-                                    rel="noreferrer"
-                                    aria-label={s.label}
-                                    className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-[var(--accent)] transition-colors"
-                                    style={{ background: 'rgba(255,255,255,0.06)' }}
-                                >
-                                    <s.icon size={16} />
-                                </a>
-                            ))}
+        <footer className="w-full mt-24 border-t border-[var(--border-subtle)] bg-gradient-to-b from-transparent via-[var(--bg-primary)]/80 to-[var(--bg-primary)] text-sm text-[var(--text-muted)]">
+            <div className="max-w-7xl mx-auto px-6 md:px-12 pt-14 pb-12">
+                
+                {/* 1. Header Row: Brand, Support & Quick Download Pills */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-10 border-b border-[var(--border-subtle)]">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-3">
+                            <Link to="/" className="flex items-center gap-2 group">
+                                <span className="text-xl font-black tracking-tight text-white group-hover:text-[var(--accent)] transition-colors">
+                                    KV<span className="text-[var(--accent)]">-NETFLIX</span>
+                                </span>
+                            </Link>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] font-medium border border-[var(--accent)]/20">
+                                v{downloads.version}
+                            </span>
                         </div>
-                        <div className="mt-4 flex items-center gap-3 text-xs text-[var(--text-muted)]">
-                            <span>© {new Date().getFullYear()} kv-netflix</span>
+                        <div className="flex flex-wrap items-center gap-2.5 text-xs text-[var(--text-dim)]">
+                            <span>{isVi ? 'Bạn có thắc mắc hoặc cần hỗ trợ?' : 'Questions or need support?'}</span>
+                            <a
+                                href="#faq"
+                                className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-white underline underline-offset-2 transition-colors"
+                            >
+                                <HelpCircle size={12} className="text-[var(--accent)]" />
+                                {isVi ? 'Câu hỏi thường gặp' : 'FAQ'}
+                            </a>
                             <span>•</span>
-                            <span>v{downloads.version}</span>
-                        </div>
-                    </div>
-
-                    {/* Android TV Downloads */}
-                    <div className="p-4 rounded-xl border border-[var(--border-subtle)]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <div className="flex items-center gap-2 mb-2 text-white font-bold text-sm">
-                            <Tv size={18} className="text-[var(--accent)]" />
-                            <span>Android TV App (v{downloads.version})</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--text-muted)] mb-3">Leanback TV UI, D-Pad support & ExoPlayer</p>
-                        <div className="flex flex-col gap-2">
                             <a
-                                href={downloads.tv.github}
+                                href="https://github.com/vndangkhoa/kv-netflix/issues"
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center justify-between px-3 py-1.5 text-[var(--accent-contrast)] rounded-lg text-xs font-medium transition-colors"
-                                style={{ background: 'var(--accent)' }}
+                                className="text-[var(--text-secondary)] hover:text-white underline underline-offset-2 transition-colors"
                             >
-                                <span className="flex items-center gap-1.5"><Github size={14} /> Download GitHub APK</span>
-                                <Download size={13} />
-                            </a>
-                            <a
-                                href={downloads.tv.forgejo}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-between px-3 py-1.5 text-[var(--text-primary)] rounded-lg text-xs font-medium border border-[var(--border-primary)] transition-colors hover:bg-white/5"
-                                style={{ background: 'var(--bg-3)' }}
-                            >
-                                <span className="flex items-center gap-1.5">🦊 Download Forgejo APK</span>
-                                <Download size={13} />
+                                {isVi ? 'Báo lỗi trên GitHub' : 'Report issue on GitHub'}
                             </a>
                         </div>
                     </div>
 
-                    {/* Android Mobile Downloads */}
-                    <div className="p-4 rounded-xl border border-[var(--border-subtle)]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <div className="flex items-center gap-2 mb-2 text-white font-bold text-sm">
-                            <Smartphone size={18} className="text-[var(--accent)]" />
-                            <span>Android Mobile App (v{downloads.version})</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--text-muted)] mb-3">Jetpack Compose UI, PiP mode & mobile controls</p>
-                        <div className="flex flex-col gap-2">
-                            <a
-                                href={downloads.mobile.github}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-between px-3 py-1.5 text-[var(--accent-contrast)] rounded-lg text-xs font-medium transition-colors"
-                                style={{ background: 'var(--accent)' }}
-                            >
-                                <span className="flex items-center gap-1.5"><Github size={14} /> Download GitHub APK</span>
-                                <Download size={13} />
-                            </a>
-                            <a
-                                href={downloads.mobile.forgejo}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-between px-3 py-1.5 text-[var(--text-primary)] rounded-lg text-xs font-medium border border-[var(--border-primary)] transition-colors hover:bg-white/5"
-                                style={{ background: 'var(--bg-3)' }}
-                            >
-                                <span className="flex items-center gap-1.5">🦊 Download Forgejo APK</span>
-                                <Download size={13} />
-                            </a>
-                        </div>
+                    {/* Quick App Download Actions */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <a
+                            href={downloads.tv.github}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-medium border border-[var(--border-subtle)] hover:border-[var(--accent)]/50 transition-all shadow-sm active:scale-95"
+                            title="Tải ứng dụng Android TV APK"
+                        >
+                            <Tv size={14} className="text-[var(--accent)]" />
+                            <span>Android TV</span>
+                            <Download size={12} className="text-[var(--text-dim)]" />
+                        </a>
+                        <a
+                            href={downloads.mobile.github}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-medium border border-[var(--border-subtle)] hover:border-[var(--accent)]/50 transition-all shadow-sm active:scale-95"
+                            title="Tải ứng dụng Android Mobile APK"
+                        >
+                            <Smartphone size={14} className="text-[var(--accent)]" />
+                            <span>Android Mobile</span>
+                            <Download size={12} className="text-[var(--text-dim)]" />
+                        </a>
+                        <button
+                            onClick={() => setShowDownloadModal(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] text-xs font-medium border border-[var(--accent)]/30 transition-all active:scale-95"
+                        >
+                            <Layers size={13} />
+                            <span>{isVi ? 'Tất cả bản cài đặt' : 'All downloads'}</span>
+                        </button>
                     </div>
                 </div>
 
-                {/* Info links */}
-                <div className="pt-8 mt-8 border-t border-[var(--border-subtle)] flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--text-muted)]">
-                    {FOOTER_LINKS.map(l => (
-                        <a key={l.key} href={l.href} className="hover:text-white transition-colors">
-                            {l.key}
-                        </a>
-                    ))}
-                    <span className="flex-1" />
-                    {PARTNERS.map(p => (
-                        <a key={p} href="#" className="hover:text-white transition-colors">
-                            {p}
-                        </a>
-                    ))}
-                </div>
+                {/* 2. Structured 4-Column Navigation Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-10 text-xs">
+                    {/* Column 1: Khám phá / Browse */}
+                    <div className="space-y-3">
+                        <h4 className="font-semibold text-white tracking-wider uppercase text-[11px] flex items-center gap-1.5">
+                            <Film size={13} className="text-[var(--accent)]" />
+                            {isVi ? 'Khám phá phim' : 'Browse Movies'}
+                        </h4>
+                        <ul className="space-y-2.5">
+                            <li><Link to="/phim-le" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Phim lẻ chiếu rạp' : 'Feature Movies'}</Link></li>
+                            <li><Link to="/phim-bo" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Phim bộ dài tập' : 'TV Series'}</Link></li>
+                            <li><Link to="/hoat-hinh" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Anime & Hoạt hình' : 'Animation & Anime'}</Link></li>
+                            <li><Link to="/tv-shows" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Chương trình truyền hình' : 'TV Shows'}</Link></li>
+                            <li><Link to="/lich-chieu" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Lịch chiếu phim mới' : 'Release Schedule'}</Link></li>
+                        </ul>
+                    </div>
 
-                {/* Bottom Bar */}
-                <div className="pt-6 mt-6 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-4 text-xs text-[var(--text-muted)]">
-                    <div>Source code & releases available on GitHub & Forgejo</div>
-                    <div className="flex items-center gap-4">
-                        <a href={downloads.releases.github} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-white transition-colors">
-                            <Github size={14} /> GitHub Releases <ExternalLink size={12} />
-                        </a>
-                        <a href={downloads.releases.forgejo} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-white transition-colors">
-                            🦊 Forgejo Releases <ExternalLink size={12} />
-                        </a>
+                    {/* Column 2: Tính năng / Features */}
+                    <div className="space-y-3">
+                        <h4 className="font-semibold text-white tracking-wider uppercase text-[11px]">
+                            {isVi ? 'Tính năng' : 'Features'}
+                        </h4>
+                        <ul className="space-y-2.5">
+                            <li><Link to="/my-list" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Danh sách xem sau' : 'My Watchlist'}</Link></li>
+                            <li><Link to="/device-login" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Ghép đôi Smart TV (Pair)' : 'Pair Smart TV'}</Link></li>
+                            <li><Link to="/dien-vien" className="hover:text-white hover:underline underline-offset-2 transition-colors">{isVi ? 'Tra cứu diễn viên & đạo diễn' : 'Cast & Directors'}</Link></li>
+                            <li><span className="text-[var(--text-dim)]">{isVi ? 'Phụ đề đa ngôn ngữ & CC' : 'CC Subtitles & Vietsub'}</span></li>
+                            <li><span className="text-[var(--text-dim)]">{isVi ? 'Chất lượng Full HD & 4K' : 'Full HD & 4K Streaming'}</span></li>
+                        </ul>
+                    </div>
+
+                    {/* Column 3: Nền tảng hỗ trợ / Platforms */}
+                    <div className="space-y-3">
+                        <h4 className="font-semibold text-white tracking-wider uppercase text-[11px]">
+                            {isVi ? 'Thiết bị hỗ trợ' : 'Supported Devices'}
+                        </h4>
+                        <ul className="space-y-2.5">
+                            <li>
+                                <a href={downloads.tv.github} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-white hover:underline underline-offset-2 transition-colors">
+                                    <Tv size={13} className="text-[var(--accent)]" />
+                                    <span>Android TV (Remote UI)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href={downloads.mobile.github} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-white hover:underline underline-offset-2 transition-colors">
+                                    <Smartphone size={13} className="text-[var(--accent)]" />
+                                    <span>Android Phone &amp; Tablet</span>
+                                </a>
+                            </li>
+                            <li>
+                                <span className="text-[var(--text-dim)]">{isVi ? 'LG webOS & TV Browser' : 'LG webOS & TV Browser'}</span>
+                            </li>
+                            <li>
+                                <span className="text-[var(--text-dim)]">{isVi ? 'Synology NAS (SPK Package)' : 'Synology NAS (SPK Package)'}</span>
+                            </li>
+                            <li>
+                                <span className="text-[var(--text-dim)]">{isVi ? 'Chrome, Safari, Firefox, Edge' : 'Web Browsers'}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* Column 4: Dự án & Mã nguồn / Project */}
+                    <div className="space-y-3">
+                        <h4 className="font-semibold text-white tracking-wider uppercase text-[11px]">
+                            {isVi ? 'Dự án & Nguồn' : 'Project & Source'}
+                        </h4>
+                        <ul className="space-y-2.5">
+                            <li>
+                                <a
+                                    href="https://github.com/vndangkhoa/kv-netflix"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 hover:text-white hover:underline underline-offset-2 transition-colors"
+                                >
+                                    <Github size={13} />
+                                    <span>GitHub Repository</span>
+                                    <ExternalLink size={10} className="text-[var(--text-dim)]" />
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    href={downloads.releases.github}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 hover:text-white hover:underline underline-offset-2 transition-colors"
+                                >
+                                    <span>GitHub Releases</span>
+                                    <ExternalLink size={10} className="text-[var(--text-dim)]" />
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    href={downloads.releases.forgejo}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 hover:text-white hover:underline underline-offset-2 transition-colors"
+                                >
+                                    <span>🦊 Forgejo Server</span>
+                                    <ExternalLink size={10} className="text-[var(--text-dim)]" />
+                                </a>
+                            </li>
+                            <li>
+                                <span className="text-[var(--text-dim)]">{isVi ? 'Mã nguồn mở phi thương mại' : 'Open Source & Non-profit'}</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
+
+                {/* 3. Utility Controls & Sovereign Note */}
+                <div className="pt-6 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Language Switcher */}
+                        <button
+                            onClick={toggleLang}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:border-white/30 bg-white/[0.03] hover:bg-white/[0.06] text-xs text-white transition-colors"
+                            title="Chuyển đổi ngôn ngữ"
+                        >
+                            <Globe size={13} className="text-[var(--accent)]" />
+                            <span>{isVi ? 'Tiếng Việt' : 'English'}</span>
+                        </button>
+
+                        {/* Theme Switcher */}
+                        <button
+                            onClick={toggleLayoutTheme}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:border-white/30 bg-white/[0.03] hover:bg-white/[0.06] text-xs text-[var(--text-secondary)] hover:text-white transition-colors"
+                            title="Đổi chủ đề màu sắc"
+                        >
+                            <Sparkles size={12} className="text-[var(--accent)]" />
+                            <span>{isVi ? 'Giao diện' : 'Theme'}: <span className="capitalize font-semibold text-white">{layoutTheme}</span></span>
+                        </button>
+                    </div>
+
+                    {/* Sovereign statement styled tastefully & dignified */}
+                    <div className="inline-flex items-center gap-2 text-xs text-[var(--text-muted)] bg-white/[0.02] border border-[var(--border-subtle)] px-3 py-1 rounded-full">
+                        <span>🇻🇳</span>
+                        <span className="font-medium text-[var(--text-secondary)]">Hoàng Sa &amp; Trường Sa là của Việt Nam!</span>
+                    </div>
+                </div>
+
+                {/* 4. Bottom Copyright & Spec line */}
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[var(--text-dim)]">
+                    <div>
+                        © {new Date().getFullYear()} KV-Netflix. {isVi ? 'Nền tảng xem phim cá nhân trực tuyến.' : 'Personal streaming media platform.'}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="font-mono">v{downloads.version}</span>
+                        <span>•</span>
+                        <span>Multi-source HLS</span>
+                        <span>•</span>
+                        <span>4K Ultra HD</span>
+                    </div>
+                </div>
+
             </div>
+
+            {/* App Download Modal for detailed APK & Mirror access */}
+            <AppDownloadModal
+                isOpen={showDownloadModal}
+                onClose={() => setShowDownloadModal(false)}
+            />
         </footer>
     );
 };

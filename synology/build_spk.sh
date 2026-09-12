@@ -53,13 +53,12 @@ echo "--> [3/4] Creating package.tgz..."
 echo "--> [4/4] Assembling final kv-netflix.spk..."
 chmod +x "$SYNOLOGY_DIR/scripts/"*
 
-# Copy metadata, icons, conf, scripts, and wizards to staging
+# Copy metadata, icons, conf, and scripts to staging
 cp "$SYNOLOGY_DIR/INFO" "$STAGE_DIR/"
 cp "$SYNOLOGY_DIR/PACKAGE_ICON.PNG" "$STAGE_DIR/"
 cp "$SYNOLOGY_DIR/PACKAGE_ICON_256.PNG" "$STAGE_DIR/"
 cp -r "$SYNOLOGY_DIR/conf" "$STAGE_DIR/"
 cp -r "$SYNOLOGY_DIR/scripts" "$STAGE_DIR/"
-cp -r "$SYNOLOGY_DIR/WIZARD_UIFILES" "$STAGE_DIR/"
 
 (
     cd "$STAGE_DIR"
@@ -68,7 +67,6 @@ cp -r "$SYNOLOGY_DIR/WIZARD_UIFILES" "$STAGE_DIR/"
         PACKAGE_ICON.PNG \
         PACKAGE_ICON_256.PNG \
         conf \
-        WIZARD_UIFILES \
         scripts \
         package.tgz
 )
@@ -86,5 +84,5 @@ echo "To install on your Synology NAS:"
 echo "1. Open Synology DSM -> Package Center"
 echo "2. Click 'Manual Install' at top right"
 echo "3. Browse and select '$OUTPUT_SPK'"
-echo "4. Follow the Setup Wizard to configure Port and Groq API Key"
+echo "4. Follow prompts to complete installation"
 echo "========================================================"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown, Download, LayoutDashboard, Tv } from 'lucide-react';
+import { Search, X, User, Globe, ChevronDown, Download, LayoutDashboard, Tv, Play } from 'lucide-react';
 import { CATEGORIES, GENRES, COUNTRIES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
@@ -186,203 +186,231 @@ const Navbar = () => {
 
     return (
         <>
-        <nav className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${
+        <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
             scrolled 
-                ? 'bg-[var(--bg-secondary)]/95 backdrop-blur-md border-[var(--border-subtle)] shadow-lg shadow-black/10' 
-                : 'bg-transparent border-transparent'
+                ? 'bg-[#0f111a] border-b border-white/5 shadow-xl' 
+                : 'bg-gradient-to-b from-[#191b24] via-[#191b24]/80 to-transparent'
         }`}>
-            <div className="w-full px-4 sm:px-6 lg:px-12">
-                <div className="flex items-center justify-between h-14 gap-3">
-                    {/* Left: Logo + Desktop Nav */}
-                    <div className="flex items-center gap-1 min-w-0">
-                        <Link to="/" className="flex items-center gap-2 mr-2 flex-shrink-0 active:scale-95 transition-transform">
-                            <img src="/favicon.svg" alt="KV" className="w-7 h-7" />
-                            <span className="text-sm font-bold text-[var(--text-primary)] tracking-wide">KV</span>
+            <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12">
+                <div className="flex items-center justify-between h-16 gap-3">
+                    {/* Left: RoPhim Logo + Search */}
+                    <div className="flex items-center gap-3 xl:gap-5 min-w-0">
+                        {/* Mobile menu button */}
+                        <button
+                            onClick={() => setShowMore(!showMore)}
+                            className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+                            aria-label="Menu"
+                        >
+                            <div className="w-5 flex flex-col gap-1">
+                                <span className="block h-0.5 w-full bg-white"></span>
+                                <span className="block h-0.5 w-4/5 bg-white"></span>
+                                <span className="block h-0.5 w-full bg-white"></span>
+                            </div>
+                        </button>
+
+                        <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 active:scale-95 transition-transform group">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#fecf59] to-[#fff1cc] flex items-center justify-center shadow-lg shadow-[#fecf59]/25 group-hover:scale-105 transition-transform">
+                                <span className="font-black text-[#191b24] text-xs tracking-tighter">KV</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-lg font-black text-white tracking-tight leading-none">KV-Netflix</span>
+                                <span className="text-[9px] text-[#ffd875] tracking-wider leading-none mt-0.5 font-medium">Phim hay chất lượng cao</span>
+                            </div>
                         </Link>
 
-                        {/* Desktop nav - lg+ only */}
-                        <div className="hidden lg:flex items-center gap-0.5 flex-shrink-0">
-                            {CATEGORIES.filter(c => c.id !== 'my-list').map(c => (
-                                <Link
-                                    key={c.id}
-                                    to={c.path}
-                                    className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                                        isActive(c.path)
-                                            ? 'text-accent bg-accent-bg'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
-                                    }`}
-                                >
-                                    <c.icon size={14} />
-                                    {c.showText && t[c.nameKey as keyof typeof t] as string}
-                                </Link>
-                            ))}
+                        {/* RoPhim Desktop Search Bar */}
+                        <div ref={searchRef} className="relative hidden md:block">
+                            <form onSubmit={(e) => { e.preventDefault(); submitSearch(searchQuery); }} className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 group-focus-within:text-[var(--accent)] transition-colors pointer-events-none" />
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearchInput(e.target.value)}
+                                    onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true); }}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Tìm kiếm phim, diễn viên"
+                                    className="w-52 lg:w-64 xl:w-72 bg-white/[0.08] hover:bg-white/[0.12] focus:bg-white/[0.15] border border-transparent focus:border-white/20 rounded-md py-1.5 pl-9 pr-3 text-xs md:text-sm text-white placeholder-white/50 focus:outline-none transition-all duration-200"
+                                />
+                            </form>
+                            {showSuggestions && suggestions.length > 0 && (
+                                <SearchSuggestions
+                                    suggestions={suggestions}
+                                    highlightIdx={highlightIdx}
+                                    onSelect={(title) => submitSearch(title)}
+                                    onHover={setHighlightIdx}
+                                />
+                            )}
+                        </div>
+                    </div>
 
-                            <Link
-                                to="/my-list"
-                                className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                                    isActive('/my-list')
-                                        ? 'text-accent bg-accent-bg'
-                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
-                                }`}
-                            >
-                                {t.myAccount as string}
-                            </Link>
+                    {/* Center / Navigation Menu - lg+ only */}
+                    <div className="hidden lg:flex items-center gap-1 xl:gap-2 flex-shrink-0">
+                        <Link
+                            to="/danh-sach"
+                            className={`text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                isActive('/danh-sach')
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-white hover:text-[var(--accent)]'
+                            }`}
+                        >
+                            Chủ Đề
+                        </Link>
 
-                            {/* Genres toggle */}
+                        {/* Thể loại Dropdown */}
+                        <div className="relative">
                             <button
                                 onClick={() => { setShowMore(!showMore); setShowCountries(false); }}
-                                className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                                    showMore || GENRES.some(g => isActive(`/?category=${g.id}`))
-                                        ? 'text-accent bg-accent-bg'
-                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
+                                className={`flex items-center gap-1 text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                    showMore || GENRES.some(g => isActive(`/the-loai/${g.id}`))
+                                        ? 'text-[var(--accent)]'
+                                        : 'text-white hover:text-[var(--accent)]'
                                 }`}
                             >
                                 <span>Thể loại</span>
                                 <ChevronDown size={12} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
                             </button>
+                        </div>
 
-                            {/* Countries toggle */}
+                        <Link
+                            to="/phim-le"
+                            className={`text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                isActive('/phim-le')
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-white hover:text-[var(--accent)]'
+                            }`}
+                        >
+                            Phim Lẻ
+                        </Link>
+
+                        <Link
+                            to="/phim-bo"
+                            className={`text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                isActive('/phim-bo')
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-white hover:text-[var(--accent)]'
+                            }`}
+                        >
+                            Phim Bộ
+                        </Link>
+
+                        {/* Quốc gia Dropdown */}
+                        <div className="relative">
                             <button
                                 onClick={() => { setShowCountries(!showCountries); setShowMore(false); }}
-                                className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                                    showCountries || COUNTRIES.some(c => isActive(`/?category=${c.id}`))
-                                        ? 'text-accent bg-accent-bg'
-                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
+                                className={`flex items-center gap-1 text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                    showCountries || COUNTRIES.some(c => isActive(`/quoc-gia/${c.id}`))
+                                        ? 'text-[var(--accent)]'
+                                        : 'text-white hover:text-[var(--accent)]'
                                 }`}
                             >
                                 <span>Quốc gia</span>
                                 <ChevronDown size={12} className={`transition-transform ${showCountries ? 'rotate-180' : ''}`} />
                             </button>
                         </div>
+
+                        <Link
+                            to="/dien-vien"
+                            className={`text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                isActive('/dien-vien')
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-white hover:text-[var(--accent)]'
+                            }`}
+                        >
+                            Diễn Viên
+                        </Link>
+
+                        <Link
+                            to="/lich-chieu"
+                            className={`text-xs xl:text-sm font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+                                isActive('/lich-chieu')
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-white hover:text-[var(--accent)]'
+                            }`}
+                        >
+                            Lịch Chiếu
+                        </Link>
                     </div>
 
-                    {/* Right: Search + Language + Auth */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                        {/* Search icon & input */}
-                        <div ref={searchRef} className="relative">
-                            <button
-                                onClick={() => setSearchOpen(!searchOpen)}
-                                className="lg:hidden p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
-                                aria-label="Search"
-                            >
-                                <Search size={18} />
-                            </button>
+                    {/* Right: Search mobile + Utility controls + Member button */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Mobile search toggle button */}
+                        <button
+                            onClick={() => setSearchOpen(!searchOpen)}
+                            className="md:hidden p-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+                            aria-label="Search"
+                        >
+                            <Search size={18} />
+                        </button>
 
-                            <div className="hidden lg:block relative">
-                                <form onSubmit={(e) => { e.preventDefault(); submitSearch(searchQuery); }} className="relative group">
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={searchQuery}
-                                        onChange={(e) => handleSearchInput(e.target.value)}
-                                        onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true); }}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder={t.searchPlaceholder as string}
-                                        className="w-48 xl:w-64 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl py-1.5 pl-8 pr-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/40 transition-all duration-300"
-                                    />
-                                    <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-[var(--text-dim)] group-focus-within:text-accent transition-colors" />
-                                </form>
-                                {showSuggestions && suggestions.length > 0 && (
-                                    <SearchSuggestions
-                                        suggestions={suggestions}
-                                        highlightIdx={highlightIdx}
-                                        onSelect={(title) => submitSearch(title)}
-                                        onHover={setHighlightIdx}
-                                    />
-                                )}
-                            </div>
-
-                            {searchOpen && (
-                                <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-[var(--bg-secondary)]/95 backdrop-blur-md border-b border-[var(--border-primary)] p-3 shadow-xl">
-                                    <div className="relative">
-                                        <form onSubmit={(e) => { e.preventDefault(); submitSearch(searchQuery); setSearchOpen(false); }}>
-                                            <input
-                                                ref={inputRef}
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={(e) => handleSearchInput(e.target.value)}
-                                                onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true); }}
-                                                onKeyDown={handleKeyDown}
-                                                placeholder={t.searchPlaceholder as string}
-                                                autoFocus
-                                                className="w-full bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl py-2 pl-9 pr-10 text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:ring-1 focus:ring-accent/40"
-                                            />
-                                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-[var(--text-dim)]" />
-                                            <button type="button" onClick={() => { setSearchOpen(false); setSearchQuery(''); setSuggestions([]); setShowSuggestions(false); }} className="absolute right-3 top-2.5 text-[var(--text-dim)] hover:text-[var(--text-primary)]">
-                                                <X size={16} />
-                                            </button>
-                                        </form>
-                                        {showSuggestions && suggestions.length > 0 && (
-                                            <SearchSuggestions
-                                                suggestions={suggestions}
-                                                highlightIdx={highlightIdx}
-                                                onSelect={(title) => { submitSearch(title); setSearchOpen(false); }}
-                                                onHover={setHighlightIdx}
-                                            />
-                                        )}
-                                    </div>
+                        {searchOpen && (
+                            <div className="md:hidden fixed top-0 left-0 right-0 z-[60] bg-[#0f111a] border-b border-white/10 p-3 shadow-2xl">
+                                <div className="relative">
+                                    <form onSubmit={(e) => { e.preventDefault(); submitSearch(searchQuery); setSearchOpen(false); }}>
+                                        <input
+                                            ref={inputRef}
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => handleSearchInput(e.target.value)}
+                                            onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true); }}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder="Tìm kiếm phim, diễn viên"
+                                            autoFocus
+                                            className="w-full bg-white/10 border border-white/20 rounded-md py-2 pl-9 pr-10 text-sm text-white placeholder-white/50 focus:outline-none"
+                                        />
+                                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-white/50" />
+                                        <button type="button" onClick={() => { setSearchOpen(false); setSearchQuery(''); setSuggestions([]); setShowSuggestions(false); }} className="absolute right-3 top-2.5 text-white/50 hover:text-white">
+                                            <X size={16} />
+                                        </button>
+                                    </form>
+                                    {showSuggestions && suggestions.length > 0 && (
+                                        <SearchSuggestions
+                                            suggestions={suggestions}
+                                            highlightIdx={highlightIdx}
+                                            onSelect={(title) => { submitSearch(title); setSearchOpen(false); }}
+                                            onHover={setHighlightIdx}
+                                        />
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
-                        {/* App Download Button */}
+                        {/* Download App & Device Pairing icons */}
                         <button
                             onClick={() => setShowDownloadModal(true)}
-                            className="p-2 rounded-xl bg-accent hover:bg-accent-hover text-[var(--accent-contrast)] transition-all active:scale-95 shadow-lg shadow-accent/20 flex items-center gap-1.5"
-                            title="Download Android TV & Mobile Apps"
+                            className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors hidden sm:flex items-center gap-1"
+                            title="Tải ứng dụng"
                         >
-                            <Download size={18} />
-                            <span className="hidden lg:inline text-xs font-semibold">Tải ứng dụng</span>
+                            <Download size={16} />
                         </button>
 
-                        {/* Layout Selector (LayoutDashboard icon) */}
-                        <button
-                            onClick={toggleLayoutTheme}
-                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
-                            title={layoutTheme === 'new' ? 'Giao diện mới' : 'Giao diện cổ điển'}
-                        >
-                            <LayoutDashboard size={18} />
-                        </button>
-
-                        {/* Language Selector (Globe icon) */}
-                        <button
-                            onClick={toggleLang}
-                            className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
-                            title={lang === 'vi' ? 'English' : 'Tiếng Việt'}
-                        >
-                            <Globe size={18} />
-                        </button>
-
-                        {/* Device Pairing Button */}
                         {isAuthenticated && (
                             <button
                                 onClick={() => setShowPairModal(true)}
-                                className="p-2 rounded-xl hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-accent transition-all active:scale-90"
+                                className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                                 title={t.pairDevice as string}
                             >
-                                <Tv size={18} />
+                                <Tv size={16} />
                             </button>
                         )}
 
-                        {/* User Login/Account */}
+                        {/* RoPhim "Thành viên" White Pill Button */}
                         {isAuthenticated ? (
                             <Link
                                 to="/my-list"
-                                className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] p-2 rounded-xl hover:bg-[var(--bg-tertiary)] transition-all active:scale-95 truncate max-w-[120px]"
+                                className="bg-white hover:bg-white/90 text-[#191b24] px-3.5 py-1.5 rounded-full font-medium text-xs md:text-sm flex items-center gap-1.5 shadow transition-all active:scale-95"
                                 title={user?.name || user?.email}
                             >
-                                <div className="w-6 h-6 rounded-full bg-accent-bg flex items-center justify-center border border-accent/20">
-                                    <User size={13} className="text-accent" />
-                                </div>
-                                <span className="hidden md:inline truncate max-w-[80px]">{user?.name || 'User'}</span>
+                                <User size={14} className="text-[#191b24]" />
+                                <span className="truncate max-w-[90px]">{user?.name || 'Thành viên'}</span>
                             </Link>
                         ) : (
                             <button
                                 onClick={() => setAuthModal('login')}
-                                className="flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--accent-contrast)] bg-accent hover:bg-accent-hover px-3.5 py-2 rounded-xl transition-all duration-200 shadow-lg shadow-accent/10 hover:shadow-accent/25 active:scale-95"
+                                className="bg-white hover:bg-white/90 text-[#191b24] px-3.5 py-1.5 rounded-full font-medium text-xs md:text-sm flex items-center gap-1.5 shadow transition-all active:scale-95"
                             >
-                                <User size={13} />
-                                <span className="hidden sm:inline">{t.login as string}</span>
+                                <User size={14} className="text-[#191b24]" />
+                                <span>Thành viên</span>
                             </button>
                         )}
                     </div>

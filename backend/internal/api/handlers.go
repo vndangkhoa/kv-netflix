@@ -2,16 +2,12 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -53,11 +49,10 @@ type Handler struct {
 	TMDB         *service.TMDBService
 	Extractor    *service.VideoExtractor
 	Image        *service.ImageService
+	Actors       *scraper.ActorScraper
 	JWTSecret    []byte
 	StreamClient *http.Client
 	PublicURL    string
-	Groq         *service.GroqService
-	SubtitlesDir string
 }
 
 func NewHandler(
@@ -66,6 +61,7 @@ func NewHandler(
 	tmdb *service.TMDBService,
 	extractor *service.VideoExtractor,
 	image *service.ImageService,
+	actors *scraper.ActorScraper,
 	jwtSecret string,
 ) *Handler {
 	tr := &http.Transport{
@@ -85,9 +81,9 @@ func NewHandler(
 		TMDB:         tmdb,
 		Extractor:    extractor,
 		Image:        image,
+		Actors:       actors,
 		JWTSecret:    []byte(jwtSecret),
 		StreamClient: streamClient,
-		SubtitlesDir: "cache/subtitles",
 	}
 }
 
@@ -489,7 +485,7 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 			return false
 		}
 
-		// Prioritize fast direct HLS servers (VSMOV first, then KKPhim / direct m3u8)
+		// Prioritize fast direct HLS servers (VSMOV first, then KKPhim, Ophim)
 		isVsmovI := strings.Contains(epI.ServerName, "VSMOV")
 		isVsmovJ := strings.Contains(epJ.ServerName, "VSMOV")
 		if isVsmovI && !isVsmovJ {
@@ -499,8 +495,17 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 			return false
 		}
 
-		isDirectI := strings.Contains(epI.ServerName, "KKPhim") || strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.URL, ".m3u8")
-		isDirectJ := strings.Contains(epJ.ServerName, "KKPhim") || strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.URL, ".m3u8")
+		isKkphimI := strings.Contains(epI.ServerName, "KKPhim")
+		isKkphimJ := strings.Contains(epJ.ServerName, "KKPhim")
+		if isKkphimI && !isKkphimJ {
+			return true
+		}
+		if !isKkphimI && isKkphimJ {
+			return false
+		}
+
+		isDirectI := strings.Contains(epI.ServerName, "Ophim") || strings.Contains(epI.URL, ".m3u8")
+		isDirectJ := strings.Contains(epJ.ServerName, "Ophim") || strings.Contains(epJ.URL, ".m3u8")
 		if isDirectI && !isDirectJ {
 			return true
 		}
@@ -510,17 +515,39 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 		return false
 	})
 
+	// Strictly enforce direct streamable media (.m3u8, .mp4, .mpd) for all episodes.
+	// Android TV (ExoPlayer) and Android mobile apps will crash if handed HTML iframe pages.
 	if len(primaryMovie.Episodes) > 0 {
-		uniqueEps := make([]models.Episode, 0)
+		directOnlyEps := make([]models.Episode, 0)
 		seenEpNums := make(map[string]bool)
 		for _, ep := range primaryMovie.Episodes {
+			cleanURL := strings.TrimSpace(ep.URL)
+			if cleanURL == "" {
+				continue
+			}
+
+			lowerURL := strings.ToLower(cleanURL)
+			isDirect := strings.Contains(lowerURL, ".m3u8") || strings.Contains(lowerURL, ".mp4") || strings.Contains(lowerURL, ".mpd")
+
+			if !isDirect {
+				if derived := scraper.DeriveVSMOVM3U8(cleanURL, ""); derived != "" {
+					ep.URL = derived
+					isDirect = true
+				}
+			}
+
+			if !isDirect {
+				// Reject non-streamable iframe/web URLs
+				continue
+			}
+
 			key := fmt.Sprintf("%d-%s", ep.Number, ep.ServerName)
 			if !seenEpNums[key] {
 				seenEpNums[key] = true
-				uniqueEps = append(uniqueEps, ep)
+				directOnlyEps = append(directOnlyEps, ep)
 			}
 		}
-		primaryMovie.Episodes = uniqueEps
+		primaryMovie.Episodes = directOnlyEps
 	}
 
 	return primaryMovie, nil
@@ -627,9 +654,29 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Range", r.Header.Get("Range"))
 	}
 
-	resp, err := h.StreamClient.Do(req)
-	if err != nil {
-		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
+	var resp *http.Response
+	maxAttempts := 3
+	if isManifestTarget {
+		maxAttempts = 2
+	}
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		resp, err = h.StreamClient.Do(req)
+		if err == nil && resp.StatusCode < 500 {
+			break
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+		if attempt < maxAttempts-1 {
+			time.Sleep(time.Duration(100*(attempt+1)) * time.Millisecond)
+		}
+	}
+	if err != nil || resp == nil {
+		if err != nil {
+			http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
+		} else {
+			http.Error(w, "upstream error", http.StatusBadGateway)
+		}
 		return
 	}
 	defer resp.Body.Close()
@@ -847,270 +894,52 @@ func validateURL(rawURL string) error {
 	return nil
 }
 
-var aiSubJobs sync.Map
-
-type GenerateSubtitleRequest struct {
-	Episode    int    `json:"episode"`
-	StreamURL  string `json:"stream_url"`
-	ServerName string `json:"server_name"`
-	SourceLang string `json:"source_lang"`
-	TargetLang string `json:"target_lang"`
-}
-
-func (h *Handler) GetSubtitles(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
-	epStr := r.URL.Query().Get("episode")
-	episode, _ := strconv.Atoi(epStr)
-	if episode <= 0 {
-		episode = 1
+func (h *Handler) GetActors(w http.ResponseWriter, r *http.Request) {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	region := r.URL.Query().Get("region")
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		query = r.URL.Query().Get("query")
 	}
 
-	var subs []models.MovieSubtitle
-	database.DB.Where("slug = ? AND episode = ?", slug, episode).Order("created_at asc").Find(&subs)
+	if h.Actors == nil {
+		h.Actors = scraper.NewActorScraper()
+	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(subs)
-}
-
-func (h *Handler) GenerateAISubtitle(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
-	if slug == "" {
-		http.Error(w, `{"error":"slug required"}`, http.StatusBadRequest)
+	actors, total, err := h.Actors.GetActors(page, limit, region, query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	var req GenerateSubtitleRequest
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
-	}
-
-	// Fallback to query parameters if fields are missing in body
-	if req.Episode <= 0 {
-		epStr := r.URL.Query().Get("episode")
-		req.Episode, _ = strconv.Atoi(epStr)
-	}
-	if req.StreamURL == "" {
-		req.StreamURL = r.URL.Query().Get("stream_url")
-	}
-	if req.ServerName == "" {
-		req.ServerName = r.URL.Query().Get("server_name")
-	}
-	if req.SourceLang == "" {
-		req.SourceLang = r.URL.Query().Get("source_lang")
-	}
-	if req.TargetLang == "" {
-		req.TargetLang = r.URL.Query().Get("target_lang")
-	}
-
-	if req.Episode <= 0 {
-		req.Episode = 1
-	}
-	if req.TargetLang == "" {
-		req.TargetLang = "vi"
-	}
-	if req.SourceLang == "" {
-		req.SourceLang = "ko"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
-	// 1. Check if subtitle already exists in cache/DB
-	var existing models.MovieSubtitle
-	if err := database.DB.Where("slug = ? AND episode = ? AND language = ?", slug, req.Episode, req.TargetLang).First(&existing).Error; err == nil {
-		_ = json.NewEncoder(w).Encode(existing)
-		return
-	}
-
-	// 2. Check Groq Service configuration
-	if h.Groq == nil || h.Groq.APIKey == "" {
-		http.Error(w, `{"error":"GROQ_API_KEY is not configured. Please configure it in the Synology Package Wizard or environment variables."}`, http.StatusServiceUnavailable)
-		return
-	}
-
-	jobKey := fmt.Sprintf("%s:%d:%s", slug, req.Episode, req.TargetLang)
-	if _, loaded := aiSubJobs.LoadOrStore(jobKey, "processing"); loaded {
-		w.WriteHeader(http.StatusAccepted)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "processing",
-			"message": "AI subtitles are currently being generated. Please poll status.",
-			"slug":    slug,
-			"episode": req.Episode,
-		})
-		return
-	}
-
-	// 3. Launch background generation job with independent 10-minute timeout
-	go func(targetSlug string, ep int, targetLang, sourceLang, clientStreamURL, serverName string) {
-		defer aiSubJobs.Delete(jobKey)
-
-		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-
-		if h.SubtitlesDir == "" {
-			h.SubtitlesDir = "cache/subtitles"
-		}
-		_ = os.MkdirAll(h.SubtitlesDir, 0755)
-
-		// Helper to unwrap proxy URLs
-		unwrapURL := func(raw string) string {
-			raw = strings.TrimSpace(raw)
-			if strings.Contains(raw, "url=") {
-				if parsed, err := url.Parse(raw); err == nil {
-					if u := parsed.Query().Get("url"); u != "" {
-						return u
-					}
-				}
-				if idx := strings.Index(raw, "url="); idx != -1 {
-					q := raw[idx+4:]
-					if end := strings.IndexByte(q, '&'); end != -1 {
-						q = q[:end]
-					}
-					if unescaped, err := url.QueryUnescape(q); err == nil && unescaped != "" {
-						return unescaped
-					}
-				}
-			}
-			return raw
-		}
-
-		// Collect candidate stream URLs across providers
-		var candidates []string
-		if direct := unwrapURL(clientStreamURL); direct != "" && strings.HasPrefix(direct, "http") {
-			candidates = append(candidates, direct)
-		}
-
-		for _, provider := range h.Providers {
-			m, err := provider.GetMovieDetail(targetSlug)
-			if err == nil && m != nil && len(m.Episodes) > 0 {
-				for _, episodeItem := range m.Episodes {
-					if episodeItem.Number == ep && episodeItem.URL != "" {
-						u := unwrapURL(episodeItem.URL)
-						if strings.HasPrefix(u, "http") {
-							// If server matches requested serverName, prioritize it first
-							if serverName != "" && strings.Contains(strings.ToLower(episodeItem.ServerName), strings.ToLower(serverName)) {
-								candidates = append([]string{u}, candidates...)
-							} else {
-								candidates = append(candidates, u)
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Deduplicate candidates preserving order
-		var uniqueCandidates []string
-		seen := make(map[string]bool)
-		for _, c := range candidates {
-			if !seen[c] {
-				seen[c] = true
-				uniqueCandidates = append(uniqueCandidates, c)
-			}
-		}
-
-		if len(uniqueCandidates) == 0 {
-			log.Printf("[GenerateAISubtitle] No candidate streams found for %s ep %d", targetSlug, ep)
-			return
-		}
-
-		// Try extracting audio from candidates until one succeeds
-		var audioPath string
-		var lastExtractErr error
-		for _, cand := range uniqueCandidates {
-			log.Printf("[GenerateAISubtitle] Attempting audio extraction for %s ep %d from %s", targetSlug, ep, cand)
-			audioPath, lastExtractErr = h.Groq.AudioExtractor.ExtractAudio(bgCtx, cand, h.SubtitlesDir, 0)
-			if lastExtractErr == nil && audioPath != "" {
-				log.Printf("[GenerateAISubtitle] Audio extracted successfully from %s", cand)
-				break
-			}
-			log.Printf("[GenerateAISubtitle] Audio extraction failed for %s: %v", cand, lastExtractErr)
-		}
-
-		if audioPath == "" {
-			log.Printf("[GenerateAISubtitle] Failed to extract audio from all candidates for %s ep %d: %v", targetSlug, ep, lastExtractErr)
-			return
-		}
-		defer os.Remove(audioPath)
-
-		// Transcribe with Groq Whisper Large-v3
-		sourceVTT, err := h.Groq.TranscribeAudio(bgCtx, audioPath, sourceLang)
-		if err != nil {
-			log.Printf("[GenerateAISubtitle] Groq Whisper transcription failed for %s ep %d: %v", targetSlug, ep, err)
-			return
-		}
-
-		// Translate with Groq Llama 3.3
-		translatedVTT := sourceVTT
-		if targetLang != sourceLang {
-			translated, err := h.Groq.TranslateSubtitles(bgCtx, sourceVTT, sourceLang, targetLang)
-			if err != nil {
-				log.Printf("[GenerateAISubtitle] Groq Llama translation failed for %s ep %d: %v", targetSlug, ep, err)
-				return
-			}
-			translatedVTT = translated
-		}
-
-		// Save WebVTT to disk
-		vttFilename := fmt.Sprintf("%s_ep%d_%s.vtt", targetSlug, ep, targetLang)
-		vttFilePath := filepath.Join(h.SubtitlesDir, vttFilename)
-		if err := os.WriteFile(vttFilePath, []byte(translatedVTT), 0644); err != nil {
-			log.Printf("[GenerateAISubtitle] Failed to write subtitle file %s: %v", vttFilePath, err)
-			return
-		}
-
-		// Save record in database
-		label := "Tiếng Việt (AI Auto CC)"
-		if targetLang == "en" {
-			label = "English (AI Auto CC)"
-		}
-		vttURL := fmt.Sprintf("/api/subtitles/%s", vttFilename)
-
-		sub := models.MovieSubtitle{
-			Slug:      targetSlug,
-			Episode:   ep,
-			Language:  targetLang,
-			Label:     label,
-			VTTPath:   vttFilePath,
-			VTTURL:    vttURL,
-			IsAI:      true,
-			CreatedAt: time.Now(),
-		}
-
-		if err := database.DB.Create(&sub).Error; err != nil {
-			log.Printf("[GenerateAISubtitle] Failed to save subtitle record to DB: %v", err)
-			return
-		}
-		log.Printf("[GenerateAISubtitle] Subtitle generated successfully for %s ep %d: %s", targetSlug, ep, vttURL)
-	}(slug, req.Episode, req.TargetLang, req.SourceLang, req.StreamURL, req.ServerName)
-
-	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "processing",
-		"message": "AI subtitles generation started in background",
-		"slug":    slug,
-		"episode": req.Episode,
+		"items": actors,
+		"total": total,
+		"page":  page,
+		"limit": limit,
 	})
 }
 
-func (h *Handler) ServeSubtitle(w http.ResponseWriter, r *http.Request) {
-	filename := chi.URLParam(r, "filename")
-	if filename == "" || strings.Contains(filename, "..") || !strings.HasSuffix(filename, ".vtt") {
-		http.Error(w, "invalid subtitle filename", http.StatusBadRequest)
+func (h *Handler) GetActorDetail(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		http.Error(w, "slug required", http.StatusBadRequest)
 		return
 	}
 
-	if h.SubtitlesDir == "" {
-		h.SubtitlesDir = "cache/subtitles"
+	if h.Actors == nil {
+		h.Actors = scraper.NewActorScraper()
 	}
-	filePath := filepath.Join(h.SubtitlesDir, filename)
 
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		http.Error(w, "subtitle not found", http.StatusNotFound)
+	detail, err := h.Actors.GetActorDetail(slug)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	http.ServeFile(w, r, filePath)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(detail)
 }
 

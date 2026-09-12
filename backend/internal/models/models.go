@@ -37,6 +37,8 @@ type RophimMovie struct {
 	Cast            []string  `json:"cast"`
 	Director        string    `json:"director"`
 	Country         string    `json:"country"`
+	TMDBID          string    `json:"tmdbId,omitempty"`
+	IMDbID          string    `json:"imdbId,omitempty"`
 	Episodes        []Episode `json:"episodes" gorm:"-"`
 	TrailerURL      string    `json:"trailerURL"`
 }
@@ -117,15 +119,21 @@ type RecoveryKey struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type MovieSubtitle struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Slug      string    `json:"slug" gorm:"index;size:255"`
-	Episode   int       `json:"episode" gorm:"index"`
-	Language  string    `json:"language" gorm:"size:20"`
-	Label     string    `json:"label" gorm:"size:100"`
-	VTTPath   string    `json:"vtt_path" gorm:"size:500"`
-	VTTURL    string    `json:"vtt_url" gorm:"size:500"`
-	IsAI      bool      `json:"is_ai" gorm:"default:true"`
-	CreatedAt time.Time `json:"created_at"`
+type Actor struct {
+	Slug      string `json:"slug"`
+	Name      string `json:"name"`
+	Avatar    string `json:"avatar"`
+	Region    string `json:"region"`
+	Role      string `json:"role,omitempty"`
+	FilmCount int    `json:"filmCount,omitempty"`
+}
+
+type ActorDetail struct {
+	Actor      Actor         `json:"actor"`
+	OtherNames string        `json:"otherNames"`
+	Bio        string        `json:"bio"`
+	Gender     string        `json:"gender"`
+	Birthday   string        `json:"birthday"`
+	Movies     []RophimMovie `json:"movies"`
 }
 

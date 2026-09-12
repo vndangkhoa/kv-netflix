@@ -34,18 +34,16 @@ func main() {
 	ophimService := scraper.NewOphimScraper()
 	kkphimService := scraper.NewKKPhimScraper()
 	vsmovService := scraper.NewVSMOVScraper()
+	vidlinkService := scraper.NewVidLinkProvider()
 	tmdbService := service.NewTMDBService()
 	extractorService := service.NewVideoExtractor()
 	imageService := service.NewImageService()
+	actorService := scraper.NewActorScraper()
 
-	providers := []scraper.MovieProvider{vsmovService, kkphimService, ophimService}
+	providers := []scraper.MovieProvider{vsmovService, kkphimService, ophimService, vidlinkService}
 
-	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService, cfg.JWTSecret)
+	handler := api.NewHandler(videoRepo, providers, tmdbService, extractorService, imageService, actorService, cfg.JWTSecret)
 	handler.PublicURL = cfg.PublicURL
-	handler.Groq = service.NewGroqService(cfg.GroqAPIKey)
-	workDir, _ := os.Getwd()
-	handler.SubtitlesDir = filepath.Join(workDir, "cache", "subtitles")
-	_ = os.MkdirAll(handler.SubtitlesDir, 0755)
 
 	r := chi.NewRouter()
 
@@ -70,7 +68,7 @@ func main() {
 		api.RegisterRoutes(r, handler)
 	})
 
-	workDir, _ = os.Getwd()
+	workDir, _ := os.Getwd()
 	frontendDir := filepath.Join(workDir, "dist")
 
 	if _, err := os.Stat(frontendDir); os.IsNotExist(err) {

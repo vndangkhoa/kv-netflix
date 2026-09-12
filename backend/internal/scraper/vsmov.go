@@ -77,6 +77,14 @@ type vsmovMovie struct {
 	Category   []models.Category `json:"category"`
 	Country    []models.Category `json:"country"`
 	TrailerURL string        `json:"trailer_url"`
+	TMDB       struct {
+		Type   string          `json:"type"`
+		ID     json.RawMessage `json:"id"`
+		Season int             `json:"season"`
+	} `json:"tmdb"`
+	IMDb struct {
+		ID string `json:"id"`
+	} `json:"imdb"`
 }
 
 type vsmovEpisodeServer struct {
@@ -248,17 +256,17 @@ func parseVSMOVImage(raw interface{}) string {
 
 var vsmovStreamRegex = regexp.MustCompile(`(https?://[^/]+)/video/([a-f0-9-]+)`)
 
-func deriveVSMOVM3U8(linkEmbed, linkM3U8 string) string {
-	if linkM3U8 != "" {
+func DeriveVSMOVM3U8(linkEmbed, linkM3U8 string) string {
+	if linkM3U8 != "" && (strings.Contains(linkM3U8, ".m3u8") || strings.Contains(linkM3U8, ".mp4")) {
 		return linkM3U8
 	}
-	if strings.Contains(linkEmbed, ".m3u8") {
+	if strings.Contains(linkEmbed, ".m3u8") || strings.Contains(linkEmbed, ".mp4") {
 		return linkEmbed
 	}
 	if match := vsmovStreamRegex.FindStringSubmatch(linkEmbed); len(match) > 2 {
 		return fmt.Sprintf("%s/stream/%s/master.m3u8", match[1], match[2])
 	}
-	return linkEmbed
+	return ""
 }
 
 func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) {
@@ -309,7 +317,7 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 				epNum = 1
 			}
 
-			streamURL := deriveVSMOVM3U8(ep.LinkEmbed, ep.LinkM3U8)
+			streamURL := DeriveVSMOVM3U8(ep.LinkEmbed, ep.LinkM3U8)
 			if streamURL == "" {
 				continue
 			}
@@ -402,6 +410,8 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		Quality:       quality,
 		Category:      category,
 		Provider:      "VSMOV",
+		TMDBID:        parseRawID(movie.TMDB.ID),
+		IMDbID:        movie.IMDb.ID,
 		Episodes:      episodes,
 		Time:          movie.Time,
 		Lang:          movie.Lang,

@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.0] - 2026-09-12
+### Added
+- **Actor Profiles & Filmography**:
+  - Added actor scraping backend service (`/api/actors`, `/api/actors/{slug}`) and dedicated responsive Actor page (`ActorPage.tsx`).
+  - Allows users to explore actor biographies, profile photos, and complete filmography with direct links to movies.
+- **Advanced Catalog & Filters**:
+  - Added dedicated `CatalogPage.tsx` with multi-provider aggregation, genre/country filtering, and sorting options.
+- **Broadcast & Release Schedule**:
+  - Added `SchedulePage.tsx` to keep track of ongoing and upcoming drama air dates by day of the week.
+- **VidLink Streaming Provider**:
+  - Added VidLink provider integration to expand streaming source availability and reliability.
+- **OPhim Multi-Mirror Failover**:
+  - Added automatic mirror rotation (`ophim17.cc`, `ophim.live`, `ophim.cc`, `ophim6.cc`, `ophim1.com`) with health checks to bypass ISP blocking and dead mirrors.
+
+### Changed
+- **Clean & Lean Architecture**:
+  - Removed experimental Groq Whisper / Llama subtitle generation backend and Synology Package Center setup wizards for a leaner codebase and faster installation.
+  - Retained manual subtitle upload (.srt, .vtt) and native HLS stream subtitles.
+- **Enhanced UI & Navigation**:
+  - Upgraded Navbar and Footer with dynamic links to Catalog, Schedule, and Actors.
+  - Improved MovieCard metadata display and error handling.
+  - Optimized WatchPage player controls and stream candidate selection.
+
 ## [v9.2.9] - 2026-09-11
 ### Fixed
 - **AI Subtitle Generation Failure & Timeout**:
@@ -13,15 +36,8 @@ All notable changes to this project will be documented in this file.
 
 ## [v9.2.8] - 2026-09-11
 ### Added
-- **Groq Cloud AI Auto CC (Whisper Large-v3 + Llama 3.3 Vietsub)**:
-  - Built-in audio extraction from HLS streams via `ffmpeg` into lightweight 16kHz mono compressed MP3.
-  - Integrated Groq Whisper Large-v3 for fast speech recognition with frame-accurate WebVTT timestamps.
-  - Integrated Groq Llama 3.3 70B for contextual Korean-to-Vietnamese Vietsub translation with natural pronoun handling (*anh/em, mày/tao, sếp/tôi*).
-  - Subtitle caching in SQLite and local disk (`cache/subtitles/`), ensuring each episode is transcribed only once and shared across all devices.
-  - Interactive player control button `✨ Tạo Vietsub tự động (AI Groq)` with live spinner and progress notifications.
-- **Synology NAS SPK Package & Setup Wizard**:
+- **Synology NAS SPK Package**:
   - Production-grade Synology DSM 7.0+ `.spk` package with service isolation (`sc-kvnetflix`).
-  - Interactive Package Center setup wizard (`WIZARD_UIFILES/install_uifile`) providing step-by-step guidance on obtaining and injecting a free Groq Cloud API key.
   - One-command packaging script (`synology/build_spk.sh`).
 
 ### Changed

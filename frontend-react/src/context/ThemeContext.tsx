@@ -38,7 +38,11 @@ function getInitialTheme(): Theme {
 }
 
 function getInitialAccentTheme(): AccentTheme {
-    return 'crimson';
+    try {
+        const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
+        if (stored === 'golden' || stored === 'crimson' || stored === 'cyan') return stored as AccentTheme;
+    } catch { /* ignore */ }
+    return 'golden';
 }
 
 function getInitialLayoutTheme(): LayoutTheme {

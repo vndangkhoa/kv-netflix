@@ -4,16 +4,13 @@
 PKG_DIR="$SYNOPKG_PKGDEST"
 ETC_DIR="$PKG_DIR/etc"
 VAR_DIR="$PKG_DIR/var"
-SUBTITLES_DIR="$VAR_DIR/subtitles"
 
-mkdir -p "$ETC_DIR" "$VAR_DIR" "$SUBTITLES_DIR"
+mkdir -p "$ETC_DIR" "$VAR_DIR"
 
-GROQ_KEY=""
 WEB_PORT="8000"
 
-# Parse wizard variables from SYNOPKG_TEMP_LOGFILE
+# Parse wizard variables if available
 if [ -n "$SYNOPKG_TEMP_LOGFILE" ] && [ -f "$SYNOPKG_TEMP_LOGFILE" ]; then
-    GROQ_KEY=$(grep "^wizard_groq_api_key=" "$SYNOPKG_TEMP_LOGFILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
     PORT_VAL=$(grep "^wizard_port=" "$SYNOPKG_TEMP_LOGFILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
     if [ -n "$PORT_VAL" ]; then
         WEB_PORT="$PORT_VAL"
@@ -22,14 +19,8 @@ fi
 
 ENV_FILE="$ETC_DIR/config.env"
 
-# Preserve existing configuration if upgrading and no new key was provided
+# Preserve existing configuration if upgrading
 if [ -f "$ENV_FILE" ]; then
-    if [ -z "$GROQ_KEY" ]; then
-        EXISTING_KEY=$(grep "^GROQ_API_KEY=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
-        if [ -n "$EXISTING_KEY" ]; then
-            GROQ_KEY="$EXISTING_KEY"
-        fi
-    fi
     if [ "$WEB_PORT" = "8000" ]; then
         EXISTING_PORT=$(grep "^PORT=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
         if [ -n "$EXISTING_PORT" ]; then
@@ -41,7 +32,6 @@ fi
 # Write environment configuration
 cat <<EOF > "$ENV_FILE"
 PORT=${WEB_PORT}
-GROQ_API_KEY=${GROQ_KEY}
 DATABASE_URL=${VAR_DIR}/streamflow.db
 TZ=Asia/Ho_Chi_Minh
 GIN_MODE=release
@@ -54,7 +44,7 @@ chmod 600 "$ENV_FILE"
 cat <<EOF > "$ETC_DIR/port.conf"
 [kv-netflix]
 title="Kv-Netflix"
-desc="Kv-Netflix Streaming with AI CC"
+desc="Kv-Netflix Streaming Platform"
 port_forward="yes"
 dst.ports="${WEB_PORT}/tcp"
 EOF

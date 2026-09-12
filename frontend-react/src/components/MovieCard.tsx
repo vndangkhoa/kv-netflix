@@ -11,9 +11,10 @@ interface MovieCardProps {
     isDragging?: boolean;
     aspectRatio?: 'poster' | 'landscape';
     rank?: number;
+    linkTo?: 'detail' | 'watch';
 }
 
-export const MovieCard = ({ movie, className = '', isDragging = false, aspectRatio = 'poster', rank }: MovieCardProps) => {
+export const MovieCard = ({ movie, className = '', isDragging = false, aspectRatio = 'poster', rank, linkTo = 'detail' }: MovieCardProps) => {
     const getCleanUrl = (url?: string) => {
         if (!url) return '';
         if (url.includes('{') && url.includes('}')) {
@@ -103,16 +104,29 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
         : 0;
 
     const aspectClass = aspectRatio === 'landscape' ? 'aspect-video' : 'aspect-[2/3]';
+    const targetUrl = linkTo === 'watch' ? `/watch/${movie.slug}` : `/phim/${movie.slug}`;
+
+    // Status / Translation tag format (P.Đề, TM, LT)
+    const getBadgeLabel = () => {
+        if (movie.lang) {
+            const l = movie.lang.toLowerCase();
+            if (l.includes('lồng tiếng')) return 'L.Tiếng';
+            if (l.includes('thuyết minh')) return 'T.Minh';
+            if (l.includes('vietsub') || l.includes('phụ đề')) return 'P.Đề';
+            return movie.lang;
+        }
+        return 'P.Đề';
+    };
 
     return (
         <div className={`group/card relative flex flex-col h-full ${className}`}>
             <Link
-                to={`/watch/${movie.slug}`}
+                to={targetUrl}
                 tabIndex={0}
                 onFocus={(e) => {
                     e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }}
-                className={`block relative ${aspectClass} clip-mamphim overflow-hidden bg-[var(--bg-tertiary)] shadow-lg hover:shadow-[var(--accent)]/15 transition-all duration-500 tv-card-focus focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${isDragging ? 'pointer-events-none' : ''}`}
+                className={`block relative ${aspectClass} rounded-lg overflow-hidden bg-[var(--bg-2)] border border-white/5 shadow-md hover:shadow-xl hover:shadow-[var(--accent)]/10 transition-all duration-300 tv-card-focus focus-visible:ring-4 focus-visible:ring-accent focus-visible:scale-105 ${isDragging ? 'pointer-events-none' : ''}`}
                 draggable={false}
             >
                 {!imgError ? (
@@ -132,12 +146,12 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                                 referrerPolicy="no-referrer"
                                 onLoad={handleImgLoad}
                                 onError={handleImgError}
-                                className={`w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110 group-focus-within/card:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                className={`w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105 group-focus-within/card:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
                                 draggable={false}
                             />
                         )}
-                        {/* Gold hover mask (mamphim .v-thumbnail:hover .mask) */}
-                        <div className="absolute inset-0 bg-[var(--accent)] opacity-0 group-hover/card:opacity-25 group-focus-within/card:opacity-25 transition-opacity duration-500 pointer-events-none" />
+                        {/* RoPhim hover mask */}
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
                     </>
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg-elevated)] text-[var(--text-dim)] p-4 text-center">
@@ -146,7 +160,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                     </div>
                 )}
 
-                {/* Rank number top-right (mamphim .pin-top) */}
+                {/* Rank number top-right */}
                 {rank !== undefined && (
                     <div
                         className="absolute top-0 right-2 z-10 pointer-events-none text-white text-4xl md:text-5xl font-extrabold leading-none text-right"
@@ -156,61 +170,57 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
                     </div>
                 )}
 
-                {/* Hover / Focus Play Button Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-all duration-500 flex items-center justify-center">
-                    <div className="bg-[var(--accent)] text-[var(--accent-contrast)] p-4 rounded-full translate-y-8 group-hover/card:translate-y-0 group-focus-within/card:translate-y-0 hover:scale-115 transition-all duration-500 shadow-2xl shadow-[var(--accent)]/20">
-                        <Play className="w-5 h-5 fill-current text-[var(--accent-contrast)]" />
+                {/* RoPhim Center Play Button on Hover */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-all duration-300 flex items-center justify-center pointer-events-none">
+                    <div className="btn-play-rophim p-3.5 rounded-full shadow-xl">
+                        <Play className="w-5 h-5 fill-current text-[#191b24]" />
                     </div>
                 </div>
 
-                {/* Status Badges Group */}
-                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
-                    {/* Episode Badge for Series */}
+                {/* RoPhim bottom center badge (P.Đề / TM / LT) */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                    <span className="inline-block bg-black/65 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-medium text-white/90 border border-white/10 shadow">
+                        {getBadgeLabel()}
+                    </span>
+                </div>
+
+                {/* Top badges (Tập / Time remaining) */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
                     {movie.currentEpisode && (
-                        <div className="bg-[var(--accent)] text-[var(--accent-contrast)] backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-extrabold border border-black/20 shadow-md">
+                        <div className="bg-[var(--accent)] text-[var(--primary-button-text)] px-1.5 py-0.5 rounded text-[9px] font-bold shadow">
                             Tập {movie.currentEpisode}
                         </div>
                     )}
-
-                    {/* Remaining Time Badge */}
                     {movie.watchedTimestamp && movie.duration && remainingTime > 0 && (
-                        <div className="bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-extrabold text-[var(--text-on-image-dim)] border border-white/10 shadow-md">
+                        <div className="bg-black/75 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-medium text-white/90 border border-white/10">
                             {formatTime(remainingTime)} left
                         </div>
                     )}
                 </div>
 
-                {/* Live Indicator / Top Right Time Badge */}
-                {movie.time && (
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-2 pointer-events-none">
-                        <div className="bg-[var(--bg-badge)] backdrop-blur-xl px-2 py-1 rounded-lg text-[9px] font-bold border border-white/10 text-[var(--text-on-image)] flex items-center gap-1.5 shadow-2xl">
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
-                            {movie.time}
-                        </div>
-                    </div>
-                )}
-
                 {/* Video Playback Progress Bar */}
                 {progressPercent > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
                         <div
-                            className="h-full bg-accent transition-all duration-300"
+                            className="h-full bg-[var(--accent)] transition-all duration-300"
                             style={{ width: `${Math.min(progressPercent, 100)}%` }}
                         />
                     </div>
                 )}
             </Link>
 
-            {/* Movie Title & Info */}
-            <div className="mt-3 px-0.5">
-                <h3 className="font-semibold text-[var(--text-primary)] text-xs md:text-sm leading-snug line-clamp-2 group-hover/card:text-accent transition-colors duration-300">
+            {/* RoPhim Title & Subtitle (2 Lines) */}
+            <div className="mt-2 text-left px-0.5">
+                <Link
+                    to={targetUrl}
+                    className="font-medium text-white text-xs md:text-sm leading-tight line-clamp-1 group-hover/card:text-[var(--accent)] transition-colors"
+                    title={movie.title}
+                >
                     {movie.title}
-                </h3>
-                {movie.year && (
-                    <p className="text-[10px] md:text-[11px] text-[var(--text-dim)] mt-1 font-medium tracking-wide">
-                        {movie.year} • {movie.rating ? `★ ${movie.rating}` : '98% Match'}
-                    </p>
-                )}
+                </Link>
+                <p className="text-[11px] text-[var(--text-base)] line-clamp-1 mt-0.5 font-normal">
+                    {movie.original_title || movie.year || (movie.rating ? `★ ${movie.rating}` : '')}
+                </p>
             </div>
         </div>
     );
