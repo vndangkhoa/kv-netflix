@@ -332,7 +332,14 @@ func cleanKKPhimImageURL(raw string) string {
 	if strings.HasPrefix(raw, "//") {
 		return "https:" + raw
 	}
-	return "https://phimimg.com/" + strings.TrimPrefix(raw, "/")
+	trimmed := strings.TrimPrefix(raw, "/")
+	if idx := strings.Index(trimmed, "/"); idx != -1 {
+		hostPart := trimmed[:idx]
+		if strings.Contains(hostPart, ".") && !strings.HasPrefix(hostPart, "upload") {
+			return "https://" + trimmed
+		}
+	}
+	return "https://phimimg.com/" + trimmed
 }
 
 func parseRawID(raw json.RawMessage) string {

@@ -151,7 +151,7 @@ export const SchedulePage: React.FC = () => {
                                     {/* Poster Image */}
                                     <div className="aspect-[2/3] relative overflow-hidden bg-[#191b24]">
                                         <img
-                                            src={getProxyUrl(movie.thumbnail || movie.backdrop, 360)}
+                                            src={getProxyUrl(movie.thumbnail || movie.backdrop, 500)}
                                             alt={movie.title}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             loading="lazy"

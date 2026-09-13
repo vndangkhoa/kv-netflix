@@ -34,7 +34,7 @@ export const MovieCard = ({ movie, className = '', isDragging = false, aspectRat
         return url;
     };
 
-    const imageWidth = aspectRatio === 'landscape' ? 480 : 300;
+    const imageWidth = aspectRatio === 'landscape' ? 800 : 500;
     const primaryRaw = getCleanUrl(aspectRatio === 'landscape' ? (movie.backdrop || movie.thumbnail) : (movie.thumbnail || movie.backdrop));
     const secondaryRaw = getCleanUrl(aspectRatio === 'landscape' ? movie.thumbnail : movie.backdrop);
 

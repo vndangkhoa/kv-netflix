@@ -263,15 +263,23 @@ func (s *OphimScraper) fetchAndParseList(path string) ([]models.RophimMovie, err
 	}
 
 	for _, item := range items {
-		thumb := cleanOphimImageURL(item.ThumbURL)
-		backdrop := cleanOphimImageURL(item.PosterURL)
+		// In Ophim API, PosterURL (-poster.jpg) is the 2:3 portrait poster (for card grids)
+		// and ThumbURL (-thumb.jpg) is the 16:9 widescreen landscape backdrop (for hero/banners).
+		cardPoster := cleanOphimImageURL(item.PosterURL)
+		backdrop := cleanOphimImageURL(item.ThumbURL)
+		if cardPoster == "" {
+			cardPoster = backdrop
+		}
+		if backdrop == "" {
+			backdrop = cardPoster
+		}
 
 		movies = append(movies, models.RophimMovie{
 			ID:            item.Slug,
 			Title:         item.Name,
 			OriginalTitle: item.OriginName,
 			Slug:          item.Slug,
-			Thumbnail:     thumb,
+			Thumbnail:     cardPoster,
 			Backdrop:      backdrop,
 			Year:          item.Year,
 			Category:      "movies",
@@ -308,8 +316,16 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		movie = result.Data.Item
 	}
 
-	thumb := cleanOphimImageURL(movie.ThumbURL)
-	backdrop := cleanOphimImageURL(movie.PosterURL)
+	// In Ophim API, PosterURL (-poster.jpg) is the 2:3 portrait poster (for card grids)
+	// and ThumbURL (-thumb.jpg) is the 16:9 widescreen landscape backdrop (for hero/banners).
+	cardPoster := cleanOphimImageURL(movie.PosterURL)
+	backdrop := cleanOphimImageURL(movie.ThumbURL)
+	if cardPoster == "" {
+		cardPoster = backdrop
+	}
+	if backdrop == "" {
+		backdrop = cardPoster
+	}
 
 	var episodes []models.Episode
 	// Try Top Level Episodes, then Data.Episodes, then Movie.Episodes?
@@ -371,7 +387,7 @@ func (s *OphimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		Title:         movie.Name,
 		OriginalTitle: movie.OriginName,
 		Slug:          movie.Slug,
-		Thumbnail:     thumb,
+		Thumbnail:     cardPoster,
 		Backdrop:      backdrop,
 		Description:   movie.Content,
 		Year:          movie.Year,
@@ -408,6 +424,12 @@ func cleanOphimImageURL(raw string) string {
 		return "https:" + raw
 	}
 	trimmed := strings.TrimPrefix(raw, "/")
+	if idx := strings.Index(trimmed, "/"); idx != -1 {
+		hostPart := trimmed[:idx]
+		if strings.Contains(hostPart, ".") && !strings.HasPrefix(hostPart, "upload") {
+			return "https://" + trimmed
+		}
+	}
 	trimmed = strings.TrimPrefix(trimmed, "uploads/movies/")
 	return "https://img.ophim.live/uploads/movies/" + trimmed
 }

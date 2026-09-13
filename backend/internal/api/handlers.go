@@ -807,11 +807,18 @@ func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body 
 }
 
 func (h *Handler) mergeMovieMetadata(existing, new *models.RophimMovie) {
-	isNewOphim := strings.Contains(new.Thumbnail, "ophim") || strings.Contains(new.Thumbnail, "img.ophim1.com")
-	isExistingOphim := strings.Contains(existing.Thumbnail, "ophim") || strings.Contains(existing.Thumbnail, "img.ophim1.com")
-
-	if isNewOphim && !isExistingOphim {
+	// Safely preserve or upgrade Thumbnail:
+	if existing.Thumbnail == "" && new.Thumbnail != "" {
 		existing.Thumbnail = new.Thumbnail
+	} else if strings.Contains(existing.Thumbnail, "ophim") && !strings.Contains(new.Thumbnail, "ophim") && new.Thumbnail != "" {
+		existing.Thumbnail = new.Thumbnail
+	}
+
+	// Same for Backdrop:
+	if existing.Backdrop == "" && new.Backdrop != "" {
+		existing.Backdrop = new.Backdrop
+	} else if strings.Contains(existing.Backdrop, "ophim") && !strings.Contains(new.Backdrop, "ophim") && new.Backdrop != "" {
+		existing.Backdrop = new.Backdrop
 	}
 
 	isNewDetailed := strings.Contains(new.Quality, "Tập") || strings.Contains(new.Quality, "Hoàn tất")

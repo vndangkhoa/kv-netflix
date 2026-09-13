@@ -214,13 +214,15 @@ func (s *VSMOVScraper) fetchAndParseList(apiURL string) ([]models.RophimMovie, e
 			quality = "4K UHD"
 		}
 
-		poster := parseVSMOVImage(item.PosterURL)
-		thumb := parseVSMOVImage(item.ThumbURL)
-		if poster == "" {
-			poster = thumb
+		// In VSMOV API, thumb_url is the 2:3 vertical portrait poster (for card grids)
+		// and poster_url is the 16:9 widescreen landscape backdrop (for hero/banners).
+		cardPoster := parseVSMOVImage(item.ThumbURL)
+		backdrop := parseVSMOVImage(item.PosterURL)
+		if cardPoster == "" {
+			cardPoster = backdrop
 		}
-		if thumb == "" {
-			thumb = poster
+		if backdrop == "" {
+			backdrop = cardPoster
 		}
 
 		movies = append(movies, models.RophimMovie{
@@ -228,8 +230,8 @@ func (s *VSMOVScraper) fetchAndParseList(apiURL string) ([]models.RophimMovie, e
 			Title:         item.Name,
 			OriginalTitle: item.OriginName,
 			Slug:          item.Slug,
-			Thumbnail:     poster,
-			Backdrop:      thumb,
+			Thumbnail:     cardPoster,
+			Backdrop:      backdrop,
 			Year:          item.Year,
 			Category:      category,
 			Provider:      "VSMOV",
@@ -389,13 +391,15 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		}
 	}
 
-	poster := parseVSMOVImage(movie.PosterURL)
-	thumb := parseVSMOVImage(movie.ThumbURL)
-	if poster == "" {
-		poster = thumb
+	// In VSMOV API, thumb_url is the 2:3 vertical portrait poster (for card grids)
+	// and poster_url is the 16:9 widescreen landscape backdrop (for hero/banners).
+	cardPoster := parseVSMOVImage(movie.ThumbURL)
+	backdrop := parseVSMOVImage(movie.PosterURL)
+	if cardPoster == "" {
+		cardPoster = backdrop
 	}
-	if thumb == "" {
-		thumb = poster
+	if backdrop == "" {
+		backdrop = cardPoster
 	}
 
 	return &models.RophimMovie{
@@ -403,8 +407,8 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 		Title:         movie.Name,
 		OriginalTitle: movie.OriginName,
 		Slug:          movie.Slug,
-		Thumbnail:     poster,
-		Backdrop:      thumb,
+		Thumbnail:     cardPoster,
+		Backdrop:      backdrop,
 		Description:   movie.Content,
 		Year:          movie.Year,
 		Quality:       quality,

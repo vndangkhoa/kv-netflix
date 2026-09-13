@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.2] - 2026-09-13
+### Added
+- **Full Yellow/Gold Branding Synchronization Across All SPK & Client Channels**:
+  - Generated and synchronized high-resolution yellow gold icons for Synology DSM (`PACKAGE_ICON.PNG` 72×72 and `PACKAGE_ICON_256.PNG` 256×256) across standalone and Package Center SPK distributions.
+  - Updated Synology DSM App Portal icon suite (`KVNetflix-16.png` through `KVNetflix-256.png`) to gold styling.
+  - Aligned Android mobile launcher adaptive background to cinematic dark `#191B24` to complement the yellow icon foreground.
+- **Smart Audio Mode Filter (Vietsub vs Lồng Tiếng)**:
+  - Added dynamic audio stream toggle on Movie Detail page with automated availability detection, disabling audio tracks when unavailable and preventing broken navigation.
+  - Smarter episode list sorting, label formatting ("Phim trọn bộ" vs "Đang phát sóng"), and deduplication across providers.
+
+### Changed
+- **Scraper & Image Proxy Hardening**:
+  - Increased poster proxy thumbnail resolution for Schedule and MovieCard components (up to 500px).
+  - Improved fallback handling and mirror failover for KKPhim and OPhim sources.
+
 ## [v9.3.1] - 2026-09-12
 ### Added
 - **Visual Branding & App Icons Overhaul**:

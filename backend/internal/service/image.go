@@ -160,12 +160,12 @@ func (s *ImageService) GetProxiedImage(urlStr string, width int) ([]byte, string
 		img = dst
 	}
 
-	// 6. Encode to JPEG with adaptive quality
-	quality := 80
+	// 6. Encode to JPEG with adaptive high quality
+	quality := 88
 	if width <= 200 {
-		quality = 60
-	} else if width <= 400 {
-		quality = 70
+		quality = 75
+	} else if width <= 500 {
+		quality = 85
 	}
 
 	var buf bytes.Buffer

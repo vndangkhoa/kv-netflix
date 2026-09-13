@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Play, Heart, Plus, Check, Share2, MessageSquare, Star, Film, Eye, Sparkles } from 'lucide-react';
 import { Layout } from '../components/Layout';
@@ -57,6 +57,96 @@ export const MovieDetailPage: React.FC = () => {
         fetchRecommended();
     }, [slug]);
 
+    const rawEpisodes: Episode[] = useMemo(() => movie?.episodes || [], [movie?.episodes]);
+
+    const isEpisodeDubbed = (ep: Episode) => {
+        const s = `${ep.serverName || ''} ${ep.server_name || ''} ${ep.title || ''}`.toLowerCase();
+        return /lồng\s*tiếng|long\s*tieng|thuyết\s*minh|thuyet\s*minh|dub/i.test(s);
+    };
+
+    const hasDubbed = useMemo(() => rawEpisodes.some(isEpisodeDubbed), [rawEpisodes]);
+    const hasVietsub = useMemo(() => rawEpisodes.some(ep => !isEpisodeDubbed(ep)), [rawEpisodes]);
+
+    // Automatically default audio mode based on available audio tracks
+    useEffect(() => {
+        if (hasDubbed && !hasVietsub) {
+            setAudioMode('longtieng');
+        } else {
+            setAudioMode('vietsub');
+        }
+    }, [hasDubbed, hasVietsub]);
+
+    // Unique episodes across the whole movie (deduplicated by episode number)
+    const uniqueEpisodes = useMemo(() => {
+        const uniqueMap = new Map<number, Episode>();
+        for (const ep of rawEpisodes) {
+            if (!uniqueMap.has(ep.number)) {
+                uniqueMap.set(ep.number, ep);
+            }
+        }
+        return Array.from(uniqueMap.values()).sort((a, b) => a.number - b.number);
+    }, [rawEpisodes]);
+
+    // Filtered episodes based on active audio mode and deduplicated by episode number
+    // to prevent duplicate buttons from multiple providers (e.g. VSMOV, KKPhim, Ophim)
+    const displayedEpisodes = useMemo(() => {
+        if (rawEpisodes.length === 0) return [];
+
+        let filtered = rawEpisodes;
+        if (hasDubbed && hasVietsub) {
+            filtered = audioMode === 'longtieng'
+                ? rawEpisodes.filter(isEpisodeDubbed)
+                : rawEpisodes.filter(ep => !isEpisodeDubbed(ep));
+        } else if (hasDubbed && !hasVietsub) {
+            filtered = rawEpisodes.filter(isEpisodeDubbed);
+        } else if (hasVietsub && !hasDubbed) {
+            filtered = rawEpisodes.filter(ep => !isEpisodeDubbed(ep));
+        }
+
+        const uniqueMap = new Map<number, Episode>();
+        for (const ep of filtered) {
+            if (!uniqueMap.has(ep.number)) {
+                uniqueMap.set(ep.number, ep);
+            }
+        }
+        return Array.from(uniqueMap.values()).sort((a, b) => a.number - b.number);
+    }, [rawEpisodes, audioMode, hasDubbed, hasVietsub]);
+
+    const saved = movie ? isSaved(movie.id) : false;
+    const firstEp = displayedEpisodes.length > 0
+        ? displayedEpisodes[0].number
+        : (uniqueEpisodes.length > 0 ? uniqueEpisodes[0].number : 1);
+    const backdropUrl = movie ? (movie.backdrop || movie.thumbnail || '') : '';
+    const posterUrl = movie ? (movie.thumbnail || movie.backdrop || '') : '';
+
+    const handleToggleSave = () => {
+        if (!movie) return;
+        if (saved) {
+            removeFromList(movie.id);
+        } else {
+            addToList(movie);
+        }
+    };
+
+    const handleShare = () => {
+        if (!movie) return;
+        if (navigator.share) {
+            navigator.share({
+                title: movie.title,
+                url: window.location.href,
+            }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    // Genres parsed as array
+    const genreList = movie?.genre
+        ? movie.genre.split(',').map(g => g.trim()).filter(Boolean)
+        : ['Chính kịch', 'Tình Cảm'];
+
     if (loading) {
         return (
             <Layout>
@@ -80,38 +170,6 @@ export const MovieDetailPage: React.FC = () => {
             </Layout>
         );
     }
-
-    const saved = isSaved(movie.id);
-    const episodes: Episode[] = movie.episodes || [];
-    const firstEp = episodes.length > 0 ? episodes[0].number : 1;
-    const backdropUrl = movie.backdrop || movie.thumbnail || '';
-    const posterUrl = movie.thumbnail || movie.backdrop || '';
-
-    const handleToggleSave = () => {
-        if (saved) {
-            removeFromList(movie.id);
-        } else {
-            addToList(movie);
-        }
-    };
-
-    const handleShare = () => {
-        if (navigator.share) {
-            navigator.share({
-                title: movie.title,
-                url: window.location.href,
-            }).catch(() => {});
-        } else {
-            navigator.clipboard.writeText(window.location.href);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
-    // Genres parsed as array
-    const genreList = movie.genre
-        ? movie.genre.split(',').map(g => g.trim()).filter(Boolean)
-        : ['Chính kịch', 'Tình Cảm'];
 
     return (
         <Layout>
@@ -151,9 +209,9 @@ export const MovieDetailPage: React.FC = () => {
 
                 {/* 2. Floating 2-Column Detail Container (RoPhim detail-container) */}
                 <div className="max-w-[1640px] mx-auto px-4 sm:px-6 lg:px-8 -mt-72 md:-mt-80 lg:-mt-96 relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
                         {/* ── Left Sidebar (dc-side): 4 cols (~420px) ── */}
-                        <div className="lg:col-span-4 xl:col-span-4 glass-rophim-dark rounded-3xl lg:rounded-tr-[3.5rem] p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col justify-between">
+                        <div className="lg:col-span-4 xl:col-span-4 glass-rophim-dark rounded-3xl lg:rounded-tr-[3.5rem] p-6 sm:p-8 border border-white/10 shadow-2xl">
                             <div className="space-y-6">
                                 {/* Poster with nice shadow & rounded corners */}
                                 <div className="relative aspect-[2/3] w-3/4 max-w-[280px] mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-black/80 border border-white/10">
@@ -185,9 +243,9 @@ export const MovieDetailPage: React.FC = () => {
                                     <span className="bg-white/10 px-2 py-0.5 rounded text-white border border-white/5">T16</span>
                                     <span className="bg-white/10 px-2 py-0.5 rounded text-white border border-white/5">{movie.year || 2026}</span>
                                     <span className="bg-white/10 px-2 py-0.5 rounded text-white border border-white/5">{selectedSeason}</span>
-                                    {episodes.length > 0 && (
+                                    {uniqueEpisodes.length > 0 && (
                                         <span className="bg-white/10 px-2 py-0.5 rounded text-white border border-white/5">
-                                            Tập {episodes.length}/{episodes.length}
+                                            Tập {uniqueEpisodes.length}
                                         </span>
                                     )}
                                 </div>
@@ -207,7 +265,13 @@ export const MovieDetailPage: React.FC = () => {
                                 {/* Completion status pill */}
                                 <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-full">
                                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span>Đã hoàn thành: Tập Hoàn Tất ({episodes.length}/{episodes.length})</span>
+                                    <span>
+                                        {uniqueEpisodes.length <= 1
+                                            ? 'Phim trọn bộ'
+                                            : movie.quality?.toLowerCase().includes('hoàn tất')
+                                                ? `Đã hoàn thành: Trọn bộ ${uniqueEpisodes.length} tập`
+                                                : `Đang phát sóng: Tập ${uniqueEpisodes.length}`}
+                                    </span>
                                 </div>
 
                                 {/* Synopsis */}
@@ -238,7 +302,7 @@ export const MovieDetailPage: React.FC = () => {
                         </div>
 
                         {/* ── Right Content (dc-main): 8 cols ── */}
-                        <div className="lg:col-span-8 xl:col-span-8 glass-rophim rounded-3xl lg:rounded-tl-[3.5rem] p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col justify-between space-y-8">
+                        <div className="lg:col-span-8 xl:col-span-8 glass-rophim rounded-3xl lg:rounded-tl-[3.5rem] p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col space-y-8">
                             {/* Top Action Bar */}
                             <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/10">
                                 <div className="flex flex-wrap items-center gap-3">
@@ -362,13 +426,29 @@ export const MovieDetailPage: React.FC = () => {
                                                 <div className="flex items-center bg-[#202331] rounded-lg p-1 border border-white/5 text-xs font-medium">
                                                     <button
                                                         onClick={() => setAudioMode('vietsub')}
-                                                        className={`px-3 py-1.5 rounded-md transition-colors ${audioMode === 'vietsub' ? 'bg-[#2f3346] text-[#ffd875] font-semibold' : 'text-[#888] hover:text-white'}`}
+                                                        disabled={!hasVietsub}
+                                                        className={`px-3 py-1.5 rounded-md transition-colors ${
+                                                            !hasVietsub
+                                                                ? 'opacity-40 cursor-not-allowed text-[#666]'
+                                                                : audioMode === 'vietsub'
+                                                                    ? 'bg-[#2f3346] text-[#ffd875] font-semibold'
+                                                                    : 'text-[#888] hover:text-white'
+                                                        }`}
+                                                        title={!hasVietsub ? 'Không có bản Vietsub' : 'Vietsub'}
                                                     >
                                                         Vietsub
                                                     </button>
                                                     <button
-                                                        onClick={() => setAudioMode('longtieng')}
-                                                        className={`px-3 py-1.5 rounded-md transition-colors ${audioMode === 'longtieng' ? 'bg-[#2f3346] text-[#ffd875] font-semibold' : 'text-[#888] hover:text-white'}`}
+                                                        onClick={() => hasDubbed && setAudioMode('longtieng')}
+                                                        disabled={!hasDubbed}
+                                                        className={`px-3 py-1.5 rounded-md transition-colors ${
+                                                            !hasDubbed
+                                                                ? 'opacity-40 cursor-not-allowed text-[#666]'
+                                                                : audioMode === 'longtieng'
+                                                                    ? 'bg-[#2f3346] text-[#ffd875] font-semibold'
+                                                                    : 'text-[#888] hover:text-white'
+                                                        }`}
+                                                        title={!hasDubbed ? 'Chưa có bản Lồng Tiếng / Thuyết Minh' : 'Lồng Tiếng'}
                                                     >
                                                         Lồng Tiếng
                                                     </button>
@@ -390,7 +470,7 @@ export const MovieDetailPage: React.FC = () => {
 
                                         {/* Episode Buttons Grid */}
                                         <div className={`grid ${isCompact ? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2' : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3'}`}>
-                                            {episodes.map((ep) => (
+                                            {displayedEpisodes.map((ep) => (
                                                 <button
                                                     key={ep.number}
                                                     onClick={() => navigate(`/watch/${movie.slug}/${ep.number}`)}
@@ -400,7 +480,12 @@ export const MovieDetailPage: React.FC = () => {
                                                     <span>Tập {ep.number}</span>
                                                 </button>
                                             ))}
-                                            {episodes.length === 0 && (
+                                            {displayedEpisodes.length === 0 && rawEpisodes.length > 0 && (
+                                                <div className="col-span-full text-center py-6 text-sm text-[#888]">
+                                                    Chưa có tập phim cho tùy chọn này.
+                                                </div>
+                                            )}
+                                            {displayedEpisodes.length === 0 && rawEpisodes.length === 0 && (
                                                 <button
                                                     onClick={() => navigate(`/watch/${movie.slug}/1`)}
                                                     className="bg-[#202331] hover:bg-[#ffd875] hover:text-[#191b24] text-white font-medium py-3 px-4 rounded-xl border border-white/5 flex items-center justify-center gap-2 text-sm transition-all col-span-2"
