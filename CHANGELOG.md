@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.3] - 2026-09-17
+### Added
+- **Multi-Stage Resilient Thumbnail & Poster Fallback Pipeline**:
+  - Implemented 5-tier fallback in Android Mobile (`MovieCard.kt`): Proxy Thumb $\rightarrow$ Direct Thumb $\rightarrow$ Proxy Backdrop $\rightarrow$ Direct Backdrop $\rightarrow$ Elegant Dark UI Placeholder with film reel icon.
+  - Added strict MIME type verification (`strings.HasPrefix(contentType, "image/")`) in backend image proxy (`image.go`), preventing 404/redirect HTML pages from upstream news CDNs (e.g. `danviet.vn`) from being treated or cached as images.
+  - Hardened scraper image sanitizer (`kkphim.go`) to automatically prune dead CDN hosts and fall back to backdrop URLs.
+- **Horizontal (16:9) and Vertical (2:3) Movie Covers on Mobile**:
+  - Added `HorizontalMovieCard` component with 16:9 widescreen backdrop, bottom gradient, quality badges, release year, and resume progress bar.
+  - Added `isHorizontal: Boolean` parameter to `MovieRow.kt` matching Android TV architecture.
+  - Configured `HomeScreen.kt` with widescreen 16:9 rows for *Continue Watching*, *My List*, *Phim Lồng Tiếng*, and *C-drama*, maintaining 2:3 vertical posters for main category grids.
+- **Player Rotation & Orientation Fix**:
+  - Fixed issue in mobile `WatchScreen.kt` where rotating device triggered playback involuntarily; fullscreen toggle and sensor rotations now seamlessly preserve paused/playing state.
+
+### Changed
+- Bumped Android Phone app version to `v1.5.0` (`versionCode: 21`).
+- Bumped Android TV app version to `v1.4.5` (`versionCode: 116`).
+- Bumped Docker container image tag to `1.0.0-27` and SPK version to `1.0.0-29`.
+
 ## [v9.3.2] - 2026-09-13
 ### Added
 - **Full Yellow/Gold Branding Synchronization Across All SPK & Client Channels**:

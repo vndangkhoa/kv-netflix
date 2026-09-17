@@ -9,6 +9,7 @@ import (
 
 	"streamflow-backend/internal/models"
 	"streamflow-backend/internal/scraper"
+	"streamflow-backend/internal/service"
 )
 
 func TestHandler_GetHomeVideos_WithVSMOV(t *testing.T) {
@@ -87,4 +88,48 @@ func TestHandler_GetMovieDetail_DirectStreamsOnly(t *testing.T) {
 		t.Errorf("Expected direct stream server (KKPhim/VSMOV)")
 	}
 	t.Logf("Servers verified: hasDirect=%v, allDirectStreams=true", hasDirect)
+}
+
+func TestHandler_GetMovieDetail_CastEnrichment(t *testing.T) {
+	vsmov := scraper.NewVSMOVScraper()
+	kkphim := scraper.NewKKPhimScraper()
+	tmdb := service.NewTMDBService()
+	resolver := service.NewActorResolver(tmdb)
+
+	h := &Handler{
+		Providers:     []scraper.MovieProvider{vsmov, kkphim},
+		TMDB:          tmdb,
+		ActorResolver: resolver,
+	}
+
+	movie, err := h.fetchMovieDetail("nguyet-lan-mat-an")
+	if err != nil {
+		t.Fatalf("fetchMovieDetail failed: %v", err)
+	}
+
+	if len(movie.Cast) == 0 {
+		t.Fatalf("Expected movie.Cast to have actors")
+	}
+
+	if len(movie.CastDetails) == 0 {
+		t.Fatalf("Expected movie.CastDetails to be populated, got 0")
+	}
+
+	t.Logf("Movie: %s", movie.Title)
+	for _, c := range movie.CastDetails {
+		t.Logf("Actor: %s | Avatar: %s | Slug: %s", c.Name, c.Avatar, c.Slug)
+	}
+
+	// At least one actor should have a resolved avatar
+	hasAvatar := false
+	for _, c := range movie.CastDetails {
+		if c.Avatar != "" {
+			hasAvatar = true
+			break
+		}
+	}
+
+	if !hasAvatar {
+		t.Errorf("Expected at least one cast member to have a resolved avatar URL")
+	}
 }

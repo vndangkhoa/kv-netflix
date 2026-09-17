@@ -72,6 +72,35 @@ fun LoginScreen(
                     .background(colors.bgSecondary, RoundedCornerShape(24.dp))
                     .padding(32.dp)
             ) {
+                // Yellow Brand Logo Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.accent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "KV",
+                            color = Color(0xFF191B24),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Text(
+                        text = "KV-NETFLIX",
+                        color = colors.accent,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
+                }
+
                 Text(
                     "Sign In",
                     color = colors.textPrimary,
@@ -203,8 +232,9 @@ fun LoginScreen(
                 ) {
                     Text(
                         if (isLoading) "Signing in..." else "Sign In",
-                        color = Color.White,
-                        fontSize = 16.sp
+                        color = Color(0xFF191B24),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 

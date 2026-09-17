@@ -142,7 +142,8 @@ private fun HomePage(
                 MovieRow(
                     title = "Continue Watching",
                     movies = uiState.watchedMovies,
-                    onClick = { onMovieClick(it.slug) }
+                    onClick = { onMovieClick(it.slug) },
+                    isHorizontal = true
                 )
             }
         }
@@ -153,18 +154,23 @@ private fun HomePage(
                 MovieRow(
                     title = "My List",
                     movies = uiState.myListMovies,
-                    onClick = { onMovieClick(it.slug) }
+                    onClick = { onMovieClick(it.slug) },
+                    isHorizontal = true
                 )
             }
         }
 
         uiState.categoryMovies.forEach { (title, movies) ->
+            val isHorizontal = title.contains("Lồng Tiếng", ignoreCase = true) ||
+                    title.contains("C-drama", ignoreCase = true) ||
+                    title.contains("Top 10", ignoreCase = true)
             item { Spacer(modifier = Modifier.height(12.dp)) }
             item {
                 MovieRow(
                     title = title,
                     movies = movies,
-                    onClick = { onMovieClick(it.slug) }
+                    onClick = { onMovieClick(it.slug) },
+                    isHorizontal = isHorizontal
                 )
             }
         }

@@ -252,7 +252,7 @@ fun DetailScreen(
                             shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                             colors = ClickableSurfaceDefaults.colors(
                                 containerColor = colors.primary,
-                                focusedContainerColor = Color(0xFFE50914)
+                                focusedContainerColor = Color(0xFFFECF59)
                             ),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
                             modifier = Modifier.focusRequester(focusRequester)
@@ -264,7 +264,7 @@ fun DetailScreen(
                                 Text(
                                     "▶  Xem Phim",
                                     style = StreamFlowTheme.typography.titleMedium.copy(
-                                        color = Color.White,
+                                        color = Color(0xFF191B24),
                                         fontWeight = FontWeight.Bold
                                     )
                                 )

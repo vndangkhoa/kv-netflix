@@ -1,3 +1,10 @@
+export interface CastMember {
+    name: string;
+    avatar?: string;
+    character?: string;
+    slug?: string;
+}
+
 export interface Movie {
     id: string;
     title: string;
@@ -15,6 +22,7 @@ export interface Movie {
     provider?: string;
     director?: string;
     cast?: string[];
+    castDetails?: CastMember[];
     genre?: string;
     country?: string;
     // Progress tracking
@@ -31,6 +39,7 @@ export interface MovieDetail extends Movie {
     director?: string;
     country?: string;
     cast?: string[];
+    castDetails?: CastMember[];
     episodes?: Episode[];
 }
 

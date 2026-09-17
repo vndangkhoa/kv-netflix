@@ -2,10 +2,10 @@ package com.streamflow.tv.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// StreamFlow Default Theme (Cyan/Blue)
-val StreamFlowPrimary = Color(0xFF06B6D4)
-val StreamFlowSecondary = Color(0xFF3B82F6)
-val StreamFlowAccent = Color(0xFF22D3EE)
+// StreamFlow Default Theme (KV Golden Yellow)
+val StreamFlowPrimary = Color(0xFFFFD875)
+val StreamFlowSecondary = Color(0xFFFECF59)
+val StreamFlowAccent = Color(0xFFFFD875)
 
 // Netflix Theme (Red)
 val NetflixPrimary = Color(0xFFE50914)

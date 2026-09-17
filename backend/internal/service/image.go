@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -128,6 +129,10 @@ func (s *ImageService) GetProxiedImage(urlStr string, width int) ([]byte, string
 		contentType = http.DetectContentType(rawData)
 	}
 
+	if !strings.HasPrefix(contentType, "image/") {
+		return nil, "", fmt.Errorf("invalid image content type: %s", contentType)
+	}
+
 	// 4. Decode
 	var img image.Image
 	switch contentType {
@@ -140,9 +145,12 @@ func (s *ImageService) GetProxiedImage(urlStr string, width int) ([]byte, string
 	}
 
 	if err != nil {
-		// Fallback to raw data directly if decoding fails
-		s.setMemCache(cacheKey, rawData, contentType)
-		return rawData, contentType, nil
+		// Fallback to raw data directly only if it's genuinely an image format
+		if strings.HasPrefix(contentType, "image/") {
+			s.setMemCache(cacheKey, rawData, contentType)
+			return rawData, contentType, nil
+		}
+		return nil, "", fmt.Errorf("failed to decode image: %v", err)
 	}
 
 	// 5. Resize if needed (skip if already small enough)

@@ -85,7 +85,7 @@ fun SideNavRail(
                 Text(
                     "KV",
                     style = StreamFlowTheme.typography.titleMedium.copy(
-                        color = Color.White,
+                        color = Color(0xFF191B24),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )

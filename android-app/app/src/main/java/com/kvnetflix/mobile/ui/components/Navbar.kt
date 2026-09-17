@@ -69,6 +69,25 @@ fun Navbar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // KV Brand Logo
+                if (!isTyping) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.accent)
+                            .clickable(onClick = onHomeClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "KV",
+                            color = Color(0xFF191B24),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+
                 // Search bar + dropdown
                 Box(
                     modifier = Modifier.weight(1f)
@@ -263,9 +282,9 @@ fun Navbar(
                         ) {
                             Text(
                                 text = "Sign In",
-                                color = Color.White,
+                                color = Color(0xFF191B24),
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }

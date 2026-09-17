@@ -211,6 +211,9 @@ func (s *KKPhimScraper) fetchAndParseList(apiURL string) ([]models.RophimMovie, 
 		// "poster" is the 2:3 portrait shown on card grids.
 		thumb := cleanKKPhimImageURL(item.PosterURL)
 		backdrop := cleanKKPhimImageURL(item.ThumbURL)
+		if thumb == "" {
+			thumb = backdrop
+		}
 		movies = append(movies, models.RophimMovie{
 			ID:            item.Slug,
 			Title:         item.Name,
@@ -253,6 +256,9 @@ func (s *KKPhimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error)
 
 	thumb := cleanKKPhimImageURL(movie.PosterURL)
 	backdrop := cleanKKPhimImageURL(movie.ThumbURL)
+	if thumb == "" {
+		thumb = backdrop
+	}
 
 	var rawEpisodes []kkPhimEpisodeServer
 	if len(result.Episodes) > 0 {
@@ -324,6 +330,10 @@ func (s *KKPhimScraper) GetMovieDetail(slug string) (*models.RophimMovie, error)
 
 func cleanKKPhimImageURL(raw string) string {
 	if raw == "" {
+		return ""
+	}
+	// Filter known dead/blocking external news hosts that return 403 or redirect to 404 HTML
+	if strings.Contains(raw, "danviet.vn") || strings.Contains(raw, "i.ex-cdn.com") {
 		return ""
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {

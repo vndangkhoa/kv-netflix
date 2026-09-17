@@ -2,7 +2,11 @@ package com.kvnetflix.mobile.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Web frontend exact colors
+// Web frontend exact colors (Golden Yellow KV branding)
+val KvYellow = Color(0xFFFFD875)
+val KvYellowHover = Color(0xFFFECF59)
+val KvYellowBg = Color(0x26FFD875)
+
 val NetflixRed = Color(0xFFE50914)
 val NetflixRedHover = Color(0xFFF40B17)
 val NetflixRedBg = Color(0x1AE50914)

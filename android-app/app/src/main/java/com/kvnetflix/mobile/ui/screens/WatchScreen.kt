@@ -2,7 +2,6 @@ package com.kvnetflix.mobile.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.view.OrientationEventListener
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -201,18 +200,20 @@ fun WatchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val colors = KvTheme.colors
-    var isFullscreen by remember { mutableStateOf(false) }
+    var isFullscreen by rememberSaveable { mutableStateOf(false) }
     var isControlsVisible by remember { mutableStateOf(true) }
+    var userPaused by rememberSaveable { mutableStateOf(false) }
     val activity = LocalContext.current as? Activity
     val context = LocalContext.current
 
+    // Reset user pause state when changing episode
+    LaunchedEffect(uiState.currentEpisode) {
+        userPaused = false
+    }
+
     BackHandler(enabled = isFullscreen) {
-        if (!isControlsVisible) {
-            isControlsVisible = true
-        } else {
-            isFullscreen = false
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
+        isFullscreen = false
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
     LaunchedEffect(isControlsVisible) {
@@ -222,27 +223,13 @@ fun WatchScreen(
         }
     }
 
-    DisposableEffect(context) {
-        val orientationEventListener = object : OrientationEventListener(context) {
-            override fun onOrientationChanged(orientation: Int) {
-                if (orientation == ORIENTATION_UNKNOWN) return
-                val isLandscapeDevice = (orientation in 60..120) || (orientation in 240..300)
-                val isPortraitDevice = (orientation in 0..30) || (orientation in 330..359)
-
-                if (isLandscapeDevice && !isFullscreen) {
-                    isFullscreen = true
-                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                } else if (isPortraitDevice && isFullscreen) {
-                    isFullscreen = false
-                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
-            }
-        }
-        if (orientationEventListener.canDetectOrientation()) {
-            orientationEventListener.enable()
+    DisposableEffect(isFullscreen) {
+        activity?.requestedOrientation = if (isFullscreen) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         onDispose {
-            orientationEventListener.disable()
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
@@ -282,7 +269,7 @@ fun WatchScreen(
                     // Safe local copy: uiState.source is a delegated state read on
                     // every access and could flip between the null check and use.
                     val currentSource = uiState.source ?: return@Box
-                    var isFallbackToEmbed by remember { mutableStateOf(false) }
+                    var isFallbackToEmbed by rememberSaveable { mutableStateOf(false) }
 
                     // Reset fallback when source changes
                     LaunchedEffect(uiState.source, uiState.currentEpisode) {
@@ -293,53 +280,109 @@ fun WatchScreen(
 
                     if (shouldUseEmbed) {
                         // WebView Embed Player
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    layoutParams = FrameLayout.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.mediaPlaybackRequiresUserGesture = false
-                                    settings.useWideViewPort = true
-                                    settings.loadWithOverviewMode = true
-                                    settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    WebView(ctx).apply {
+                                        layoutParams = FrameLayout.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                        settings.javaScriptEnabled = true
+                                        settings.domStorageEnabled = true
+                                        settings.mediaPlaybackRequiresUserGesture = false
+                                        settings.useWideViewPort = true
+                                        settings.loadWithOverviewMode = true
+                                        settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
-                                    webChromeClient = WebChromeClient()
-                                    webViewClient = object : WebViewClient() {
-                                        override fun shouldInterceptRequest(
-                                            view: WebView?,
-                                            request: WebResourceRequest?
-                                        ): WebResourceResponse? {
-                                            val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                                            if (AD_BLOCK_DOMAINS.any { url.contains(it, ignoreCase = true) }) {
-                                                return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                        webChromeClient = WebChromeClient()
+                                        webViewClient = object : WebViewClient() {
+                                            override fun shouldInterceptRequest(
+                                                view: WebView?,
+                                                request: WebResourceRequest?
+                                            ): WebResourceResponse? {
+                                                val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+                                                if (AD_BLOCK_DOMAINS.any { url.contains(it, ignoreCase = true) }) {
+                                                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                                }
+                                                return super.shouldInterceptRequest(view, request)
                                             }
-                                            return super.shouldInterceptRequest(view, request)
+
+                                            override fun onPageFinished(view: WebView?, url: String?) {
+                                                super.onPageFinished(view, url)
+                                                view?.evaluateJavascript(AD_BLOCK_JS, null)
+                                                if (!userPaused) {
+                                                    view?.evaluateJavascript(AUTO_PLAY_JS, null)
+                                                }
+                                            }
+
+                                            override fun onReceivedSslError(
+                                                view: WebView?,
+                                                handler: android.webkit.SslErrorHandler?,
+                                                error: android.net.http.SslError?
+                                            ) {
+                                                handler?.proceed()
+                                            }
                                         }
 
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            super.onPageFinished(view, url)
-                                            view?.evaluateJavascript(AD_BLOCK_JS, null)
-                                            view?.evaluateJavascript(AUTO_PLAY_JS, null)
-                                        }
-
-                                        override fun onReceivedSslError(
-                                            view: WebView?,
-                                            handler: android.webkit.SslErrorHandler?,
-                                            error: android.net.http.SslError?
-                                        ) {
-                                            handler?.proceed()
-                                        }
+                                        loadUrl(currentSource.streamUrl)
                                     }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
 
-                                    loadUrl(currentSource.streamUrl)
+                            // Top overlay with back and fullscreen controls for WebView embed player
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(Color(0xB3000000), Color.Transparent)
+                                        )
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .align(Alignment.TopStart),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        if (isFullscreen) {
+                                            isFullscreen = false
+                                            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                        } else {
+                                            onBack()
+                                        }
+                                    },
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        "Back",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(26.dp)
+                                    )
                                 }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                                Spacer(modifier = Modifier.weight(1f))
+                                IconButton(
+                                    onClick = {
+                                        isFullscreen = !isFullscreen
+                                        activity?.requestedOrientation = if (isFullscreen) {
+                                            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                        } else {
+                                            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                        }
+                                    },
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Icon(
+                                        if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                        "Fullscreen",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
 
                         // Save to history
                         LaunchedEffect(currentSource) {
@@ -394,7 +437,7 @@ fun WatchScreen(
                                         player.setMediaItem(mediaItem)
                                     }
                                     player.prepare()
-                                    player.playWhenReady = true
+                                    player.playWhenReady = !userPaused
                                 }
                                 reprepareStream = prepare
                                 prepare()
@@ -436,6 +479,9 @@ fun WatchScreen(
 
                                 override fun onIsPlayingChanged(isNowPlaying: Boolean) {
                                     isPlaying = isNowPlaying
+                                    if (isNowPlaying) {
+                                        userPaused = false
+                                    }
                                 }
 
                                 override fun onPlayerError(error: PlaybackException) {
@@ -564,18 +610,23 @@ fun WatchScreen(
                                         .padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (!isFullscreen) {
-                                        IconButton(
-                                            onClick = onBack,
-                                            modifier = Modifier.size(44.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.ArrowBack,
-                                                "Back",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(26.dp)
-                                            )
-                                        }
+                                    IconButton(
+                                        onClick = {
+                                            if (isFullscreen) {
+                                                isFullscreen = false
+                                                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                            } else {
+                                                onBack()
+                                            }
+                                        },
+                                        modifier = Modifier.size(44.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            "Back",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(26.dp)
+                                        )
                                     }
 
                                     Column(modifier = Modifier.weight(1f)) {
@@ -614,7 +665,7 @@ fun WatchScreen(
                                             activity?.requestedOrientation = if (isFullscreen) {
                                                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                                             } else {
-                                                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                                             }
                                         },
                                         modifier = Modifier.size(44.dp)
@@ -716,6 +767,28 @@ fun WatchScreen(
                                                 }
                                             }
                                         }
+
+                                        Spacer(modifier = Modifier.width(4.dp))
+
+                                        IconButton(
+                                            onClick = {
+                                                isFullscreen = !isFullscreen
+                                                activity?.requestedOrientation = if (isFullscreen) {
+                                                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                                } else {
+                                                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                                }
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                if (isFullscreen) Icons.Default.FullscreenExit
+                                                else Icons.Default.Fullscreen,
+                                                "Toggle Fullscreen",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
                                     }
 
                                     // Transport row
@@ -755,7 +828,13 @@ fun WatchScreen(
                                         // Play / Pause (primary)
                                         IconButton(
                                             onClick = {
-                                                if (player.isPlaying) player.pause() else player.play()
+                                                if (player.isPlaying) {
+                                                    player.pause()
+                                                    userPaused = true
+                                                } else {
+                                                    player.play()
+                                                    userPaused = false
+                                                }
                                             },
                                             modifier = Modifier
                                                 .size(68.dp)

@@ -512,7 +512,38 @@ export const MovieDetailPage: React.FC = () => {
                                 {/* Tab 3: Cast */}
                                 {activeTab === 'cast' && (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                        {movie.cast && movie.cast.length > 0 ? (
+                                        {(movie.castDetails && movie.castDetails.length > 0) ? (
+                                            movie.castDetails.map((actor, idx) => {
+                                                const slug = actor.slug || actor.name.toLowerCase().replace(/\s+/g, '-');
+                                                return (
+                                                    <Link
+                                                        key={idx}
+                                                        to={`/dien-vien/${encodeURIComponent(slug)}`}
+                                                        className="p-3 rounded-xl bg-[#202331] hover:bg-[#282b3a] border border-white/5 flex items-center gap-3 transition-colors group"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-[#2f3346] flex items-center justify-center font-bold text-white/70 overflow-hidden border border-white/10 relative shrink-0">
+                                                            {actor.avatar ? (
+                                                                <img
+                                                                    src={`/api/images/proxy?url=${encodeURIComponent(actor.avatar)}&width=120`}
+                                                                    alt={actor.name}
+                                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = 'none';
+                                                                    }}
+                                                                />
+                                                            ) : null}
+                                                            <span className="text-xs font-bold text-white/70 absolute -z-0">
+                                                                {actor.name.slice(0, 2).toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="truncate">
+                                                            <div className="text-xs font-semibold text-white group-hover:text-[#ffd875] truncate">{actor.name}</div>
+                                                            <div className="text-[10px] text-[#888] truncate">{actor.character || 'Diễn viên'}</div>
+                                                        </div>
+                                                    </Link>
+                                                );
+                                            })
+                                        ) : movie.cast && movie.cast.length > 0 ? (
                                             movie.cast.map((actor, idx) => (
                                                 <Link
                                                     key={idx}

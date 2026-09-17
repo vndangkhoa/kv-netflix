@@ -34,8 +34,9 @@ type RophimMovie struct {
 	Description     string    `json:"description"`
 	Category        string    `json:"category"`
 	Provider        string    `json:"provider"`
-	Cast            []string  `json:"cast"`
-	Director        string    `json:"director"`
+	Cast            []string     `json:"cast"`
+	CastDetails     []CastMember `json:"castDetails,omitempty"`
+	Director        string       `json:"director"`
 	Country         string    `json:"country"`
 	TMDBID          string    `json:"tmdbId,omitempty"`
 	IMDbID          string    `json:"imdbId,omitempty"`
@@ -126,6 +127,13 @@ type Actor struct {
 	Region    string `json:"region"`
 	Role      string `json:"role,omitempty"`
 	FilmCount int    `json:"filmCount,omitempty"`
+}
+
+type CastMember struct {
+	Name      string `json:"name"`
+	Avatar    string `json:"avatar,omitempty"`
+	Character string `json:"character,omitempty"`
+	Slug      string `json:"slug,omitempty"`
 }
 
 type ActorDetail struct {

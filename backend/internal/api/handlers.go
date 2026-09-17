@@ -44,15 +44,16 @@ var (
 )
 
 type Handler struct {
-	Repo         *database.VideoRepository
-	Providers    []scraper.MovieProvider
-	TMDB         *service.TMDBService
-	Extractor    *service.VideoExtractor
-	Image        *service.ImageService
-	Actors       *scraper.ActorScraper
-	JWTSecret    []byte
-	StreamClient *http.Client
-	PublicURL    string
+	Repo          *database.VideoRepository
+	Providers     []scraper.MovieProvider
+	TMDB          *service.TMDBService
+	Extractor     *service.VideoExtractor
+	Image         *service.ImageService
+	Actors        *scraper.ActorScraper
+	ActorResolver *service.ActorResolver
+	JWTSecret     []byte
+	StreamClient  *http.Client
+	PublicURL     string
 }
 
 func NewHandler(
@@ -76,14 +77,15 @@ func NewHandler(
 	}
 
 	return &Handler{
-		Repo:         repo,
-		Providers:    providers,
-		TMDB:         tmdb,
-		Extractor:    extractor,
-		Image:        image,
-		Actors:       actors,
-		JWTSecret:    []byte(jwtSecret),
-		StreamClient: streamClient,
+		Repo:          repo,
+		Providers:     providers,
+		TMDB:          tmdb,
+		Extractor:     extractor,
+		Image:         image,
+		Actors:        actors,
+		ActorResolver: service.NewActorResolver(tmdb),
+		JWTSecret:     []byte(jwtSecret),
+		StreamClient:  streamClient,
 	}
 }
 
@@ -548,6 +550,10 @@ func (h *Handler) fetchMovieDetail(slug string) (*models.RophimMovie, error) {
 			}
 		}
 		primaryMovie.Episodes = directOnlyEps
+	}
+
+	if h.ActorResolver != nil {
+		h.ActorResolver.EnrichMovieCast(primaryMovie)
 	}
 
 	return primaryMovie, nil

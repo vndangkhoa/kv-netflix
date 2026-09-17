@@ -34,6 +34,11 @@ class PlayerViewModel : ViewModel() {
     val uiState: StateFlow<PlayerUiState> = _uiState
 
     fun loadPlayer(slug: String, episode: Int = 1, userRepo: UserDataRepository? = null) {
+        val current = _uiState.value
+        if (current.movie?.slug == slug && current.currentEpisode == episode && current.source != null) {
+            // Already loaded this movie and episode with an active stream; avoid resetting playback
+            return
+        }
         viewModelScope.launch {
             _uiState.value = PlayerUiState(isLoading = true, currentEpisode = episode)
             try {

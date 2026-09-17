@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -67,6 +68,35 @@ fun RegisterScreen(
                     .background(colors.bgSecondary, RoundedCornerShape(24.dp))
                     .padding(32.dp)
             ) {
+                // Yellow Brand Logo Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.accent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "KV",
+                            color = Color(0xFF191B24),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Text(
+                        text = "KV-NETFLIX",
+                        color = colors.accent,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
+                }
+
                 Text(
                     "Sign Up",
                     color = colors.textPrimary,
@@ -164,8 +194,9 @@ fun RegisterScreen(
                 ) {
                     Text(
                         if (isLoading) "Registering..." else "Sign Up",
-                        color = Color.White,
-                        fontSize = 16.sp
+                        color = Color(0xFF191B24),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 

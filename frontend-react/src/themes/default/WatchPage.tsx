@@ -10,7 +10,7 @@ import { usePiP } from '../../hooks/usePiP';
 import MovieRow from '../../components/MovieRow';
 import Navbar from '../../components/Navbar';
 import { Footer } from '../../components/Footer';
-import type { Movie } from '../../types';
+import type { Movie, CastMember } from '../../types';
 import 'plyr/dist/plyr.css';
 import Plyr from 'plyr';
 import { useLang } from '../../context/LanguageContext';
@@ -787,9 +787,13 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
         ? currentServerEpisodes.find(e => e.number === currentEpisode - 1)
         : null;
 
-    const castList: string[] = Array.isArray(movie.cast)
-        ? movie.cast
-        : (typeof movie.cast === 'string' ? (movie.cast as string).split(',').map(s => s.trim()).filter(Boolean) : []);
+    const castMembers: CastMember[] = (movie.castDetails && movie.castDetails.length > 0)
+        ? movie.castDetails
+        : (Array.isArray(movie.cast)
+            ? movie.cast.map(c => ({ name: c, slug: c }))
+            : (typeof movie.cast === 'string'
+                ? (movie.cast as string).split(',').map(s => s.trim()).filter(Boolean).map(c => ({ name: c, slug: c }))
+                : []));
 
     return (
         <div className="min-h-screen bg-[#191b24] text-gray-100 font-sans selection:bg-[#ffd875]/30 flex flex-col transition-colors duration-300">
@@ -1460,26 +1464,44 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
                     </div>
 
                     {/* Cast (Diễn viên) */}
-                    {castList.length > 0 && (
+                    {castMembers.length > 0 && (
                         <div className="bg-[#202331] rounded-2xl p-5 border border-white/5 space-y-4">
                             <h4 className="text-xs uppercase tracking-wider text-gray-400 font-bold">Diễn viên</h4>
                             <div className="grid grid-cols-3 gap-3">
-                                {castList.slice(0, 6).map((actor, idx) => (
-                                    <Link
-                                        key={idx}
-                                        to={`/dien-vien/${encodeURIComponent(actor.trim())}`}
-                                        className="flex flex-col items-center text-center group cursor-pointer"
-                                    >
-                                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-[#ffd875] transition-all mb-2 bg-[#282b3a] flex items-center justify-center">
-                                            <span className="text-sm font-bold text-gray-300 group-hover:text-[#ffd875]">
-                                                {actor.trim().charAt(0)}
+                                {castMembers.slice(0, 6).map((actor, idx) => {
+                                    const actorSlug = actor.slug || actor.name.trim();
+                                    return (
+                                        <Link
+                                            key={idx}
+                                            to={`/dien-vien/${encodeURIComponent(actorSlug)}`}
+                                            className="flex flex-col items-center text-center group cursor-pointer"
+                                        >
+                                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-[#ffd875] transition-all mb-2 bg-[#282b3a] flex items-center justify-center relative shadow-md">
+                                                {actor.avatar ? (
+                                                    <img
+                                                        src={getProxyUrl(actor.avatar, 150)}
+                                                        alt={actor.name}
+                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <span className="text-sm font-bold text-gray-300 group-hover:text-[#ffd875] absolute -z-0">
+                                                    {actor.name.trim().charAt(0)}
+                                                </span>
+                                            </div>
+                                            <span className="text-xs text-gray-300 font-medium line-clamp-2 group-hover:text-[#ffd875] transition-colors leading-tight">
+                                                {actor.name.trim()}
                                             </span>
-                                        </div>
-                                        <span className="text-xs text-gray-300 font-medium line-clamp-2 group-hover:text-[#ffd875] transition-colors leading-tight">
-                                            {actor.trim()}
-                                        </span>
-                                    </Link>
-                                ))}
+                                            {actor.character && (
+                                                <span className="text-[10px] text-gray-400 line-clamp-1 mt-0.5">
+                                                    {actor.character}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

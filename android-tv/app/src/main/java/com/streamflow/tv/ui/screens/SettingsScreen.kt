@@ -47,7 +47,7 @@ fun SettingsScreen(
     }
 
     val themes = listOf(
-        Triple("default", "StreamFlow", Color(0xFF06B6D4)),
+        Triple("default", "KV Yellow", Color(0xFFFFD875)),
         Triple("netflix", "Netflix", Color(0xFFE50914)),
         Triple("apple", "Apple TV+", Color(0xFFFFFFFF))
     )

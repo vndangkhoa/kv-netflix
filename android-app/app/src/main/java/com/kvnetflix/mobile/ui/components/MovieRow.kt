@@ -20,7 +20,8 @@ fun MovieRow(
     title: String,
     movies: List<Movie>,
     onClick: (Movie) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isHorizontal: Boolean = false
 ) {
     val colors = KvTheme.colors
 
@@ -51,11 +52,19 @@ fun MovieRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(movies, key = { it.slug }) { movie ->
-                MovieCard(
-                    movie = movie,
-                    onClick = { onClick(movie) },
-                    width = 155
-                )
+                if (isHorizontal) {
+                    HorizontalMovieCard(
+                        movie = movie,
+                        onClick = { onClick(movie) },
+                        width = 210
+                    )
+                } else {
+                    MovieCard(
+                        movie = movie,
+                        onClick = { onClick(movie) },
+                        width = 155
+                    )
+                }
             }
         }
     }
