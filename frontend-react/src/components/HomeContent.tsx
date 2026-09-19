@@ -6,6 +6,7 @@ import { MovieCard } from './MovieCard';
 import { Hero } from './Hero';
 import { ChartColumns } from './ChartColumns';
 import { FAQSection } from './FAQSection';
+import { MobileGenreBar } from './MobileGenreBar';
 import { CATEGORIES, GENRES } from '../constants';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -170,33 +171,36 @@ export const HomeContent = () => {
     // ── Filtered View (search / category) ────────────────────────────
     if (isFiltered) {
         return (
-            <div className="px-4 sm:px-6 lg:px-12 pt-6 pb-12">
-                <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-[var(--text-primary)]">
-                    <span className="w-1 h-6 bg-accent rounded-full" />
-                    {getTitle()}
-                </h2>
+            <div>
+                <MobileGenreBar />
+                <div className="px-4 sm:px-6 lg:px-12 pt-4 pb-12">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-[var(--text-primary)]">
+                        <span className="w-1 h-6 bg-accent rounded-full" />
+                        {getTitle()}
+                    </h2>
 
-                <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
-                    {movies.map((movie, index) => (
-                        <MovieCard key={`${movie.id}-${index}`} movie={movie} />
-                    ))}
-                </div>
-
-                <div ref={lastElementRef} className="h-10 w-full" />
-
-                {loading && (
-                    <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4 mt-4">
-                        {[...Array(12)].map((_, i) => (
-                            <div key={i} className="aspect-[2/3] bg-[var(--bg-elevated)] rounded-lg animate-pulse" />
+                    <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
+                        {movies.map((movie, index) => (
+                            <MovieCard key={`${movie.id}-${index}`} movie={movie} />
                         ))}
                     </div>
-                )}
 
-                {!loading && movies.length === 0 && (
-                    <div className="text-center py-16 text-[var(--text-muted)]">
-                        {t.exploreEmpty}
-                    </div>
-                )}
+                    <div ref={lastElementRef} className="h-10 w-full" />
+
+                    {loading && (
+                        <div className="grid grid-cols-3 min-[400px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4 mt-4">
+                            {[...Array(12)].map((_, i) => (
+                                <div key={i} className="aspect-[2/3] bg-[var(--bg-elevated)] rounded-lg animate-pulse" />
+                            ))}
+                        </div>
+                    )}
+
+                    {!loading && movies.length === 0 && (
+                        <div className="text-center py-16 text-[var(--text-muted)]">
+                            {t.exploreEmpty}
+                        </div>
+                    )}
+                </div>
             </div>
         );
     }
@@ -210,6 +214,9 @@ export const HomeContent = () => {
                     <Hero movies={movies.slice(0, 5)} />
                 </div>
             )}
+
+            {/* Mobile Genre Quick Filter Bar */}
+            <MobileGenreBar />
 
             {/* Community charts: Trending / Favorite / Hot Genres */}
             {isNewLayout && <ChartColumns />}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, User, Globe, ChevronDown, Download, LayoutDashboard, Tv, Play } from 'lucide-react';
+import { Search, X, User, Globe, ChevronDown, Download, LayoutDashboard, Tv, Play, ChevronRight, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { CATEGORIES, GENRES, COUNTRIES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
@@ -43,6 +43,7 @@ const Navbar = () => {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [highlightIdx, setHighlightIdx] = useState(-1);
     const [searchOpen, setSearchOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [showMore, setShowMore] = useState(false);
     const [showCountries, setShowCountries] = useState(false);
     const [authModal, setAuthModal] = useState<'login' | 'register' | 'reset' | null>(null);
@@ -157,7 +158,11 @@ const Navbar = () => {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') { setShowMore(false); setShowCountries(false); }
+            if (e.key === 'Escape') {
+                setShowMore(false);
+                setShowCountries(false);
+                setMobileMenuOpen(false);
+            }
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
@@ -170,17 +175,19 @@ const Navbar = () => {
             if (showDownloadModal) { setShowDownloadModal(false); return true; }
             if (searchOpen) { setSearchOpen(false); return true; }
             if (showSuggestions) { setShowSuggestions(false); return true; }
+            if (mobileMenuOpen) { setMobileMenuOpen(false); return true; }
             if (showMore) { setShowMore(false); return true; }
             if (showCountries) { setShowCountries(false); return true; }
             return false;
         });
-    }, [authModal, showPairModal, showDownloadModal, searchOpen, showSuggestions, showMore, showCountries]);
+    }, [authModal, showPairModal, showDownloadModal, searchOpen, showSuggestions, mobileMenuOpen, showMore, showCountries]);
 
     // Close dropdowns whenever the route changes (URL is an external system).
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         setShowMore(false);
         setShowCountries(false);
+        setMobileMenuOpen(false);
     }, [location.pathname, location.search]);
     /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -197,14 +204,14 @@ const Navbar = () => {
                     <div className="flex items-center gap-3 xl:gap-5 min-w-0">
                         {/* Mobile menu button */}
                         <button
-                            onClick={() => setShowMore(!showMore)}
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10 transition-colors"
-                            aria-label="Menu"
+                            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
                         >
                             <div className="w-5 flex flex-col gap-1">
-                                <span className="block h-0.5 w-full bg-white"></span>
-                                <span className="block h-0.5 w-4/5 bg-white"></span>
-                                <span className="block h-0.5 w-full bg-white"></span>
+                                <span className={`block h-0.5 w-full bg-white transition-transform duration-200 ${mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+                                <span className={`block h-0.5 w-4/5 bg-white transition-opacity duration-200 ${mobileMenuOpen ? 'opacity-0' : ''}`}></span>
+                                <span className={`block h-0.5 w-full bg-white transition-transform duration-200 ${mobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
                             </div>
                         </button>
 
@@ -497,6 +504,238 @@ const Navbar = () => {
                     </div>
                 </div>
             </>
+        )}
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+            <div className="lg:hidden fixed inset-0 z-[70] flex">
+                {/* Backdrop */}
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm animate-fade-in-backdrop"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+
+                {/* Drawer Panel */}
+                <aside className="relative w-[85vw] max-w-[340px] bg-[#12141d] border-r border-white/10 h-full flex flex-col z-10 shadow-2xl animate-slide-in-left">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+                        <Link
+                            to="/"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center gap-2.5"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#fecf59] to-[#fff1cc] flex items-center justify-center shadow-md">
+                                <span className="font-black text-[#191b24] text-[10px] tracking-tighter">KV</span>
+                            </div>
+                            <span className="text-base font-black text-white tracking-tight">KV-Netflix</span>
+                        </Link>
+                        <button
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label="Close menu"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    {/* Scrollable Navigation Body */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
+                        {/* 1. Khám Phá */}
+                        <div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2 px-1">
+                                Khám Phá
+                            </span>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Link
+                                    to="/danh-sach"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                                        isActive('/danh-sach')
+                                            ? 'bg-[var(--accent)] text-[#191b24] border-[var(--accent)] font-bold'
+                                            : 'bg-white/5 text-gray-200 border-white/5 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <SlidersHorizontal size={14} className="text-[var(--accent)]" />
+                                        <span>Chủ Đề & Lọc</span>
+                                    </div>
+                                    <ChevronRight size={13} className="opacity-60" />
+                                </Link>
+                                <Link
+                                    to="/lich-chieu"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                                        isActive('/lich-chieu')
+                                            ? 'bg-[var(--accent)] text-[#191b24] border-[var(--accent)] font-bold'
+                                            : 'bg-white/5 text-gray-200 border-white/5 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <span>Lịch Chiếu</span>
+                                    <ChevronRight size={13} className="opacity-60" />
+                                </Link>
+                                <Link
+                                    to="/phim-le"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                                        isActive('/phim-le')
+                                            ? 'bg-[var(--accent)] text-[#191b24] border-[var(--accent)] font-bold'
+                                            : 'bg-white/5 text-gray-200 border-white/5 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <span>Phim Lẻ</span>
+                                    <ChevronRight size={13} className="opacity-60" />
+                                </Link>
+                                <Link
+                                    to="/phim-bo"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                                        isActive('/phim-bo')
+                                            ? 'bg-[var(--accent)] text-[#191b24] border-[var(--accent)] font-bold'
+                                            : 'bg-white/5 text-gray-200 border-white/5 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <span>Phim Bộ</span>
+                                    <ChevronRight size={13} className="opacity-60" />
+                                </Link>
+                                <Link
+                                    to="/dien-vien"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all col-span-2 ${
+                                        isActive('/dien-vien')
+                                            ? 'bg-[var(--accent)] text-[#191b24] border-[var(--accent)] font-bold'
+                                            : 'bg-white/5 text-gray-200 border-white/5 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <span>Diễn Viên Nổi Bật</span>
+                                    <ChevronRight size={13} className="opacity-60" />
+                                </Link>
+                            </div>
+                        </div>
+
+                        {/* 2. Thể loại phim */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2.5 px-1">
+                                <span className="text-[10px] font-bold text-[var(--accent,#ffd875)] uppercase tracking-wider">
+                                    Thể Loại Phim ({GENRES.length})
+                                </span>
+                                <Link
+                                    to="/danh-sach"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="text-[10px] text-gray-400 hover:text-white"
+                                >
+                                    Tất cả &rarr;
+                                </Link>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {GENRES.map(g => {
+                                    const active =
+                                        location.search.includes(`category=${g.id}`) ||
+                                        location.pathname === `/the-loai/${g.id}`;
+                                    const Icon = g.icon;
+                                    return (
+                                        <Link
+                                            key={g.id}
+                                            to={`/?category=${g.id}`}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className={`flex items-center gap-2 p-2 rounded-xl text-xs font-medium transition-all ${
+                                                active
+                                                    ? 'bg-[var(--accent)] text-[#191b24] font-bold shadow-md shadow-[var(--accent)]/20'
+                                                    : 'bg-white/[0.04] text-gray-300 hover:bg-white/10 hover:text-white active:scale-95'
+                                            }`}
+                                        >
+                                            <Icon size={14} className={active ? 'text-[#191b24]' : 'text-[var(--accent,#ffd875)] flex-shrink-0'} />
+                                            <span className="truncate">{g[langKey]}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 3. Quốc gia */}
+                        <div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2 px-1">
+                                Quốc Gia
+                            </span>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {COUNTRIES.map(c => {
+                                    const active =
+                                        location.search.includes(`category=${c.id}`) ||
+                                        location.pathname === `/quoc-gia/${c.id}`;
+                                    return (
+                                        <Link
+                                            key={c.id}
+                                            to={`/?category=${c.id}`}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className={`flex items-center justify-between p-2 rounded-xl text-xs font-medium transition-all ${
+                                                active
+                                                    ? 'bg-[var(--accent)] text-[#191b24] font-bold shadow-md'
+                                                    : 'bg-white/[0.04] text-gray-300 hover:bg-white/10 hover:text-white active:scale-95'
+                                            }`}
+                                        >
+                                            <span className="truncate">{c[langKey]}</span>
+                                            <ChevronRight size={12} className="opacity-40" />
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 4. Tiện ích & Tài khoản */}
+                        <div className="pt-3 border-t border-white/10 space-y-2">
+                            {isAuthenticated ? (
+                                <Link
+                                    to="/my-list"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-200 transition-colors"
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <User size={14} className="text-[var(--accent)]" />
+                                        <span>Tài khoản ({user?.name || user?.email || 'Thành viên'})</span>
+                                    </div>
+                                    <ChevronRight size={13} className="opacity-60" />
+                                </Link>
+                            ) : (
+                                <button
+                                    onClick={() => { setMobileMenuOpen(false); setAuthModal('login'); }}
+                                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-[var(--accent)] text-[#191b24] font-bold text-xs shadow-md active:scale-95 transition-all"
+                                >
+                                    <User size={14} />
+                                    <span>Đăng nhập / Đăng ký</span>
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => { setMobileMenuOpen(false); setShowDownloadModal(true); }}
+                                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors"
+                            >
+                                <Download size={14} className="text-[var(--accent)]" />
+                                <span>Tải ứng dụng KV-Netflix</span>
+                            </button>
+                            {isAuthenticated && (
+                                <button
+                                    onClick={() => { setMobileMenuOpen(false); setShowPairModal(true); }}
+                                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors"
+                                >
+                                    <Tv size={14} className="text-[var(--accent)]" />
+                                    <span>{t.pairDevice as string}</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={toggleLang}
+                                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Globe size={14} className="text-[var(--accent)]" />
+                                    <span>Ngôn ngữ / Language</span>
+                                </div>
+                                <span className="uppercase text-[11px] font-bold text-[var(--accent)] bg-white/10 px-2 py-0.5 rounded">
+                                    {lang}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
         )}
 
         {authModal === 'login' && (
