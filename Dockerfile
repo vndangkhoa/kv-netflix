@@ -2,12 +2,13 @@
 FROM --platform=linux/amd64 golang:1.25-alpine AS backend-builder
 WORKDIR /app/backend
 
-COPY backend/go.mod backend/go.sum ./
-RUN go mod download
-
 COPY backend/ .
 # Build static binary for Linux amd64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o server cmd/server/main.go
+RUN if [ -d "vendor" ]; then \
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -ldflags="-w -s" -o server cmd/server/main.go; \
+    else \
+        go mod download && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o server cmd/server/main.go; \
+    fi
 
 # Stage 2: Build TUI (optional, for docker exec terminal access)
 FROM --platform=linux/amd64 golang:1.25-alpine AS tui-builder
