@@ -44,11 +44,20 @@ type RophimMovie struct {
 	TrailerURL      string    `json:"trailerURL"`
 }
 
+type SubtitleTrack struct {
+	Label   string `json:"label"`
+	Lang    string `json:"lang"`
+	URL     string `json:"url"`
+	Default bool   `json:"default,omitempty"`
+}
+
 type Episode struct {
-	Number     int    `json:"number"`
-	Title      string `json:"title"`
-	URL        string `json:"url"`
-	ServerName string `json:"serverName"`
+	Number     int             `json:"number"`
+	Title      string          `json:"title"`
+	URL        string          `json:"url"`
+	ServerName string          `json:"serverName"`
+	EmbedURL   string          `json:"embedUrl,omitempty"`
+	Subtitles  []SubtitleTrack `json:"subtitles,omitempty"`
 }
 
 type Category struct {

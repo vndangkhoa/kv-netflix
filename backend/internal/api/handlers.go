@@ -749,6 +749,45 @@ func (h *Handler) StreamVideo(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(w, resp.Body)
 }
 
+var subtitleCache sync.Map // map[string][]models.SubtitleTrack
+
+func (h *Handler) GetStreamSubtitles(w http.ResponseWriter, r *http.Request) {
+	embedURL := r.URL.Query().Get("embedUrl")
+	if embedURL == "" {
+		embedURL = r.URL.Query().Get("url")
+	}
+	if embedURL == "" {
+		http.Error(w, "embedUrl parameter required", http.StatusBadRequest)
+		return
+	}
+
+	if err := validateURL(embedURL); err != nil {
+		http.Error(w, "invalid URL: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if cached, ok := subtitleCache.Load(embedURL); ok {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(cached)
+		return
+	}
+
+	subs, err := scraper.ExtractVSMOVSubtitles(nil, embedURL)
+	if err != nil {
+		http.Error(w, "failed to extract subtitles: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	if subs == nil {
+		subs = []models.SubtitleTrack{}
+	}
+
+	subtitleCache.Store(embedURL, subs)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(subs)
+}
+
 func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body []byte, baseURL string) {
 	baseParsed, err := url.Parse(baseURL)
 	if err != nil {

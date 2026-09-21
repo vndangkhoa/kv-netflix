@@ -133,3 +133,38 @@ func TestHandler_GetMovieDetail_CastEnrichment(t *testing.T) {
 		t.Errorf("Expected at least one cast member to have a resolved avatar URL")
 	}
 }
+
+func TestHandler_GetStreamSubtitles(t *testing.T) {
+	h := &Handler{}
+
+	embedURL := "https://v9.streamvsmov.com/video/e3fe5bb8-1578-47b0-a466-f76f09d3fc38"
+	req := httptest.NewRequest(http.MethodGet, "/api/stream/subtitles?embedUrl="+embedURL, nil)
+	w := httptest.NewRecorder()
+
+	h.GetStreamSubtitles(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected 200 OK, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var subs []models.SubtitleTrack
+	if err := json.NewDecoder(w.Body).Decode(&subs); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(subs) == 0 {
+		t.Errorf("Expected subtitles to be returned, got 0")
+	}
+
+	t.Logf("Returned %d subtitles: %+v", len(subs), subs)
+	hasVietnamese := false
+	for _, sub := range subs {
+		if sub.Lang == "vi" && strings.HasPrefix(sub.URL, "https://") && strings.HasSuffix(sub.URL, ".vtt") {
+			hasVietnamese = true
+		}
+	}
+	if !hasVietnamese {
+		t.Errorf("Expected valid Vietnamese .vtt subtitle track")
+	}
+}
+

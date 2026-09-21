@@ -8,14 +8,23 @@ export interface SubtitleTrack {
     name: string;
     lang: string;
     isCustom?: boolean;
+    isSidecar?: boolean;
 }
+
+export const elevateVttPosition = (vttText: string): string => {
+    return vttText.replace(
+        /(\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?\s*-->\s*\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?)(?:[^\r\n]*)?/g,
+        '$1 line:82%'
+    );
+};
 
 export const convertSrtToVtt = (srtContent: string): string => {
     let vtt = 'WEBVTT\n\n' + srtContent
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n')
         .trim();
-    return vtt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+    vtt = vtt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+    return elevateVttPosition(vtt);
 };
 
 export const useWatchMovie = (
@@ -496,6 +505,108 @@ export const useWatchMovie = (
         setSubtitles([]);
         setCurrentSubtitle(-1);
 
+        // Load sidecar subtitles for current episode (e.g. from VSMOV)
+        const currentEp = movieRef.current?.episodes?.find(e =>
+            e.number === currentEpisode &&
+            (!currentServerRef.current || (e.serverName || e.server_name) === currentServerRef.current)
+        ) || movieRef.current?.episodes?.find(e => e.number === currentEpisode);
+
+        const loadEpisodeSubtitles = async () => {
+            if (!currentEp || abandoned) return;
+            let subTracks = currentEp.subtitles;
+            const embedUrl = currentEp.embedUrl || currentEp.embed_url;
+            if ((!subTracks || subTracks.length === 0) && embedUrl && (embedUrl.includes('vsmov') || embedUrl.includes('streamvsmov'))) {
+                try {
+                    const res = await fetch(`/api/stream/subtitles?embedUrl=${encodeURIComponent(embedUrl)}`);
+                    if (res.ok) {
+                        subTracks = await res.json();
+                        currentEp.subtitles = subTracks;
+                    }
+                } catch (err) {
+                    console.warn('[subtitles] Failed to fetch subtitles:', err);
+                }
+            }
+
+            if (!subTracks || subTracks.length === 0 || abandoned) return;
+
+            video.crossOrigin = 'anonymous';
+            const pref = localStorage.getItem('preferred_subtitle_lang') || 'vi';
+            const sidecarList: SubtitleTrack[] = [];
+
+            await Promise.all(subTracks.map(async (sub, idx) => {
+                let trackSrc = sub.url;
+                try {
+                    const vttRes = await fetch(sub.url);
+                    if (vttRes.ok) {
+                        const rawText = await vttRes.text();
+                        const elevated = elevateVttPosition(rawText);
+                        const blob = new Blob([elevated], { type: 'text/vtt' });
+                        trackSrc = URL.createObjectURL(blob);
+                    }
+                } catch {
+                    // Fall back to direct sub.url if fetch fails
+                }
+
+                if (abandoned) {
+                    if (trackSrc.startsWith('blob:')) URL.revokeObjectURL(trackSrc);
+                    return;
+                }
+
+                const trackEl = document.createElement('track');
+                trackEl.kind = 'subtitles';
+                trackEl.label = sub.label;
+                trackEl.srclang = sub.lang || 'vi';
+                trackEl.src = trackSrc;
+                trackEl.crossOrigin = 'anonymous';
+
+                video.appendChild(trackEl);
+                customTracksRef.current.push({ el: trackEl, url: trackSrc });
+
+                const trackId = 5000 + idx;
+                sidecarList.push({
+                    id: trackId,
+                    name: sub.label,
+                    lang: sub.lang,
+                    isSidecar: true,
+                });
+            }));
+
+            if (sidecarList.length > 0 && !abandoned) {
+                setSubtitles(prev => {
+                    const filtered = prev.filter(p => !sidecarList.some(s => s.id === p.id));
+                    return [...sidecarList, ...filtered];
+                });
+
+                if (pref !== 'off') {
+                    const viTrack = sidecarList.find(t =>
+                        t.lang.toLowerCase().startsWith('vi') ||
+                        t.name.toLowerCase().includes('việt') ||
+                        t.name.toLowerCase().includes('viet') ||
+                        t.name.toLowerCase().includes('vn')
+                    );
+                    const targetTrack = viTrack || (pref !== 'vi' ? sidecarList.find(t => t.lang.toLowerCase().startsWith(pref.toLowerCase())) : undefined) || sidecarList[0];
+
+                    if (targetTrack) {
+                        setTimeout(() => {
+                            if (abandoned) return;
+                            if (hlsRef.current) {
+                                hlsRef.current.subtitleTrack = -1;
+                            }
+                            if (video.textTracks) {
+                                for (let i = 0; i < video.textTracks.length; i++) {
+                                    const t = video.textTracks[i];
+                                    t.mode = (t.label === targetTrack.name) ? 'showing' : 'disabled';
+                                }
+                            }
+                            setCurrentSubtitle(targetTrack.id);
+                        }, 250);
+                    }
+                }
+            }
+        };
+
+        loadEpisodeSubtitles();
+
         const getNearEndThreshold = (duration: number): number => {
             if (duration <= 0) return 0;
             if (duration > 1800) return 300;
@@ -660,12 +771,12 @@ export const useWatchMovie = (
                     }));
 
                     setSubtitles(prev => {
-                        const customs = prev.filter(p => p.isCustom);
+                        const customs = prev.filter(p => p.isCustom || p.isSidecar);
                         return [...hlsTracks, ...customs];
                     });
 
                     const pref = localStorage.getItem('preferred_subtitle_lang') || 'vi';
-                    if (pref !== 'off') {
+                    if (pref !== 'off' && currentSubtitle < 1000) {
                         const viTrack = hlsTracks.find(t =>
                             t.lang.toLowerCase().startsWith('vi') ||
                             t.name.toLowerCase().includes('việt') ||
@@ -752,11 +863,11 @@ export const useWatchMovie = (
             }
             if (tracks.length > 0) {
                 setSubtitles(prev => {
-                    const customs = prev.filter(p => p.isCustom);
+                    const customs = prev.filter(p => p.isCustom || p.isSidecar);
                     return [...tracks, ...customs];
                 });
                 const pref = localStorage.getItem('preferred_subtitle_lang') || 'vi';
-                if (pref !== 'off') {
+                if (pref !== 'off' && currentSubtitle < 1000) {
                     const viIndex = tracks.findIndex(t =>
                         t.lang.toLowerCase().startsWith('vi') ||
                         t.name.toLowerCase().includes('việt') ||
@@ -883,7 +994,7 @@ export const useWatchMovie = (
         const track = subtitles.find(t => t.id === id);
         if (!track) return;
 
-        if (track.isCustom) {
+        if (track.isCustom || track.isSidecar) {
             if (hls) hls.subtitleTrack = -1;
             if (video && video.textTracks) {
                 for (let i = 0; i < video.textTracks.length; i++) {
@@ -892,6 +1003,9 @@ export const useWatchMovie = (
                 }
             }
             setCurrentSubtitle(id);
+            if (track.lang) {
+                localStorage.setItem('preferred_subtitle_lang', track.lang);
+            }
         } else {
             if (video && video.textTracks) {
                 for (let i = 0; i < video.textTracks.length; i++) {
@@ -917,7 +1031,7 @@ export const useWatchMovie = (
             const text = await file.text();
             const vttContent = file.name.endsWith('.srt')
                 ? convertSrtToVtt(text)
-                : (text.startsWith('WEBVTT') ? text : 'WEBVTT\n\n' + text);
+                : elevateVttPosition(text.startsWith('WEBVTT') ? text : 'WEBVTT\n\n' + text);
             const blob = new Blob([vttContent], { type: 'text/vtt' });
             const blobUrl = URL.createObjectURL(blob);
 

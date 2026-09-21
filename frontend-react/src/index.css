@@ -388,39 +388,99 @@ button:focus-visible,
 
 /* Subtitle / Caption styling for Plyr and HTML5 video */
 .plyr__captions {
-  font-size: 1.15rem;
-  line-height: 1.4;
-  padding: 10px 20px;
-  pointer-events: none;
-  text-align: center;
-  z-index: 25;
-  transition: transform 0.25s ease;
+  font-size: clamp(1.35rem, 2.6vw, 2.1rem) !important;
+  line-height: 1.45 !important;
+  padding: 10px 20px !important;
+  pointer-events: none !important;
+  text-align: center !important;
+  z-index: 25 !important;
+  bottom: 80px !important;
+  transition: transform 0.25s ease !important;
 }
 
 /* Push captions up cleanly when player controls are visible */
 .plyr--video.plyr--show-controls .plyr__captions {
-  transform: translateY(-68px);
+  transform: translateY(-45px) !important;
 }
 
 .plyr__caption {
-  background: rgba(0, 0, 0, 0.78) !important;
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.8) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
   color: #ffffff !important;
-  font-weight: 500;
-  padding: 4px 10px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  white-space: pre-wrap;
+  font-weight: 600 !important;
+  padding: 5px 14px !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 1px 1px 2px #000, -1px -1px 2px #000 !important;
+  white-space: pre-wrap !important;
+}
+
+/* Native WebKit / Blink HTML5 video subtitle container */
+video::-webkit-media-text-track-container {
+  overflow: visible !important;
+  position: absolute !important;
+  transform: translateY(-80px) !important;
+  transition: transform 0.25s ease !important;
+}
+
+video::-webkit-media-text-track-display {
+  overflow: visible !important;
+}
+
+/* When Plyr controls are visible, lift native subtitles up more to avoid overlaying the control bar */
+.plyr--video.plyr--show-controls video::-webkit-media-text-track-container {
+  transform: translateY(-115px) !important;
+}
+
+/* Fullscreen adjustments for native subtitle positioning */
+:fullscreen video::-webkit-media-text-track-container,
+video:fullscreen::-webkit-media-text-track-container,
+.plyr--fullscreen video::-webkit-media-text-track-container {
+  transform: translateY(-95px) !important;
+}
+
+:fullscreen.plyr--show-controls video::-webkit-media-text-track-container,
+.plyr--fullscreen.plyr--show-controls video::-webkit-media-text-track-container {
+  transform: translateY(-135px) !important;
+}
+
+/* Native ::cue styling for maximum legibility and high contrast */
+::cue,
+video::cue {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 1.55rem !important;
+  font-weight: 600 !important;
+  line-height: 1.45 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 1px 1px 2px #000, -1px -1px 2px #000 !important;
+  white-space: pre-wrap !important;
+}
+
+@media (min-width: 1280px) {
+  ::cue,
+  video::cue {
+    font-size: 1.75rem !important;
+  }
 }
 
 @media (max-width: 640px) {
   .plyr__captions {
-    font-size: 0.95rem;
-    padding: 4px 12px;
-    bottom: 8px;
+    font-size: 1.15rem !important;
+    padding: 4px 12px !important;
+    bottom: 55px !important;
   }
   .plyr--video.plyr--show-controls .plyr__captions {
-    transform: translateY(-72px);
+    transform: translateY(-50px) !important;
+  }
+  video::-webkit-media-text-track-container {
+    transform: translateY(-55px) !important;
+  }
+  .plyr--video.plyr--show-controls video::-webkit-media-text-track-container {
+    transform: translateY(-90px) !important;
+  }
+  ::cue,
+  video::cue {
+    font-size: 1.25rem !important;
   }
   .plyr__controls {
     padding: 6px 10px 8px !important;
@@ -441,15 +501,6 @@ button:focus-visible,
     font-size: 11px !important;
     padding: 0 4px !important;
   }
-}
-
-video::cue {
-  background-color: rgba(0, 0, 0, 0.78);
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 1.1rem;
-  line-height: 1.4;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 /* ── RoPhim Signature Design System ───────────────────────── */

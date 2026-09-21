@@ -108,6 +108,7 @@ const PlyrVideo = ({ ref, className, poster }: { ref: React.Ref<HTMLVideoElement
                 if (typeof ref === 'function') ref(node);
                 else if (ref) ref.current = node;
             }}
+            crossOrigin="anonymous"
             playsInline
             className={className}
             poster={poster}

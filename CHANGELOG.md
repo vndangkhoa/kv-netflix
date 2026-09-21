@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.4] - 2026-09-21
+### Added
+- **Native VSMOV Subtitles Extraction Without Iframe**:
+  - Implemented automated subtitle discovery and parsing for VSMOV streams via regex extraction directly from embed player configuration (`ExtractVSMOVSubtitles`, `ExtractSubtitlesFromEmbed`).
+  - Added on-demand backend endpoint `GET /api/stream/subtitles?embedUrl=...` with high-performance concurrent in-memory caching (`subtitlesCache` sync.Map).
+  - Pre-extracts subtitle tracks for single movies and first episodes during movie detail scraping to ensure instantaneous subtitle availability upon playback.
+- **Dynamic WebVTT Subtitle Track Mounting & Auto-Selection**:
+  - Extended React player hook (`useWatchMovie.ts`) to dynamically fetch, parse, and inject sidecar subtitle tracks into `<video>` text tracks with full cross-origin anonymous access.
+  - Automatically selects Vietnamese (`vi`) subtitles by default upon video load.
+  - Coordinated native text tracks with Hls.js subtitle tracks to prevent track desynchronization or conflicting duplicate subtitles.
+- **Subtitles Position Elevation & High-Legibility Styling**:
+  - Enhanced WebVTT cues dynamically using client-side parser to inject `line:82% position:50% align:center`, lifting subtitle cues 18% above the bottom edge of the player.
+  - Added dedicated CSS overrides targeting `.plyr__captions`, `video::cue`, and WebKit native subtitle shadow DOM containers (`video::-webkit-media-text-track-container`).
+  - Subtitle styling elevated 80px (115px when player controls are visible), font size enlarged to 1.55rem - 1.75rem with deep multi-layer text shadow and semi-transparent dark backdrop for maximum legibility on high-res displays.
+
+### Changed
+- Bumped Docker container image tag to `1.0.0-29` and SPK version to `1.0.0-31`.
+
 ## [v9.3.3] - 2026-09-17
 ### Added
 - **Multi-Stage Resilient Thumbnail & Poster Fallback Pipeline**:

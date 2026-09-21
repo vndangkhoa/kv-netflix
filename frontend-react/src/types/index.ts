@@ -43,12 +43,22 @@ export interface MovieDetail extends Movie {
     episodes?: Episode[];
 }
 
+export interface SubtitleTrackInfo {
+    label: string;
+    lang: string;
+    url: string;
+    default?: boolean;
+}
+
 export interface Episode {
     number: number;
     title: string;
     url: string;
     server_name?: string;
     serverName?: string;
+    embedUrl?: string;
+    embed_url?: string;
+    subtitles?: SubtitleTrackInfo[];
 }
 
 export interface VideoSource {

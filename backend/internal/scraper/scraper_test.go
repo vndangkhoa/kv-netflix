@@ -50,4 +50,18 @@ func TestVSMOVScraper_Live(t *testing.T) {
 	if len(genres) == 0 {
 		t.Errorf("VSMOV GetGenres returned 0 genres")
 	}
+
+	// 5. Test Subtitle Extraction
+	foundSub := false
+	for _, ep := range detail.Episodes {
+		if ep.EmbedURL != "" {
+			subs, err := s.ExtractSubtitlesFromEmbed(ep.EmbedURL)
+			if err == nil && len(subs) > 0 {
+				foundSub = true
+				t.Logf("Found %d subtitles for ep %s: %+v", len(subs), ep.Title, subs)
+				break
+			}
+		}
+	}
+	t.Logf("Subtitle extraction check completed (foundSub=%v)", foundSub)
 }

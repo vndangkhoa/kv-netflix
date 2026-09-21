@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -256,7 +257,11 @@ func parseVSMOVImage(raw interface{}) string {
 	return ""
 }
 
-var vsmovStreamRegex = regexp.MustCompile(`(https?://[^/]+)/video/([a-f0-9-]+)`)
+var (
+	vsmovStreamRegex    = regexp.MustCompile(`(https?://[^/]+)/video/([a-f0-9-]+)`)
+	vsmovSubtitlesRegex = regexp.MustCompile(`subtitles:\s*(\[\s*\{.*?\}\s*\])`)
+	vsmovHostRegex      = regexp.MustCompile(`https?://[^/]+`)
+)
 
 func DeriveVSMOVM3U8(linkEmbed, linkM3U8 string) string {
 	if linkM3U8 != "" && (strings.Contains(linkM3U8, ".m3u8") || strings.Contains(linkM3U8, ".mp4")) {
@@ -269,6 +274,94 @@ func DeriveVSMOVM3U8(linkEmbed, linkM3U8 string) string {
 		return fmt.Sprintf("%s/stream/%s/master.m3u8", match[1], match[2])
 	}
 	return ""
+}
+
+func (s *VSMOVScraper) ExtractSubtitlesFromEmbed(embedURL string) ([]models.SubtitleTrack, error) {
+	return ExtractVSMOVSubtitles(s.client, embedURL)
+}
+
+func ExtractVSMOVSubtitles(client *http.Client, embedURL string) ([]models.SubtitleTrack, error) {
+	if embedURL == "" {
+		return nil, nil
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 10 * time.Second}
+	}
+	req, err := http.NewRequest("GET", embedURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", "https://vsmov.com/")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("embed status %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	matches := vsmovSubtitlesRegex.FindSubmatch(bodyBytes)
+	if len(matches) < 2 {
+		return nil, nil
+	}
+
+	var rawSubs []struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(matches[1], &rawSubs); err != nil {
+		return nil, err
+	}
+
+	host := vsmovHostRegex.FindString(embedURL)
+	var tracks []models.SubtitleTrack
+	for _, sub := range rawSubs {
+		subURL := strings.TrimSpace(sub.URL)
+		if subURL == "" {
+			continue
+		}
+		if strings.HasPrefix(subURL, "/") {
+			subURL = host + subURL
+		}
+
+		codeLower := strings.ToLower(sub.Code)
+		nameLower := strings.ToLower(sub.Name)
+
+		lang := "vi"
+		label := "Tiếng Việt"
+
+		if strings.HasPrefix(codeLower, "eng") || strings.Contains(nameLower, "eng") {
+			lang = "en"
+			label = "English"
+		} else if strings.HasPrefix(codeLower, "vie") || strings.Contains(nameLower, "vie") || strings.Contains(nameLower, "việt") {
+			lang = "vi"
+			label = "Tiếng Việt"
+		} else if sub.Code != "" {
+			lang = sub.Code
+			label = sub.Name
+			if label == "" {
+				label = strings.ToUpper(sub.Code)
+			}
+		}
+
+		tracks = append(tracks, models.SubtitleTrack{
+			Label:   label,
+			Lang:    lang,
+			URL:     subURL,
+			Default: lang == "vi",
+		})
+	}
+	return tracks, nil
 }
 
 func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) {
@@ -329,6 +422,9 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 				if episodes[idx].URL == "" && streamURL != "" {
 					episodes[idx].URL = streamURL
 				}
+				if episodes[idx].EmbedURL == "" && ep.LinkEmbed != "" {
+					episodes[idx].EmbedURL = ep.LinkEmbed
+				}
 			} else {
 				epMap[serverKey] = len(episodes)
 				episodes = append(episodes, models.Episode{
@@ -336,7 +432,26 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 					Title:      ep.Name,
 					URL:        streamURL,
 					ServerName: "VSMOV - " + serverLabel,
+					EmbedURL:   ep.LinkEmbed,
 				})
+			}
+		}
+	}
+
+	// Pre-extract subtitles for single movies (or Episode 1) so playback starts with subtitles instantly
+	if len(episodes) <= 2 {
+		for i := range episodes {
+			if episodes[i].EmbedURL != "" {
+				subs, _ := s.ExtractSubtitlesFromEmbed(episodes[i].EmbedURL)
+				episodes[i].Subtitles = subs
+			}
+		}
+	} else if len(episodes) > 2 {
+		for i := range episodes {
+			if episodes[i].Number == 1 && episodes[i].EmbedURL != "" {
+				subs, _ := s.ExtractSubtitlesFromEmbed(episodes[i].EmbedURL)
+				episodes[i].Subtitles = subs
+				break
 			}
 		}
 	}
