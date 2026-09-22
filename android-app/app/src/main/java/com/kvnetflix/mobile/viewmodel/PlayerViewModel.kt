@@ -18,6 +18,7 @@ data class PlayerUiState(
     val currentEpisode: Int = 1,
     val selectedServer: String = "",
     val servers: List<String> = emptyList(),
+    val subtitles: List<com.kvnetflix.mobile.data.model.SubtitleTrack> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,
@@ -89,6 +90,7 @@ class PlayerViewModel : ViewModel() {
             currentEpisode = episode,
             isLoading = true,
             source = null,
+            subtitles = emptyList(),
             error = null
         )
         viewModelScope.launch {
@@ -103,6 +105,7 @@ class PlayerViewModel : ViewModel() {
             selectedServer = server,
             isLoading = true,
             source = null,
+            subtitles = emptyList(),
             error = null
         )
         viewModelScope.launch {
@@ -160,6 +163,15 @@ class PlayerViewModel : ViewModel() {
             android.util.Log.d("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$serverName. Episode: $ep")
 
             if (ep != null && ep.url.isNotBlank()) {
+                var subs = ep.subtitles ?: emptyList()
+                if (subs.isEmpty() && !ep.embedUrl.isNullOrBlank()) {
+                    try {
+                        subs = ApiClient.api.getStreamSubtitles(ep.embedUrl)
+                    } catch (e: Exception) {
+                        android.util.Log.w("PlayerViewModel", "Error fetching sidecar subtitles: ${e.message}")
+                    }
+                }
+
                 val realUrl = extractRealStreamUrl(ep.url)
                 val isDirectHls = realUrl.contains(".m3u8", ignoreCase = true) && !realUrl.contains("embed.php", ignoreCase = true)
 
@@ -173,6 +185,7 @@ class PlayerViewModel : ViewModel() {
                             formatId = "hls",
                             isEmbed = false
                         ),
+                        subtitles = subs,
                         isLoading = false,
                         retryCount = 0
                     )
@@ -201,6 +214,7 @@ class PlayerViewModel : ViewModel() {
                                     formatId = extractedSource.formatId,
                                     isEmbed = false
                                 ),
+                                subtitles = subs,
                                 isLoading = false,
                                 retryCount = 0
                             )
@@ -213,6 +227,7 @@ class PlayerViewModel : ViewModel() {
                                     formatId = "embed",
                                     isEmbed = true
                                 ),
+                                subtitles = subs,
                                 isLoading = false,
                                 retryCount = 0
                             )
@@ -226,6 +241,7 @@ class PlayerViewModel : ViewModel() {
                                 formatId = "embed",
                                 isEmbed = true
                             ),
+                            subtitles = subs,
                             isLoading = false,
                             retryCount = 0
                         )

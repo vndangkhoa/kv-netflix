@@ -16,6 +16,7 @@ data class PlayerUiState(
     val source: VideoSource? = null,
     val currentEpisode: Int = 1,
     val selectedServer: String = "",
+    val subtitles: List<com.streamflow.tv.data.model.SubtitleTrack> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
     val retryCount: Int = 0
@@ -47,7 +48,7 @@ class PlayerViewModel : ViewModel() {
     fun changeEpisode(episode: Int, server: String? = null) {
         val movie = _uiState.value.movie ?: return
         val targetServer = server ?: _uiState.value.selectedServer
-        _uiState.value = _uiState.value.copy(currentEpisode = episode, selectedServer = targetServer, isLoading = true, source = null)
+        _uiState.value = _uiState.value.copy(currentEpisode = episode, selectedServer = targetServer, isLoading = true, source = null, subtitles = emptyList())
         viewModelScope.launch {
             loadStream(movie, episode, targetServer)
         }
@@ -56,7 +57,7 @@ class PlayerViewModel : ViewModel() {
     fun changeServer(server: String) {
         val movie = _uiState.value.movie ?: return
         val currentEp = _uiState.value.currentEpisode
-        _uiState.value = _uiState.value.copy(selectedServer = server, isLoading = true, source = null)
+        _uiState.value = _uiState.value.copy(selectedServer = server, isLoading = true, source = null, subtitles = emptyList())
         viewModelScope.launch {
             loadStream(movie, currentEp, server)
         }
@@ -105,6 +106,15 @@ class PlayerViewModel : ViewModel() {
             android.util.Log.d("PlayerViewModel", "Loading stream for slug=${movie.slug} episode=$episode server=$server. Episode: $ep")
 
             if (ep != null && ep.url.isNotBlank()) {
+                var subs = ep.subtitles ?: emptyList()
+                if (subs.isEmpty() && !ep.embedUrl.isNullOrBlank()) {
+                    try {
+                        subs = ApiClient.api.getStreamSubtitles(ep.embedUrl)
+                    } catch (e: Exception) {
+                        android.util.Log.w("PlayerViewModel", "Error fetching sidecar subtitles: ${e.message}")
+                    }
+                }
+
                 val realUrl = extractRealStreamUrl(ep.url)
                 val isDirectHls = realUrl.contains(".m3u8", ignoreCase = true) && !realUrl.contains("embed.php", ignoreCase = true)
 
@@ -118,6 +128,7 @@ class PlayerViewModel : ViewModel() {
                             formatId = "hls",
                             isEmbed = false
                         ),
+                        subtitles = subs,
                         isLoading = false,
                         retryCount = 0
                     )
@@ -146,6 +157,7 @@ class PlayerViewModel : ViewModel() {
                                     formatId = extractedSource.formatId,
                                     isEmbed = false
                                 ),
+                                subtitles = subs,
                                 isLoading = false,
                                 retryCount = 0
                             )
@@ -158,6 +170,7 @@ class PlayerViewModel : ViewModel() {
                                     formatId = "embed",
                                     isEmbed = true
                                 ),
+                                subtitles = subs,
                                 isLoading = false,
                                 retryCount = 0
                             )
@@ -171,6 +184,7 @@ class PlayerViewModel : ViewModel() {
                                 formatId = "embed",
                                 isEmbed = true
                             ),
+                            subtitles = subs,
                             isLoading = false,
                             retryCount = 0
                         )

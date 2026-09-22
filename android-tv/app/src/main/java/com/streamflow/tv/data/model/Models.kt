@@ -59,12 +59,22 @@ data class MovieDetail(
 }
 
 @JsonClass(generateAdapter = false)
+data class SubtitleTrack(
+    val label: String = "",
+    val lang: String = "",
+    val url: String = "",
+    val default: Boolean = false
+)
+
+@JsonClass(generateAdapter = false)
 data class Episode(
     val number: Int = 0,
     val title: String = "",
     val url: String = "",
     @Json(name = "serverName") val serverName: String = "",
-    @Json(name = "server_name") val server_name: String = ""
+    @Json(name = "server_name") val server_name: String = "",
+    @Json(name = "embedUrl") val embedUrl: String? = null,
+    val subtitles: List<SubtitleTrack>? = null
 ) {
     val displayServerName: String
         get() {

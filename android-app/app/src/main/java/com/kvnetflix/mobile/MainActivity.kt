@@ -38,6 +38,12 @@ class MainActivity : ComponentActivity() {
 
     private var isInPipMode = false
     private var isInWatchMode = false
+    private var navController: androidx.navigation.NavHostController? = null
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        navController?.handleDeepLink(intent)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +54,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             KvTheme(darkTheme = true) {
                 val navController = rememberNavController()
+                this@MainActivity.navController = navController
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route ?: Routes.HOME
 

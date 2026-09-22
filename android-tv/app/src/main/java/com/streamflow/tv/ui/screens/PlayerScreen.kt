@@ -46,9 +46,13 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.net.Uri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -56,7 +60,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -496,6 +502,7 @@ fun PlayerScreen(
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
+    var currentCues by remember { mutableStateOf<List<androidx.media3.common.text.Cue>>(emptyList()) }
 
     LaunchedEffect(exoPlayer) {
         while (true) {
@@ -510,7 +517,7 @@ fun PlayerScreen(
     var exoRetryCount by remember { mutableIntStateOf(0) }
     val maxRetries = 3
 
-    LaunchedEffect(uiState.source, isFallbackToEmbed) {
+    LaunchedEffect(uiState.source, uiState.subtitles, isFallbackToEmbed) {
         val source = uiState.source
         if (source != null && !source.isEmbed && !isFallbackToEmbed) {
             exoRetryCount = 0
@@ -521,24 +528,69 @@ fun PlayerScreen(
                 .setAllowCrossProtocolRedirects(true)
 
             val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
-            val mediaItem = MediaItem.fromUri(source.streamUrl)
 
-            android.util.Log.d("PlayerScreen", "Loading ExoPlayer stream: ${source.streamUrl}")
+            val subtitleConfigs = uiState.subtitles.map { sub ->
+                MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
+                    .setMimeType(MimeTypes.TEXT_VTT)
+                    .setLanguage(sub.lang)
+                    .setLabel(sub.label)
+                    .setSelectionFlags(
+                        if (sub.default || sub.lang.equals("vi", ignoreCase = true)) C.SELECTION_FLAG_DEFAULT else 0
+                    )
+                    .build()
+            }
+
+            val mediaItem = MediaItem.Builder()
+                .setUri(source.streamUrl)
+                .apply {
+                    if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                        setMimeType(MimeTypes.APPLICATION_M3U8)
+                    }
+                }
+                .setSubtitleConfigurations(subtitleConfigs)
+                .build()
+
+            exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+                .buildUpon()
+                .setPreferredTextLanguage("vi")
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .build()
+
+            val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
+
+            android.util.Log.d("PlayerScreen", "Loading ExoPlayer stream: ${source.streamUrl}, subtitles: ${uiState.subtitles.size}")
 
             exoPlayer.addListener(object : androidx.media3.common.Player.Listener {
+                override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                    for (group in tracks.groups) {
+                        for (i in 0 until group.length) {
+                            val format = group.getTrackFormat(i)
+                            android.util.Log.d("PlayerScreen", "Track type=${group.type}, selected=${group.isTrackSelected(i)}, lang=${format.language}, label=${format.label}")
+                        }
+                    }
+                }
+
+                override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
+                    currentCues = cueGroup.cues
+                    android.util.Log.d("PlayerScreen", "onCues: ${cueGroup.cues.size} cues: ${cueGroup.cues.map { it.text }}")
+                }
+
                 override fun onPlayerError(error: PlaybackException) {
                     android.util.Log.e("PlayerScreen", "ExoPlayer error (attempt ${exoRetryCount + 1}/$maxRetries): ${error.message}", error)
                     if (exoRetryCount < maxRetries && source.streamUrl.isNotEmpty()) {
                         exoRetryCount++
                         android.util.Log.d("PlayerScreen", "Retrying ExoPlayer (attempt $exoRetryCount)")
                         exoPlayer.stop()
-                        val retryMediaItem = MediaItem.fromUri(source.streamUrl)
-                        if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
-                            val retryHlsSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(retryMediaItem)
-                            exoPlayer.setMediaSource(retryHlsSource)
-                        } else {
-                            exoPlayer.setMediaItem(retryMediaItem)
-                        }
+                        val retryMediaItem = MediaItem.Builder()
+                            .setUri(source.streamUrl)
+                            .apply {
+                                if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                                    setMimeType(MimeTypes.APPLICATION_M3U8)
+                                }
+                            }
+                            .setSubtitleConfigurations(subtitleConfigs)
+                            .build()
+                        exoPlayer.setMediaSource(mediaSourceFactory.createMediaSource(retryMediaItem))
                         exoPlayer.prepare()
                         exoPlayer.playWhenReady = true
                     } else {
@@ -547,13 +599,7 @@ fun PlayerScreen(
                 }
             })
 
-            if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
-                val hlsSource = HlsMediaSource.Factory(dataSourceFactory)
-                    .createMediaSource(mediaItem)
-                exoPlayer.setMediaSource(hlsSource)
-            } else {
-                exoPlayer.setMediaItem(mediaItem)
-            }
+            exoPlayer.setMediaSource(mediaSourceFactory.createMediaSource(mediaItem))
             exoPlayer.prepare()
             exoPlayer.playWhenReady = true
         }
@@ -865,10 +911,47 @@ fun PlayerScreen(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
+                        // Hide native subtitle view in favor of the Compose elevated subtitle overlay
+                        subtitleView?.visibility = android.view.View.GONE
                     }
                 },
                 modifier = Modifier.fillMaxSize()
             )
+        }
+
+        // Elevated Subtitle Overlay for Android TV
+        if (currentCues.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = if (showControls) 130.dp else 72.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(horizontal = 48.dp)
+                ) {
+                    currentCues.forEach { cue ->
+                        cue.text?.let { text ->
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0xB3000000), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = text.toString(),
+                                    color = Color.White,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    lineHeight = 32.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // TV Overlay Controls with D-Pad focus feedback & navigation

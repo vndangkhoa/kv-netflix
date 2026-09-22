@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.kvnetflix.mobile.data.repository.UserDataRepository
 import com.kvnetflix.mobile.ui.screens.*
 import com.kvnetflix.mobile.viewmodel.*
@@ -68,11 +69,12 @@ fun AppNavHost(
 
         composable(
             route = "home?category={category}",
-            arguments = listOf(navArgument("category") {
-                type = NavType.StringType
-                defaultValue = null
-                nullable = true
-            })
+            arguments = listOf(
+                navArgument("category") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
         ) { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category")
             HomeScreen(
@@ -97,6 +99,10 @@ fun AppNavHost(
                     type = NavType.IntType
                     defaultValue = 1
                 }
+            ),
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "streamflow://watch/{slug}/{episode}" },
+                navDeepLink { uriPattern = "kvnetflix://watch/{slug}/{episode}" }
             )
         ) { backStackEntry ->
             val slug = backStackEntry.arguments?.getString("slug") ?: ""

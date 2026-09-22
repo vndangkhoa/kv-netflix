@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.view.ViewGroup
+import android.net.Uri
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -44,7 +45,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -52,7 +55,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
 import com.kvnetflix.mobile.data.repository.UserDataRepository
 import com.kvnetflix.mobile.ui.components.EpisodeGrid
 import com.kvnetflix.mobile.ui.theme.KvTheme
@@ -413,7 +418,7 @@ fun WatchScreen(
                             android.os.Handler(android.os.Looper.getMainLooper())
                         }
 
-                        LaunchedEffect(uiState.source, uiState.currentEpisode) {
+                        LaunchedEffect(uiState.source, uiState.subtitles, uiState.currentEpisode) {
                             try {
                                 val source = uiState.source ?: return@LaunchedEffect
                                 if (source.streamUrl.isEmpty()) return@LaunchedEffect
@@ -425,17 +430,38 @@ fun WatchScreen(
                                     .setReadTimeoutMs(30_000)
                                     .setAllowCrossProtocolRedirects(true)
                                 val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
-                                val mediaItem = MediaItem.fromUri(source.streamUrl)
-                                val isHls = source.streamUrl.contains(".m3u8", ignoreCase = true)
+
+                                val subtitleConfigs = uiState.subtitles.map { sub ->
+                                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
+                                        .setMimeType(MimeTypes.TEXT_VTT)
+                                        .setLanguage(sub.lang)
+                                        .setLabel(sub.label)
+                                        .setSelectionFlags(
+                                            if (sub.default || sub.lang.equals("vi", ignoreCase = true)) C.SELECTION_FLAG_DEFAULT else 0
+                                        )
+                                        .build()
+                                }
+
+                                val mediaItem = MediaItem.Builder()
+                                    .setUri(source.streamUrl)
+                                    .apply {
+                                        if (source.streamUrl.contains(".m3u8", ignoreCase = true)) {
+                                            setMimeType(MimeTypes.APPLICATION_M3U8)
+                                        }
+                                    }
+                                    .setSubtitleConfigurations(subtitleConfigs)
+                                    .build()
+
+                                player.trackSelectionParameters = player.trackSelectionParameters
+                                    .buildUpon()
+                                    .setPreferredTextLanguage("vi")
+                                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                                    .build()
+
+                                val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
 
                                 val prepare: () -> Unit = {
-                                    if (isHls) {
-                                        player.setMediaSource(
-                                            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-                                        )
-                                    } else {
-                                        player.setMediaItem(mediaItem)
-                                    }
+                                    player.setMediaSource(mediaSourceFactory.createMediaSource(mediaItem))
                                     player.prepare()
                                     player.playWhenReady = !userPaused
                                 }
@@ -459,6 +485,7 @@ fun WatchScreen(
                         var seekFlash by remember { mutableStateOf<String?>(null) }
                         var speedMenuOpen by remember { mutableStateOf(false) }
                         var dragging by remember { mutableStateOf(false) }
+                        var currentCues by remember { mutableStateOf<List<androidx.media3.common.text.Cue>>(emptyList()) }
 
                         LaunchedEffect(playbackSpeed) {
                             player.setPlaybackSpeed(playbackSpeed)
@@ -482,6 +509,10 @@ fun WatchScreen(
                                     if (isNowPlaying) {
                                         userPaused = false
                                     }
+                                }
+
+                                override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
+                                    currentCues = cueGroup.cues
                                 }
 
                                 override fun onPlayerError(error: PlaybackException) {
@@ -532,6 +563,8 @@ fun WatchScreen(
                             player.seekTo(target)
                         }
 
+                        val barsVisible = isControlsVisible && activity?.isInPictureInPictureMode != true
+
                         Box(modifier = Modifier.fillMaxSize()) {
                             AndroidView(
                                 factory = { ctx ->
@@ -539,10 +572,49 @@ fun WatchScreen(
                                         this.player = player
                                         useController = false
                                         keepScreenOn = true
+                                        subtitleView?.visibility = android.view.View.GONE
                                     }
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
+
+                            // Elevated Subtitle Overlay for Mobile
+                            if (currentCues.isNotEmpty() && activity?.isInPictureInPictureMode != true) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(
+                                            bottom = if (barsVisible) (if (isFullscreen) 110.dp else 125.dp)
+                                                     else (if (isFullscreen) 48.dp else 28.dp)
+                                        ),
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(horizontal = 24.dp)
+                                    ) {
+                                        currentCues.forEach { cue ->
+                                            cue.text?.let { text ->
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(Color(0xB3000000), RoundedCornerShape(4.dp))
+                                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = text.toString(),
+                                                        color = Color.White,
+                                                        fontSize = if (isFullscreen) 18.sp else 14.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                        lineHeight = if (isFullscreen) 24.sp else 18.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             // Gesture layer: single tap toggles controls, double-tap seeks ±10s
                             Box(
@@ -588,8 +660,6 @@ fun WatchScreen(
                                         .size(48.dp)
                                 )
                             }
-
-                            val barsVisible = isControlsVisible && activity?.isInPictureInPictureMode != true
 
                             // Top bar: gradient scrim + back / title / PiP / fullscreen
                             androidx.compose.animation.AnimatedVisibility(

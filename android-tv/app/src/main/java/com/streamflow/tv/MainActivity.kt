@@ -44,6 +44,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        navController?.handleDeepLink(intent)
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val currentRoute = navController?.currentDestination?.route
         if (currentRoute?.startsWith("player") == true) {

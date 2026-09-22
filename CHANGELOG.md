@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.5] - 2026-09-22
+### Added
+- **Native VSMOV Sidecar Subtitle Integration (Android Mobile & Android TV)**:
+  - Extended Android Mobile (`v1.5.1`) and Android TV (`v1.4.6`) clients to query and stream native sidecar WebVTT subtitles directly from the KV Netflix backend via `GET /api/stream/subtitles?embedUrl=...`.
+  - Injected external subtitle tracks via ExoPlayer's `DefaultMediaSourceFactory` using `MediaItem.SubtitleConfiguration` with `MimeTypes.APPLICATION_M3U8`.
+  - Implemented custom elevated Compose Subtitle Overlays (styled with rounded dark pill background `Color(0x99000000)`, high-contrast text shadow, and crisp bold typography `18.sp` on mobile / `24.sp` on TV) replacing ExoPlayer's default low-position subtitle view.
+  - Added smart anti-collision layout adjustments: subtitle overlays dynamically raise higher when player controls are visible (Mobile: 48dp hidden $\rightarrow$ 110dp visible; TV: 54dp hidden $\rightarrow$ 120dp visible), preventing overlap with progress bars or control buttons.
+  - Added automated Vietnamese (`vi`) subtitle track discovery and pre-selection on playback initiation.
+  - Implemented deep linking support (`kvnetflix://watch/{movieId}?ep={episodeId}&provider={provider}`) across both Android platforms for direct external playback routing.
+
+### Changed
+- Bumped Android Phone app version to `v1.5.1` (`versionCode: 22`).
+- Bumped Android TV app version to `v1.4.6` (`versionCode: 117`).
+- Bumped Docker container image tag to `1.0.0-30` and SPK package version to `1.0.0-32`.
+
 ## [v9.3.4] - 2026-09-21
 ### Added
 - **Native VSMOV Subtitles Extraction Without Iframe**:

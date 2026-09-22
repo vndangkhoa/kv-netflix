@@ -27,6 +27,11 @@ interface StreamFlowApi {
         @Body request: ExtractRequest
     ): VideoSource
 
+    @GET("api/stream/subtitles")
+    suspend fun getStreamSubtitles(
+        @Query("embedUrl") embedUrl: String
+    ): List<SubtitleTrack>
+
     @GET("api/categories/genres")
     suspend fun getGenres(): List<Category>
 
