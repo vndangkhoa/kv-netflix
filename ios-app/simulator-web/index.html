@@ -484,8 +484,9 @@
         <div class="simulator-nav">
             <button class="nav-btn" onclick="reloadFrame()" title="Reload App"><i class="fa-solid fa-rotate-right"></i></button>
             <button class="nav-btn active" id="tabHomeBtn" onclick="selectTab('home')"><i class="fa-solid fa-house"></i> Home</button>
-            <button class="nav-btn" id="tabSearchBtn" onclick="selectTab('search')"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
-            <button class="nav-btn" id="tabMyListBtn" onclick="selectTab('mylist')"><i class="fa-solid fa-bookmark"></i> My List</button>
+            <button class="nav-btn" id="tabMoviesBtn" onclick="selectTab('phim-le')"><i class="fa-solid fa-film"></i> Movies</button>
+            <button class="nav-btn" id="tabSeriesBtn" onclick="selectTab('phim-bo')"><i class="fa-solid fa-tv"></i> Series</button>
+            <button class="nav-btn" id="tabMyListBtn" onclick="selectTab('my-list')"><i class="fa-regular fa-heart"></i> My List</button>
             <button class="nav-btn" id="tabSettingsBtn" onclick="selectTab('settings')"><i class="fa-solid fa-gear"></i> Settings</button>
             <button class="nav-btn" onclick="sendToApp({ type: 'EXPAND_PLAYER' })" title="Toggle Play / Pause"><i class="fa-solid fa-circle-play"></i></button>
         </div>
@@ -595,19 +596,20 @@
     function selectTab(tab) {
         if (tab === 'pairing') {
             sendToApp({ type: 'TEST_PAIRING' });
-            ['tabHomeBtn', 'tabSearchBtn', 'tabMyListBtn', 'tabSettingsBtn'].forEach(id => {
+            ['tabHomeBtn', 'tabMoviesBtn', 'tabSeriesBtn', 'tabMyListBtn', 'tabSettingsBtn'].forEach(id => {
                 document.getElementById(id)?.classList.remove('active');
             });
             document.getElementById('tabSettingsBtn')?.classList.add('active');
             return;
         }
         sendToApp({ type: 'SET_TAB', tab: tab });
-        ['tabHomeBtn', 'tabSearchBtn', 'tabMyListBtn', 'tabSettingsBtn'].forEach(id => {
+        ['tabHomeBtn', 'tabMoviesBtn', 'tabSeriesBtn', 'tabMyListBtn', 'tabSettingsBtn'].forEach(id => {
             document.getElementById(id)?.classList.remove('active');
         });
         if (tab === 'home') document.getElementById('tabHomeBtn')?.classList.add('active');
-        if (tab === 'search') document.getElementById('tabSearchBtn')?.classList.add('active');
-        if (tab === 'mylist') document.getElementById('tabMyListBtn')?.classList.add('active');
+        if (tab === 'phim-le') document.getElementById('tabMoviesBtn')?.classList.add('active');
+        if (tab === 'phim-bo') document.getElementById('tabSeriesBtn')?.classList.add('active');
+        if (tab === 'my-list' || tab === 'mylist') document.getElementById('tabMyListBtn')?.classList.add('active');
         if (tab === 'settings') document.getElementById('tabSettingsBtn')?.classList.add('active');
     }
 
