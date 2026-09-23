@@ -249,7 +249,7 @@ public actor ApiClient {
         return profile
     }
 
-    public func resetPassword(email: String, recoveryKey: String, newPassword: String) async throws -> StatusResponse {
+    public func resetPassword(key: String, newPassword: String) async throws -> StatusResponse {
         struct ResetBody: Encodable {
             let key: String
             let new_password: String
@@ -257,8 +257,12 @@ public actor ApiClient {
         return try await request(
             endpoint: ApiRoutes.resetPassword,
             method: "POST",
-            body: ResetBody(key: recoveryKey, new_password: newPassword)
+            body: ResetBody(key: key, new_password: newPassword)
         )
+    }
+
+    public func resetPassword(email: String = "", recoveryKey: String, newPassword: String) async throws -> StatusResponse {
+        try await resetPassword(key: recoveryKey, newPassword: newPassword)
     }
 
     // MARK: - 3. Device Pairing APIs
