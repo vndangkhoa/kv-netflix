@@ -30,6 +30,8 @@ public enum KvColor {
     public static let textGray = Color(red: 0.612, green: 0.639, blue: 0.686)       // #9CA3AF
     public static let textDimGray = Color(red: 0.42, green: 0.447, blue: 0.502)     // #6B7280
     public static let textDark = Color(red: 0.067, green: 0.067, blue: 0.067)
+    public static let textMuted = textGray
+    public static let textSecondary = textLightGray
 
     // Accents & Badges
     public static let greenMatch = Color(red: 0.133, green: 0.773, blue: 0.369)     // #22C55E

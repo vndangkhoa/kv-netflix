@@ -823,6 +823,19 @@ public enum SortOption: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    public var labelVi: String { title }
+
+    public var labelEn: String {
+        switch self {
+        case .latest: return "Latest"
+        case .mostView: return "Most Viewed"
+        case .hot: return "Hot This Week"
+        case .year: return "Release Year"
+        case .rating: return "Top Rated"
+        case .title: return "Title (A-Z)"
+        }
+    }
+
     public var localizedVi: String { title }
 }
 
