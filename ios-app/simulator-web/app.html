@@ -130,13 +130,13 @@
         }
 
         .tab-screen {
-            display: none;
-            flex-direction: column;
+            display: none !important;
             width: 100%;
         }
 
         .tab-screen.active {
-            display: flex;
+            display: flex !important;
+            flex-direction: column;
         }
 
         /* Filter Chips (Ionic Style) */
@@ -457,8 +457,6 @@
         /* TV Pairing Screen */
         .pairing-screen {
             padding: 24px 16px;
-            display: flex;
-            flex-direction: column;
             align-items: center;
             text-align: center;
         }
