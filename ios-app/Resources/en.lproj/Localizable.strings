@@ -1,0 +1,117 @@
+/* English Localization */
+
+/* Navigation & Tabs */
+"tab_home" = "Home";
+"tab_search" = "Search";
+"tab_my_list" = "My List";
+"tab_settings" = "Settings";
+
+/* Home Screen */
+"home_continue_watching" = "Continue Watching";
+"home_my_list" = "My List";
+"home_top_10" = "Top 10 Today";
+"home_trending_series" = "Trending TV Series";
+"home_latest_movies" = "Latest Movies";
+"home_featured_anime" = "Featured Anime";
+"home_recommendations" = "Recommended for You";
+"home_see_all" = "See All";
+"home_watch_now" = "Watch Now";
+"home_saved" = "Saved";
+"home_save" = "My List";
+
+/* Categories */
+"cat_all" = "All";
+"cat_movies" = "Movies";
+"cat_series" = "Series";
+"cat_anime" = "Anime";
+"cat_tv_shows" = "TV Shows";
+"cat_kdrama" = "K-Drama";
+"cat_cdrama" = "C-Drama";
+
+/* Sorting */
+"sort_newest" = "Latest Updated";
+"sort_year" = "Release Year";
+"sort_rating" = "Top Rated";
+"sort_title" = "Title A-Z";
+
+/* Search */
+"search_placeholder" = "Search movies, cast, genres...";
+"search_results" = "Search Results";
+"search_popular" = "Popular Searches";
+"search_empty_title" = "No Results Found";
+"search_empty_desc" = "Try searching with other keywords or explore genres above.";
+"search_cancel" = "Cancel";
+
+/* My List */
+"library_title" = "My Library";
+"library_saved" = "Saved Movies";
+"library_history" = "Watch History";
+"library_clear_all" = "Clear All";
+"library_empty_saved_title" = "No Saved Movies";
+"library_empty_saved_desc" = "Add movies you like to your list to watch them later.";
+"library_empty_history_title" = "No Watch History";
+"library_empty_history_desc" = "Movies you watch will appear here so you can resume anytime.";
+"library_confirm_clear" = "Confirm Clear";
+
+/* Device Pairing */
+"pairing_title" = "Device Pairing";
+"pairing_authorizer_tab" = "Pair Android TV";
+"pairing_client_tab" = "Device Login Code";
+"pairing_enter_code" = "Enter Pairing Code";
+"pairing_authorizer_desc" = "Enter the 6-digit code shown on your Android TV screen to link your account.";
+"pairing_confirm" = "Confirm Pairing";
+"pairing_success" = "Paired Successfully!";
+"pairing_fast_login" = "Fast Device Login";
+"pairing_client_desc" = "Open KV-Netflix on an authorized device, go to Settings -> Pair Device and enter this code:";
+"pairing_waiting" = "Waiting for pair...";
+"pairing_refresh_code" = "Generate New Code";
+
+/* Auth */
+"auth_sign_in" = "Sign In";
+"auth_sign_up" = "Sign Up";
+"auth_create_account" = "Create Account";
+"auth_email" = "Email";
+"auth_password" = "Password";
+"auth_confirm_password" = "Confirm Password";
+"auth_full_name" = "Full Name";
+"auth_enter_code" = "6-Digit Code";
+"auth_forgot_password" = "Forgot password?";
+"auth_dont_have_account" = "New to KV-Netflix?";
+"auth_already_have_account" = "Already have an account?";
+"auth_sign_up_now" = "Sign up now";
+"auth_sign_in_now" = "Sign In Now";
+"auth_reset_password" = "Reset Password";
+"auth_recovery_key" = "Recovery Key";
+"auth_new_password" = "New Password";
+"auth_paste" = "Paste";
+"auth_reset_success" = "Password Reset Successfully!";
+"auth_back_to_login" = "Back to Sign In";
+
+/* Settings */
+"settings_title" = "Settings & Account";
+"settings_account" = "Account";
+"settings_recovery_key" = "Generate Recovery Key";
+"settings_sign_out" = "Sign Out";
+"settings_linked_devices" = "Linked Devices";
+"settings_pair_new" = "Pair New";
+"settings_server_config" = "Server Configuration";
+"settings_server_desc" = "Target backend URL endpoint.";
+"settings_test_connection" = "Ping";
+"settings_default" = "Default";
+"settings_save_url" = "Save URL";
+"settings_preferences" = "Preferences & Storage";
+"settings_language" = "App Language";
+"settings_clear_cache" = "Clear Cache & Search History";
+"settings_clear_cache_success" = "Cache cleared successfully!";
+"settings_unlink_device" = "Unlink Device?";
+
+/* Player & Detail */
+"movie_play" = "Play";
+"movie_share" = "Share";
+"movie_episodes" = "Episodes";
+"movie_episode" = "Episode";
+"movie_duration_min" = "min";
+"movie_cast" = "Cast";
+"movie_director" = "Director";
+"movie_read_more" = "Read more";
+"movie_read_less" = "Read less";

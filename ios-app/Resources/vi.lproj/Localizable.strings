@@ -1,0 +1,117 @@
+/* Vietnamese Localization */
+
+/* Navigation & Tabs */
+"tab_home" = "Trang chủ";
+"tab_search" = "Tìm kiếm";
+"tab_my_list" = "Danh sách";
+"tab_settings" = "Cài đặt";
+
+/* Home Screen */
+"home_continue_watching" = "Tiếp tục xem";
+"home_my_list" = "Danh sách của bạn";
+"home_top_10" = "Top 10 Phim Hôm Nay";
+"home_trending_series" = "Phim Bộ Đang Thịnh Hành";
+"home_latest_movies" = "Phim Lẻ Mới Nhất";
+"home_featured_anime" = "Hoạt Hình Nổi Bật";
+"home_recommendations" = "Gợi Ý Cho Bạn";
+"home_see_all" = "Xem tất cả";
+"home_watch_now" = "Xem ngay";
+"home_saved" = "Đã lưu";
+"home_save" = "Danh sách";
+
+/* Categories */
+"cat_all" = "Tất cả";
+"cat_movies" = "Phim Lẻ";
+"cat_series" = "Phim Bộ";
+"cat_anime" = "Hoạt Hình";
+"cat_tv_shows" = "TV Shows";
+"cat_kdrama" = "K-Drama";
+"cat_cdrama" = "C-Drama";
+
+/* Sorting */
+"sort_newest" = "Mới cập nhật";
+"sort_year" = "Năm phát hành";
+"sort_rating" = "Đánh giá cao";
+"sort_title" = "Tên A-Z";
+
+/* Search */
+"search_placeholder" = "Tìm phim, diễn viên, thể loại...";
+"search_results" = "Kết quả tìm kiếm";
+"search_popular" = "Phổ biến nhất";
+"search_empty_title" = "Không tìm thấy kết quả";
+"search_empty_desc" = "Hãy thử tìm bằng từ khóa khác hoặc duyệt các thể loại gợi ý.";
+"search_cancel" = "Hủy";
+
+/* My List */
+"library_title" = "Bộ sưu tập của tôi";
+"library_saved" = "Danh sách lưu";
+"library_history" = "Lịch sử xem";
+"library_clear_all" = "Xóa tất cả";
+"library_empty_saved_title" = "Chưa có phim lưu";
+"library_empty_saved_desc" = "Hãy thêm phim bạn yêu thích vào danh sách để xem sau.";
+"library_empty_history_title" = "Chưa có lịch sử xem";
+"library_empty_history_desc" = "Các phim bạn đang xem sẽ hiển thị tại đây để tiếp tục bất cứ lúc nào.";
+"library_confirm_clear" = "Xác nhận xóa";
+
+/* Device Pairing */
+"pairing_title" = "Ghép đôi thiết bị";
+"pairing_authorizer_tab" = "Ghép nối Android TV";
+"pairing_client_tab" = "Mã đăng nhập thiết bị";
+"pairing_enter_code" = "Nhập mã ghép nối";
+"pairing_authorizer_desc" = "Nhập mã 6 chữ số đang hiển thị trên màn hình Android TV để liên kết tài khoản.";
+"pairing_confirm" = "Xác nhận liên kết";
+"pairing_success" = "Ghép đôi thành công!";
+"pairing_fast_login" = "Đăng nhập nhanh";
+"pairing_client_desc" = "Mở KV-Netflix trên thiết bị đã đăng nhập, vào Cài đặt -> Ghép đôi thiết bị và nhập mã này:";
+"pairing_waiting" = "Đang chờ xác nhận...";
+"pairing_refresh_code" = "Tạo mã mới";
+
+/* Auth */
+"auth_sign_in" = "Đăng nhập";
+"auth_sign_up" = "Đăng ký";
+"auth_create_account" = "Tạo tài khoản";
+"auth_email" = "Email";
+"auth_password" = "Mật khẩu";
+"auth_confirm_password" = "Xác nhận mật khẩu";
+"auth_full_name" = "Họ và tên";
+"auth_enter_code" = "Nhập mã 6 số";
+"auth_forgot_password" = "Quên mật khẩu?";
+"auth_dont_have_account" = "Chưa có tài khoản?";
+"auth_already_have_account" = "Đã có tài khoản?";
+"auth_sign_up_now" = "Đăng ký ngay";
+"auth_sign_in_now" = "Đăng nhập ngay";
+"auth_reset_password" = "Khôi phục mật khẩu";
+"auth_recovery_key" = "Mã khôi phục (Recovery Key)";
+"auth_new_password" = "Mật khẩu mới";
+"auth_paste" = "Dán mã";
+"auth_reset_success" = "Mật khẩu đã được thay đổi!";
+"auth_back_to_login" = "Quay lại đăng nhập";
+
+/* Settings */
+"settings_title" = "Cài đặt & Tài khoản";
+"settings_account" = "Tài khoản";
+"settings_recovery_key" = "Tạo mã khôi phục tài khoản";
+"settings_sign_out" = "Đăng xuất";
+"settings_linked_devices" = "Thiết bị liên kết";
+"settings_pair_new" = "Ghép đôi mới";
+"settings_server_config" = "Cấu hình Máy chủ (Backend URL)";
+"settings_server_desc" = "Địa chỉ URL API backend KV-Netflix / StreamFlow.";
+"settings_test_connection" = "Kiểm tra";
+"settings_default" = "Mặc định";
+"settings_save_url" = "Lưu URL";
+"settings_preferences" = "Tùy chọn & Bộ nhớ";
+"settings_language" = "Ngôn ngữ giao diện";
+"settings_clear_cache" = "Xóa bộ nhớ đệm hình ảnh và lịch sử tìm kiếm";
+"settings_clear_cache_success" = "Đã dọn dẹp bộ nhớ đệm thành công!";
+"settings_unlink_device" = "Hủy liên kết thiết bị?";
+
+/* Player & Detail */
+"movie_play" = "Xem phim";
+"movie_share" = "Chia sẻ";
+"movie_episodes" = "Danh sách tập";
+"movie_episode" = "Tập";
+"movie_duration_min" = "phút";
+"movie_cast" = "Diễn viên";
+"movie_director" = "Đạo diễn";
+"movie_read_more" = "Xem thêm";
+"movie_read_less" = "Thu gọn";

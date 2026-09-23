@@ -1,0 +1,100 @@
+name: Build & Test iOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+    paths:
+      - 'ios-app/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'ios-app/**'
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
+
+jobs:
+  build-and-test:
+    name: Build iOS IPA & Simulator App
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          cd ios-app
+          xcodegen generate
+
+      - name: Select Xcode Version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+          xcodebuild -version
+
+      # 1. Build Simulator App (for testing in Appetize.io / Xcode Simulator)
+      - name: Build for iOS Simulator (iPhone 15 Pro)
+        run: |
+          cd ios-app
+          xcodebuild \
+            -project KvNetflix.xcodeproj \
+            -scheme KvNetflix \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package Simulator App Artifact
+        run: |
+          cd ios-app
+          BUILD_DIR=$(xcodebuild -project KvNetflix.xcodeproj -scheme KvNetflix -showBuildSettings | grep -m 1 " TARGET_BUILD_DIR =" | awk '{print $3}')
+          echo "Build directory: $BUILD_DIR"
+          if [ -d "$BUILD_DIR/KvNetflix.app" ]; then
+            cd "$BUILD_DIR"
+            zip -r "$GITHUB_WORKSPACE/KvNetflix-Simulator.zip" KvNetflix.app
+          fi
+
+      # 2. Build Release Archive & .ipa (for physical iPhones & sideloading)
+      - name: Build Release Archive (.xcarchive)
+        run: |
+          cd ios-app
+          xcodebuild \
+            -project KvNetflix.xcodeproj \
+            -scheme KvNetflix \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/KvNetflix.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+
+      - name: Package .ipa File
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -r "$RUNNER_TEMP/KvNetflix.xcarchive/Products/Applications/KvNetflix.app" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -qr "$GITHUB_WORKSPACE/KvNetflix.ipa" Payload
+
+      # 3. Upload Artifacts
+      - name: Upload iOS IPA (for Sideloading / AltStore / Sideloadly)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kv-netflix-ipa
+          path: KvNetflix.ipa
+          retention-days: 14
+
+      - name: Upload iOS Simulator Build (for Appetize.io / Mac Simulator)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kv-netflix-simulator-zip
+          path: KvNetflix-Simulator.zip
+          retention-days: 14

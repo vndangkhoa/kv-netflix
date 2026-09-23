@@ -1,0 +1,19 @@
+## Xcode
+.DS_Store
+build/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+
+## Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+.swiftpm/
+
+## XcodeGen
+*.xcodeproj
+*.xcworkspace
