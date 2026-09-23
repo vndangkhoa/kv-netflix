@@ -478,6 +478,7 @@
 
         .pin-container {
             display: flex;
+            justify-content: center;
             gap: 10px;
             margin: 24px 0 16px;
         }
@@ -944,43 +945,11 @@
             <div class="search-grid" id="myListGrid" style="padding: 0 16px;"></div>
         </div>
 
-        <!-- 4. TV PAIRING SCREEN -->
-        <div id="screenPairing" class="tab-screen pairing-screen">
-            <div class="pairing-icon-box">
-                <i class="fa-solid fa-tv"></i>
-            </div>
-            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 8px;">Ghép Đôi Android TV</h2>
-            <p style="color: var(--text-secondary); font-size: 13.5px; max-width: 320px; line-height: 1.5; margin-bottom: 16px;">
-                Nhập mã 6 chữ số để kết nối và điều khiển ứng dụng KV-Netflix trên Android TV của bạn.
-            </p>
-
-            <div class="pin-container" id="pinBoxRow">
-                <div class="pin-digit" id="p1">8</div>
-                <div class="pin-digit" id="p2">4</div>
-                <div class="pin-digit" id="p3">2</div>
-                <div class="pin-digit" id="p4">1</div>
-                <div class="pin-digit" id="p5">9</div>
-                <div class="pin-digit" id="p6">0</div>
-            </div>
-
-            <div class="status-badge">
-                <span id="pairingStatusText">Đang chờ Android TV kết nối...</span>
-            </div>
-
-            <div style="display: flex; gap: 10px; width: 100%; max-width: 340px; margin-top: 10px;">
-                <button class="hero-btn play" style="font-size: 14px;" onclick="refreshPairingCode()">
-                    <i class="fa-solid fa-arrows-rotate"></i> Tạo mã mới
-                </button>
-                <button class="hero-btn mylist" style="font-size: 14px;" onclick="simulatePairSuccess()">
-                    <i class="fa-solid fa-check"></i> Ghép đôi ngay
-                </button>
-            </div>
-        </div>
-
-        <!-- 5. SETTINGS SCREEN -->
+        <!-- 4. SETTINGS SCREEN -->
         <div id="screenSettings" class="tab-screen settings-screen">
             <div style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">Cài Đặt Ứng Dụng</div>
 
+            <!-- Profile Info -->
             <div class="settings-card">
                 <div class="settings-row" style="padding: 16px;">
                     <div style="display: flex; align-items: center; gap: 14px;">
@@ -994,6 +963,45 @@
                 </div>
             </div>
 
+            <!-- Ghép Đôi Android TV & Thiết Bị (Moved into Settings) -->
+            <div class="settings-card" id="settingsPairingCard">
+                <div style="padding: 14px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 15px;">
+                        <i class="fa-solid fa-tv" style="color: var(--netflix-red);"></i>
+                        Ghép Đôi Android TV
+                    </div>
+                    <span style="font-size: 11px; background: rgba(229,9,20,0.18); color: var(--netflix-red); padding: 2px 8px; border-radius: 4px; font-weight: 700;">6-Digit PIN</span>
+                </div>
+                <div style="padding: 16px; text-align: center;">
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 14px; line-height: 1.4;">
+                        Mã 6 chữ số để kết nối và điều khiển ứng dụng KV-Netflix trên Android TV của bạn:
+                    </p>
+
+                    <div class="pin-container" id="pinBoxRow" style="margin: 6px 0 14px;">
+                        <div class="pin-digit" id="p1">8</div>
+                        <div class="pin-digit" id="p2">4</div>
+                        <div class="pin-digit" id="p3">2</div>
+                        <div class="pin-digit" id="p4">1</div>
+                        <div class="pin-digit" id="p5">9</div>
+                        <div class="pin-digit" id="p6">0</div>
+                    </div>
+
+                    <div class="status-badge" style="margin-bottom: 14px;">
+                        <span id="pairingStatusText">Đang chờ Android TV kết nối...</span>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <button class="hero-btn play" style="font-size: 13px; height: 38px;" onclick="refreshPairingCode()">
+                            <i class="fa-solid fa-arrows-rotate"></i> Tạo mã mới
+                        </button>
+                        <button class="hero-btn mylist" style="font-size: 13px; height: 38px;" onclick="simulatePairSuccess()">
+                            <i class="fa-solid fa-check"></i> Ghép đôi ngay
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System & API Info -->
             <div class="settings-card">
                 <div class="settings-row">
                     <div class="settings-row-label"><i class="fa-solid fa-server"></i> API Gateway</div>
@@ -1030,10 +1038,6 @@
         <button class="tab-btn" id="tabMyList" onclick="switchTab('mylist')">
             <i class="fa-solid fa-bookmark"></i>
             <span>Danh sách</span>
-        </button>
-        <button class="tab-btn" id="tabPairing" onclick="switchTab('pairing')">
-            <i class="fa-solid fa-tv"></i>
-            <span>Ghép đôi</span>
         </button>
         <button class="tab-btn" id="tabSettings" onclick="switchTab('settings')">
             <i class="fa-solid fa-gear"></i>
@@ -1148,9 +1152,22 @@
             document.getElementById('tabMyList').classList.add('active');
             renderMyList();
         } else if (tabId === 'pairing') {
-            document.getElementById('screenPairing').classList.add('active');
-            document.getElementById('tabPairing').classList.add('active');
+            document.getElementById('screenSettings').classList.add('active');
+            document.getElementById('tabSettings').classList.add('active');
             refreshPairingCode();
+            setTimeout(() => {
+                const card = document.getElementById('settingsPairingCard');
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+                    card.style.borderColor = 'var(--netflix-red)';
+                    card.style.boxShadow = '0 0 16px rgba(229, 9, 20, 0.4)';
+                    setTimeout(() => {
+                        card.style.borderColor = 'var(--border-color)';
+                        card.style.boxShadow = 'none';
+                    }, 2200);
+                }
+            }, 100);
         } else if (tabId === 'settings') {
             document.getElementById('screenSettings').classList.add('active');
             document.getElementById('tabSettings').classList.add('active');
@@ -1492,7 +1509,6 @@
             playMovie('hoc-vien-minerva', 'Học Viện Minerva (Stream Test)', 1);
         } else if (msg.type === 'TEST_PAIRING') {
             switchTab('pairing');
-            refreshPairingCode();
         } else if (msg.type === 'SET_TAB') {
             switchTab(msg.tab);
         } else if (msg.type === 'EXPAND_PLAYER') {

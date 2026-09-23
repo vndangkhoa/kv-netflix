@@ -463,7 +463,7 @@
             <button class="btn" onclick="sendToApp({ type: 'TEST_PLAYBACK' })">
                 <i class="fa-solid fa-play"></i> Test Video Playback + Failover
             </button>
-            <button class="btn secondary" onclick="sendToApp({ type: 'TEST_PAIRING' })">
+            <button class="btn secondary" onclick="selectTab('pairing')">
                 <i class="fa-solid fa-tv"></i> Test 6-Digit TV Pairing
             </button>
             <button class="btn secondary" onclick="openLatencyModal()">
@@ -486,7 +486,6 @@
             <button class="nav-btn active" id="tabHomeBtn" onclick="selectTab('home')"><i class="fa-solid fa-house"></i> Home</button>
             <button class="nav-btn" id="tabSearchBtn" onclick="selectTab('search')"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
             <button class="nav-btn" id="tabMyListBtn" onclick="selectTab('mylist')"><i class="fa-solid fa-bookmark"></i> My List</button>
-            <button class="nav-btn" id="tabPairingBtn" onclick="selectTab('pairing')"><i class="fa-solid fa-tv"></i> Pair TV</button>
             <button class="nav-btn" id="tabSettingsBtn" onclick="selectTab('settings')"><i class="fa-solid fa-gear"></i> Settings</button>
             <button class="nav-btn" onclick="sendToApp({ type: 'EXPAND_PLAYER' })" title="Toggle Play / Pause"><i class="fa-solid fa-circle-play"></i></button>
         </div>
@@ -594,14 +593,21 @@
     }
 
     function selectTab(tab) {
+        if (tab === 'pairing') {
+            sendToApp({ type: 'TEST_PAIRING' });
+            ['tabHomeBtn', 'tabSearchBtn', 'tabMyListBtn', 'tabSettingsBtn'].forEach(id => {
+                document.getElementById(id)?.classList.remove('active');
+            });
+            document.getElementById('tabSettingsBtn')?.classList.add('active');
+            return;
+        }
         sendToApp({ type: 'SET_TAB', tab: tab });
-        ['tabHomeBtn', 'tabSearchBtn', 'tabMyListBtn', 'tabPairingBtn', 'tabSettingsBtn'].forEach(id => {
+        ['tabHomeBtn', 'tabSearchBtn', 'tabMyListBtn', 'tabSettingsBtn'].forEach(id => {
             document.getElementById(id)?.classList.remove('active');
         });
         if (tab === 'home') document.getElementById('tabHomeBtn')?.classList.add('active');
         if (tab === 'search') document.getElementById('tabSearchBtn')?.classList.add('active');
         if (tab === 'mylist') document.getElementById('tabMyListBtn')?.classList.add('active');
-        if (tab === 'pairing') document.getElementById('tabPairingBtn')?.classList.add('active');
         if (tab === 'settings') document.getElementById('tabSettingsBtn')?.classList.add('active');
     }
 
