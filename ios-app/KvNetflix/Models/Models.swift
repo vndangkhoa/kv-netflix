@@ -802,20 +802,28 @@ public struct HomeResponse: Codable, Hashable, Equatable, Sendable {
 
 public enum SortOption: String, CaseIterable, Identifiable, Sendable {
     case latest = "latest"
+    case mostView = "most_view"
+    case hot = "hot"
     case year = "year"
     case rating = "rating"
     case title = "title"
+
+    public static var newest: SortOption { .latest }
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
         case .latest: return "Mới nhất"
+        case .mostView: return "Xem nhiều"
+        case .hot: return "Hot tuần"
         case .year: return "Năm phát hành"
         case .rating: return "Đánh giá cao"
         case .title: return "Tên phim (A-Z)"
         }
     }
+
+    public var localizedVi: String { title }
 }
 
 // MARK: - Dynamic Coding Key Helper

@@ -1,6 +1,48 @@
 import SwiftUI
 import Combine
 
+public enum TabItem: String, CaseIterable, Identifiable {
+    case home
+    case search
+    case myList
+    case settings
+
+    public var id: String { rawValue }
+
+    public var iconName: String {
+        switch self {
+        case .home: return "house.fill"
+        case .search: return "magnifyingglass"
+        case .myList: return "square.stack.fill"
+        case .settings: return "gearshape.fill"
+        }
+    }
+
+    public var titleVi: String {
+        switch self {
+        case .home: return "Trang chủ"
+        case .search: return "Tìm kiếm"
+        case .myList: return "Danh sách"
+        case .settings: return "Cài đặt"
+        }
+    }
+
+    public var titleEn: String {
+        switch self {
+        case .home: return "Home"
+        case .search: return "Search"
+        case .myList: return "My List"
+        case .settings: return "Settings"
+        }
+    }
+}
+
+public enum AppRoute: Hashable {
+    case home(category: String?)
+    case detail(slug: String)
+    case watch(slug: String, episode: Int)
+}
+
 public enum SheetDestination: Identifiable {
     case login
     case register

@@ -1,204 +1,163 @@
 import Foundation
 import Combine
+import SwiftUI
 
-public enum SortOption: String, CaseIterable, Identifiable {
-    case latest = "Latest"
-    case mostView = "Most View"
-    case hot = "Hot of the Week"
-
-    public var id: String { rawValue }
-
-    public var localizedVi: String {
-        switch self {
-        case .latest: return "Mới nhất"
-        case .mostView: return "Xem nhiều"
-        case .hot: return "Hot tuần"
-        }
-    }
-}
-
+// MARK: - HomeViewModel
 @MainActor
 public final class HomeViewModel: ObservableObject {
-    @Published public private(set) var heroMovies: [Movie] = []
-    @Published public private(set) var watchedMovies: [Movie] = []
-    @Published public private(set) var myListMovies: [Movie] = []
-    @Published public private(set) var recommendedMovies: [Movie] = []
-    @Published public private(set) var categoryMovies: [String: [Movie]] = [:]
-    @Published public private(set) var latestMovies: [Movie] = []
-    @Published public private(set) var allCategoryMovies: [Movie] = []
-    @Published public private(set) var genres: [Category] = []
-    @Published public private(set) var currentCategory: String?
-    @Published public var sortOption: SortOption = .latest
-    @Published public private(set) var isLoading: Bool = true
-    @Published public private(set) var error: String?
+    public struct Shelf: Identifiable {
+        public var id: String { title }
+        public var title: String
+        public var movies: [Movie]
+        public var isHorizontal: Bool
+        public var categorySlug: String?
 
-    private let movieRepo = MovieRepository.shared
-    private let userRepo = UserDataRepository.shared
-    private var cancellables = Set<AnyCancellable>()
-
-    public let mainCategories: [(slug: String, name: String)] = [
-        ("phim-le", "Phim Lẻ"),
-        ("phim-bo", "Phim Bộ"),
-        ("phim-long-tieng", "Phim Lồng Tiếng"),
-        ("hoat-hinh", "Hoạt Hình"),
-        ("tv-shows", "TV Shows"),
-        ("han-quoc", "K-drama"),
-        ("trung-quoc", "C-drama"),
-        ("viet-nam", "Phim Việt Nam")
-    ]
-
-    public init() {
-        setupUserDataObservers()
-        loadGenres()
-        loadHome()
+        public init(title: String, movies: [Movie], isHorizontal: Bool = false, categorySlug: String? = nil) {
+            self.title = title
+            self.movies = movies
+            self.isHorizontal = isHorizontal
+            self.categorySlug = categorySlug
+        }
     }
 
-    private func setupUserDataObservers() {
-        userRepo.$watchHistory
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] history in
-                self?.watchedMovies = history
-            }
-            .store(in: &cancellables)
+    @Published public var heroMovies: [Movie] = []
+    @Published public var shelves: [Shelf] = []
+    @Published public var selectedCategory: String? = nil
+    @Published public var categoryMovies: [Movie] = []
+    @Published public var isCategoryLoading: Bool = false
+    @Published public var sortOption: SortOption = .latest
+    @Published public var isLoading: Bool = false
+    @Published public var errorMessage: String? = nil
 
-        userRepo.$myList
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] list in
-                self?.myListMovies = list
-            }
-            .store(in: &cancellables)
+    public init() {}
+
+    public var sortedCategoryMovies: [Movie] {
+        switch sortOption {
+        case .latest:
+            return categoryMovies
+        case .mostView, .hot:
+            return categoryMovies.shuffled()
+        case .year:
+            return categoryMovies.sorted { ($0.year ?? 0) > ($1.year ?? 0) }
+        case .rating:
+            return categoryMovies.sorted { ($0.rating ?? "0") > ($1.rating ?? "0") }
+        case .title:
+            return categoryMovies.sorted { $0.title.localizedCompare($1.title) == .orderedAscending }
+        }
     }
 
     public func setSortOption(_ option: SortOption) {
         self.sortOption = option
-        self.allCategoryMovies = sortMovies(allCategoryMovies, option: option)
     }
 
-    private func sortMovies(_ list: [Movie], option: SortOption) -> [Movie] {
-        switch option {
-        case .latest:
-            return list.sorted { ($0.year ?? 0) > ($1.year ?? 0) }
-        case .mostView:
-            return list.shuffled()
-        case .hot:
-            return list.shuffled()
-        }
-    }
-
-    public func loadGenres() {
-        Task {
-            do {
-                self.genres = try await movieRepo.getGenres()
-            } catch {
-                print("[HomeViewModel] Failed to load genres: \(error)")
+    public func selectCategory(_ slug: String?) {
+        self.selectedCategory = slug
+        if let slug = slug {
+            Task {
+                await loadCategoryMovies(slug: slug)
             }
         }
     }
 
-    public func loadHome(category: String? = nil) {
-        isLoading = true
-        error = nil
-        currentCategory = category
-        allCategoryMovies = []
-
-        Task {
-            do {
-                if let cat = category, !cat.isEmpty {
-                    // Load category specific content
-                    let allMovies = try await loadAllPagesForCategory(categorySlug: cat)
-                    let sorted = sortMovies(allMovies, option: sortOption)
-                    self.allCategoryMovies = sorted
-                    self.heroMovies = Array(allMovies.prefix(5))
-                    self.recommendedMovies = Array(allMovies.shuffled().prefix(10))
-                    self.latestMovies = allMovies
-                    self.isLoading = false
-                } else {
-                    // Load all main categories concurrently
-                    var results: [String: [Movie]] = [:]
-
-                    await withTaskGroup(of: (String, [Movie]).self) { group in
-                        for cat in self.mainCategories {
-                            group.addTask {
-                                do {
-                                    let res = try await self.movieRepo.getHomeVideos(category: cat.slug, page: 1)
-                                    return (cat.name, res.items)
-                                } catch {
-                                    return (cat.name, [])
-                                }
-                            }
-                        }
-
-                        for await (name, items) in group {
-                            if !items.isEmpty {
-                                results[name] = items
-                            }
-                        }
-                    }
-
-                    let allFlattened = results.values.flatMap { $0 }
-                    var uniqueLatest: [Movie] = []
-                    var seen = Set<String>()
-                    for m in allFlattened {
-                        if !seen.contains(m.slug) {
-                            seen.insert(m.slug)
-                            uniqueLatest.append(m)
-                        }
-                    }
-
-                    if uniqueLatest.isEmpty {
-                        // Fallback general load
-                        let generalRes = try await movieRepo.getHomeVideos(category: nil, page: 1)
-                        uniqueLatest = generalRes.items
-                    }
-
-                    if uniqueLatest.isEmpty {
-                        self.error = "No content available"
-                        self.isLoading = false
-                    } else {
-                        let firstCatName = self.mainCategories.first?.name ?? ""
-                        let heroItems = results[firstCatName]?.prefix(5).map { $0 } ?? Array(uniqueLatest.prefix(5))
-
-                        self.categoryMovies = results
-                        self.heroMovies = Array(heroItems)
-                        self.recommendedMovies = Array(uniqueLatest.shuffled().prefix(15))
-                        self.latestMovies = Array(uniqueLatest.prefix(20))
-                        self.isLoading = false
-                    }
-                }
-            } catch {
-                self.error = error.localizedDescription
-                self.isLoading = false
-            }
+    public func refresh() async {
+        await loadHomeData()
+        if let slug = selectedCategory {
+            await loadCategoryMovies(slug: slug)
         }
     }
 
-    private func loadAllPagesForCategory(categorySlug: String, maxPages: Int = 5) async throws -> [Movie] {
-        let firstPage = try await movieRepo.getHomeVideos(category: categorySlug, page: 1)
-        if firstPage.items.isEmpty { return [] }
+    public func loadHomeData() async {
+        self.isLoading = true
+        self.errorMessage = nil
 
-        var allItems = firstPage.items
-        for page in 2...maxPages {
-            do {
-                let next = try await movieRepo.getHomeVideos(category: categorySlug, page: page)
-                if next.items.isEmpty { break }
-                allItems.append(contentsOf: next.items)
-            } catch {
-                break
-            }
-        }
+        do {
+            async let homeCall = ApiClient.shared.getHomeVideos(category: nil, page: 1)
+            async let singleCall = ApiClient.shared.getHomeVideos(category: "phim-le", page: 1)
+            async let seriesCall = ApiClient.shared.getHomeVideos(category: "phim-bo", page: 1)
+            async let animeCall = ApiClient.shared.getHomeVideos(category: "hoat-hinh", page: 1)
+            async let exploreCall = ApiClient.shared.exploreMovies()
 
-        var unique: [Movie] = []
-        var seen = Set<String>()
-        for m in allItems {
-            if !seen.contains(m.slug) {
-                seen.insert(m.slug)
-                unique.append(m)
+            let (homeMovies, singleMovies, seriesMovies, animeMovies, exploreList) = try await (
+                homeCall, singleCall, seriesCall, animeCall, (try? exploreCall) ?? []
+            )
+
+            // Select 5-6 top items for Hero Carousel
+            self.heroMovies = Array(homeMovies.prefix(6))
+
+            // Build Shelves
+            var newShelves: [Shelf] = []
+
+            if !homeMovies.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Top 10 Phim Hôm Nay",
+                        movies: Array(homeMovies.prefix(10)),
+                        isHorizontal: false,
+                        categorySlug: nil
+                    )
+                )
             }
+
+            if !seriesMovies.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Phim Bộ Đang Thịnh Hành",
+                        movies: seriesMovies,
+                        isHorizontal: false,
+                        categorySlug: "phim-bo"
+                    )
+                )
+            }
+
+            if !singleMovies.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Phim Lẻ Mới Nhất",
+                        movies: singleMovies,
+                        isHorizontal: false,
+                        categorySlug: "phim-le"
+                    )
+                )
+            }
+
+            if !animeMovies.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Hoạt Hình Nổi Bật",
+                        movies: animeMovies,
+                        isHorizontal: false,
+                        categorySlug: "hoat-hinh"
+                    )
+                )
+            }
+
+            if !exploreList.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Gợi Ý Cho Bạn",
+                        movies: exploreList,
+                        isHorizontal: true,
+                        categorySlug: nil
+                    )
+                )
+            }
+
+            self.shelves = newShelves
+            self.isLoading = false
+        } catch {
+            self.errorMessage = error.localizedDescription
+            self.isLoading = false
         }
-        return unique
     }
 
-    public func refresh() {
-        loadHome(category: currentCategory)
+    public func loadCategoryMovies(slug: String) async {
+        self.isCategoryLoading = true
+        do {
+            let list = try await ApiClient.shared.getHomeVideos(category: slug, page: 1)
+            self.categoryMovies = list
+            self.isCategoryLoading = false
+        } catch {
+            self.isCategoryLoading = false
+        }
     }
 }
