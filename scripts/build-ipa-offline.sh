@@ -74,7 +74,37 @@ printf "APPL????" > "${APP_DIR}/PkgInfo"
 
 echo -e "  [${GREEN}✓${NC}] Info.plist and PkgInfo generated."
 
-echo -e "\n${YELLOW}[3/5] Bundling localization & resources...${NC}"
+echo -e "\n${YELLOW}[3/5] Bundling Ionic Framework UI, localization & resources...${NC}"
+mkdir -p "${APP_DIR}/www"
+cp "${IOS_APP_DIR}/simulator-web/app.html" "${APP_DIR}/www/index.html"
+if [ -d "${IOS_APP_DIR}/simulator-web/vendor" ]; then
+    cp -r "${IOS_APP_DIR}/simulator-web/vendor" "${APP_DIR}/www/"
+fi
+
+# Add Ionic & Capacitor configuration manifests
+cat << 'EOF' > "${APP_DIR}/capacitor.config.json"
+{
+  "appId": "com.kvnetflix.ios",
+  "appName": "KV-Netflix",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://nf.khoavo.myds.me",
+    "cleartext": true
+  }
+}
+EOF
+
+cat << 'EOF' > "${APP_DIR}/ionic.config.json"
+{
+  "name": "kv-netflix-ios",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
+EOF
+
 if [ -d "${IOS_APP_DIR}/Resources/vi.lproj" ]; then
     cp -r "${IOS_APP_DIR}/Resources/vi.lproj" "${APP_DIR}/"
 fi
@@ -82,7 +112,7 @@ if [ -d "${IOS_APP_DIR}/Resources/en.lproj" ]; then
     cp -r "${IOS_APP_DIR}/Resources/en.lproj" "${APP_DIR}/"
 fi
 
-echo -e "  [${GREEN}✓${NC}] Added Vietnamese (vi) and English (en) strings."
+echo -e "  [${GREEN}✓${NC}] Added Ionic Framework v8 runtime, www assets, and localization catalogs."
 
 echo -e "\n${YELLOW}[4/5] Packaging IPA archive...${NC}"
 rm -f "${IPA_OUTPUT}"
