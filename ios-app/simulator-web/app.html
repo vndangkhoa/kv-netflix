@@ -1198,31 +1198,46 @@
     }
 
     // Detail Sheet
-    function openDetailSheet(movie) {
+    async function openDetailSheet(movie) {
         currentMovie = movie;
         document.getElementById('detailTitle').innerText = movie.title;
         document.getElementById('detailYear').innerText = movie.year || '2026';
         document.getElementById('detailQuality').innerText = movie.quality || 'FHD';
         document.getElementById('detailLang').innerText = movie.lang || 'Vietsub';
         document.getElementById('detailHeroImg').src = movie.backdrop || movie.thumbnail || 'https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-thumb.webp';
-        document.getElementById('detailSynopsis').innerText = movie.description || "Bộ phim hấp dẫn với nhiều tình tiết kịch tính, kỹ xảo đỉnh cao và nội dung gay cấn.";
+        document.getElementById('detailSynopsis').innerText = movie.description || "Đang tải thông tin phim...";
 
         const grid = document.getElementById('detailEpisodesGrid');
-        grid.innerHTML = '';
-        for (let i = 1; i <= 8; i++) {
-            const btn = document.createElement('div');
-            btn.className = `ep-btn ${i === 1 ? 'active' : ''}`;
-            btn.innerText = `Tập ${i}`;
-            btn.onclick = () => {
-                currentEpisode = i;
-                playMovie(movie.slug || 'hoc-vien-minerva', movie.title, i);
-            };
-            grid.appendChild(btn);
-        }
+        grid.innerHTML = '<div style="color:#aaa; font-size:12px; grid-column:span 4; padding:8px;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải tập phim & máy chủ...</div>';
 
         const sheet = document.getElementById('detailSheet');
         sheet.style.display = 'flex';
         setTimeout(() => sheet.classList.add('active'), 10);
+
+        try {
+            const res = await fetch(`${API_BASE}/api/videos/${movie.slug}`);
+            const data = await res.json();
+            currentMovie = data;
+            if (data.description) document.getElementById('detailSynopsis').innerText = data.description;
+            if (data.episodes && data.episodes.length > 0) {
+                grid.innerHTML = '';
+                data.episodes.forEach(ep => {
+                    const btn = document.createElement('div');
+                    btn.className = `ep-btn ${ep.number === 1 ? 'active' : ''}`;
+                    btn.innerText = ep.title ? `Tập ${ep.title}` : `Tập ${ep.number}`;
+                    btn.onclick = () => {
+                        currentEpisode = ep.number;
+                        playMovie(movie.slug, movie.title, ep.number, ep.url, data.episodes);
+                    };
+                    grid.appendChild(btn);
+                });
+            } else {
+                grid.innerHTML = `<div class="ep-btn active" onclick="playMovie('${movie.slug}', '${movie.title}', 1)">Xem Tập 1</div>`;
+            }
+        } catch (e) {
+            console.error("Detail error:", e);
+            grid.innerHTML = `<div class="ep-btn active" onclick="playMovie('${movie.slug}', '${movie.title}', 1)">Xem Tập 1</div>`;
+        }
     }
 
     function closeDetailSheet() {
@@ -1232,7 +1247,10 @@
     }
 
     function playCurrentDetailMovie() {
-        if (currentMovie) playMovie(currentMovie.slug || 'hoc-vien-minerva', currentMovie.title, currentEpisode);
+        if (currentMovie) {
+            const ep = currentMovie.episodes && currentMovie.episodes.length > 0 ? currentMovie.episodes[0] : null;
+            playMovie(currentMovie.slug || 'hoc-vien-minerva', currentMovie.title, 1, ep ? ep.url : null, currentMovie.episodes);
+        }
     }
 
     // Search Engine
@@ -1288,7 +1306,7 @@
                 <div class="movie-name">Học Viện Minerva</div>
                 <div class="movie-sub">${sub === 'history' ? 'Đã xem 68%' : 'Tập 1-8'}</div>
             </div>
-            <div class="movie-card" onclick="playMovie('big-buck-bunny', 'Big Buck Bunny 4K', 1)">
+            <div class="movie-card" onclick="playMovie('big-buck-bunny', 'Big Buck Bunny 4K', 1, 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')">
                 <div class="poster-wrap">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/440px-Big_buck_bunny_poster_big.jpg">
                     <span class="quality-tag">4K</span>
@@ -1302,23 +1320,65 @@
     // Video Player
     const video = document.getElementById('mainVideo');
 
-    function playMovie(slug, title, episode = 1) {
+    async function playMovie(slug, title, episode = 1, directUrl = null, episodesList = null) {
         closeDetailSheet();
         document.getElementById('playerMovieTitle').innerText = title;
         document.getElementById('playerEpTitle').innerText = `Tập ${episode} • FHD`;
         document.getElementById('playerView').classList.add('active');
 
-        activeServerIdx = 0;
-        loadVideoStream(serversList[activeServerIdx].url);
-        showToast(`Đang phát: ${title}`);
+        // 1. If direct stream URL is provided
+        if (directUrl) {
+            serversList = [{ name: "Server #1 (Chính)", url: directUrl }];
+            if (episodesList) {
+                episodesList.filter(e => e.number == episode && e.url != directUrl).forEach((e, idx) => {
+                    serversList.push({ name: e.serverName ? e.serverName.trim().replace(/\s+/g, ' ') : `Server #${idx+2}`, url: e.url });
+                });
+            }
+            activeServerIdx = 0;
+            loadVideoStream(serversList[0].url);
+            showToast(`Đang phát: ${title}`);
+            return;
+        }
+
+        // 2. Otherwise fetch live movie streams dynamically from API
+        showToast(`Đang lấy luồng phát: ${title}...`);
+        try {
+            const res = await fetch(`${API_BASE}/api/videos/${slug}`);
+            const data = await res.json();
+            serversList = [];
+            if (data.episodes && data.episodes.length > 0) {
+                const matchedEps = data.episodes.filter(e => e.number == episode);
+                const targetEps = matchedEps.length > 0 ? matchedEps : [data.episodes[0]];
+                targetEps.forEach((e, idx) => {
+                    if (e.url) {
+                        serversList.push({
+                            name: e.serverName ? e.serverName.trim().replace(/\s+/g, ' ') : `Server #${idx+1}`,
+                            url: e.url
+                        });
+                    }
+                });
+            }
+
+            if (serversList.length === 0) {
+                serversList.push({ name: "Server #1", url: "https://v8.streamvsmov.com/stream/6a80d47f-3984-4ccc-954e-6b7dcb5c2b9f/master.m3u8" });
+            }
+
+            activeServerIdx = 0;
+            loadVideoStream(serversList[0].url);
+            showToast(`Đang phát: ${title}`);
+        } catch (e) {
+            console.error("Stream fetch error:", e);
+            showToast(`Không thể tải luồng phát: ${e.message}`);
+        }
     }
 
     function loadVideoStream(streamUrl) {
-        document.getElementById('playerServerBadge').innerText = serversList[activeServerIdx].name.split(' ')[0];
+        const sName = serversList[activeServerIdx] ? serversList[activeServerIdx].name.split(' ')[0] : 'Server #1';
+        document.getElementById('playerServerBadge').innerText = sName;
 
         if (Hls.isSupported()) {
             if (hls) hls.destroy();
-            hls = new Hls({ lowLatencyMode: true });
+            hls = new Hls({ lowLatencyMode: true, backBufferLength: 90 });
             hls.loadSource(streamUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(e => console.log(e)));
