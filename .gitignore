@@ -73,9 +73,9 @@ build/
 
 # iOS
 ios-app/.build/
-ios-app/*.xcodeproj
-ios-app/*.xcworkspace
 ios-app/.swiftpm/
+ios-app/www/
+!ios-app/ios/**
 
 # Environment and IDE
 .agent/

@@ -1,10 +1,26 @@
 {
   "appId": "com.kvnetflix.ionic",
   "appName": "KV-Netflix",
-  "webDir": "simulator-web",
+  "webDir": "www",
   "bundledWebRuntime": false,
-  "server": {
-    "url": "https://nf.khoavo.myds.me",
-    "cleartext": true
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "preferredContentMode": "mobile",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "CapacitorCookies": {
+      "enabled": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#000000",
+      "overlaysWebView": true
+    }
   }
 }

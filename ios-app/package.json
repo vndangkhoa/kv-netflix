@@ -5,11 +5,19 @@
   "main": "simulator-web/app.html",
   "scripts": {
     "start": "python3 -m http.server 3270 --directory simulator-web",
-    "build": "echo 'Ionic assets ready in simulator-web'"
+    "build": "node scripts/build-dist.js",
+    "sync": "npm run build && npx cap sync ios",
+    "open": "npx cap open ios"
   },
   "dependencies": {
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/ios": "^6.0.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/screen-orientation": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.3",
     "@ionic/core": "^8.4.1"
   },
   "keywords": [

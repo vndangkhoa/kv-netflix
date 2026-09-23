@@ -1,0 +1,60 @@
+name: Build Native iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ios-app/**'
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ios-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd ios-app
+          npm ci
+
+      - name: Build & Sync Capacitor iOS
+        run: |
+          cd ios-app
+          npm run sync
+
+      - name: Build Xcode Archive & IPA
+        run: |
+          cd ios-app/ios/App
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj
+          
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+          mkdir -p build/Payload
+          cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/KvNetflix.app
+          cd build
+          zip -qr KvNetflix.ipa Payload
+          ls -lh KvNetflix.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KvNetflix-iOS-IPA
+          path: ios-app/ios/App/build/KvNetflix.ipa
+          retention-days: 14

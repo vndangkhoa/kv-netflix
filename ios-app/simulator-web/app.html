@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>KV-Netflix Mobile</title>
 
-    <!-- FontAwesome & HLS.js (Vendored locally for offline support) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- FontAwesome & HLS.js (Vendored locally for 100% offline support) -->
+    <link rel="stylesheet" href="vendor/fontawesome/all.min.css">
     <script src="vendor/ionic/hls.min.js"></script>
 
     <style>
@@ -27,8 +27,10 @@
             --green-match: #34C759;        /* iOS Cupertino Green */
             --border-primary: rgba(255, 255, 255, 0.12);
             --border-subtle: rgba(255, 255, 255, 0.08);
-            --safe-area-top: 54px;
-            --safe-area-bottom: 34px;
+            --safe-area-top: max(54px, env(safe-area-inset-top));
+            --safe-area-bottom: max(34px, env(safe-area-inset-bottom));
+            --safe-area-left: env(safe-area-inset-left);
+            --safe-area-right: env(safe-area-inset-right);
         }
 
         * {
@@ -1637,7 +1639,7 @@
 <div id="watchScreen" class="watch-screen">
     <!-- Top Player Box -->
     <div class="watch-player-box" onclick="togglePlayerControls()">
-        <video id="mainVideo" class="watch-video" playsinline></video>
+        <video id="mainVideo" class="watch-video" playsinline webkit-playsinline x-webkit-airplay="allow" controlsList="nodownload"></video>
 
         <!-- Player Controls Overlay -->
         <div class="player-controls-overlay" id="playerControlsOverlay">
@@ -1649,9 +1651,14 @@
                     <div class="player-info-title" id="playerTitle">Tên Phim</div>
                     <div class="player-info-sub" id="playerSub">Tập 1 • FHD</div>
                 </div>
-                <button class="player-back-btn" onclick="toggleFullscreen()">
-                    <i class="fa-solid fa-expand" id="fsIcon"></i>
-                </button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="player-back-btn" onclick="togglePip()" id="pipBtn" title="Picture in Picture">
+                        <i class="fa-solid fa-clone"></i>
+                    </button>
+                    <button class="player-back-btn" onclick="toggleFullscreen()">
+                        <i class="fa-solid fa-expand" id="fsIcon"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Transport Row -->
@@ -1797,6 +1804,7 @@
 
     // ── 5-Tab Navigation (BottomTabBar.kt) ──
     function switchTab(tabId) {
+        triggerHaptic('light');
         document.querySelectorAll('.tab-screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.tab-btn-item').forEach(b => b.classList.remove('active'));
 
@@ -1831,6 +1839,7 @@
 
     // ── Language Toggle (Navbar.kt) ──
     function toggleLanguage() {
+        triggerHaptic('light');
         currentLang = (currentLang === "vi") ? "en" : "vi";
         document.getElementById('langToggleBtn').innerText = currentLang.toUpperCase();
         document.getElementById('catTitlePhimLe').innerText = (currentLang === "vi") ? "Phim lẻ" : "Movies";
@@ -1857,6 +1866,7 @@
 
     // ── Sub-Tabs in My List (MyListScreen.kt) ──
     function switchSubTab(sub) {
+        triggerHaptic('light');
         document.querySelectorAll('.subtab-item').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.subtab-content').forEach(c => c.classList.remove('active'));
 
@@ -1871,7 +1881,10 @@
     function createMovieCardEl(m, rank = null) {
         const card = document.createElement('div');
         card.className = 'movie-card';
-        card.onclick = () => playMovie(m.slug, m.title, 1);
+        card.onclick = () => {
+            triggerHaptic('light');
+            playMovie(m.slug, m.title, 1);
+        };
 
         const thumb = m.thumbnail || m.backdrop || 'https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp';
         const rankMarkup = rank ? `<div class="card-rank-badge">${rank}</div>` : '';
@@ -2274,7 +2287,13 @@
     }
 
     function loadStream(url) {
-        if (Hls.isSupported()) {
+        // Native Apple iOS Safari & WKWebView AVPlayer priority
+        const isApple = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) && !window.MSStream;
+        if (isApple && video.canPlayType('application/vnd.apple.mpegurl')) {
+            if (hls) { hls.destroy(); hls = null; }
+            video.src = url;
+            video.play().catch(() => {});
+        } else if (window.Hls && Hls.isSupported()) {
             if (hls) hls.destroy();
             hls = new Hls({ lowLatencyMode: true });
             hls.loadSource(url);
@@ -2288,10 +2307,29 @@
         }
     }
 
+    function togglePip() {
+        if (!video) return;
+        triggerHaptic('light');
+        if (document.pictureInPictureElement) {
+            document.exitPictureInPicture().catch(() => {});
+        } else if (video.webkitSetPresentationMode && video.webkitSupportsPresentationMode && video.webkitSupportsPresentationMode('picture-in-picture')) {
+            const mode = video.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture';
+            video.webkitSetPresentationMode(mode);
+        } else if (document.pictureInPictureEnabled && video !== document.pictureInPictureElement) {
+            video.requestPictureInPicture().catch(() => {});
+        } else {
+            showToast("Picture-in-Picture not supported on this device");
+        }
+    }
+
     function closeWatchScreen() {
+        triggerHaptic('light');
         if (video) video.pause();
         if (hls) hls.destroy();
         document.getElementById('watchScreen').classList.remove('active');
+        if (isCapacitorNative && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('ScreenOrientation')) {
+            window.Capacitor.Plugins.ScreenOrientation.unlock().catch(() => {});
+        }
     }
 
     // Video Controls
@@ -2376,8 +2414,10 @@
     }
 
     function toggleWatchFavorite() {
+        triggerHaptic('medium');
         const icon = document.querySelector('#btnWatchFav i');
-        if (icon.classList.contains('fa-regular')) {
+        if (!icon) return;
+        if (icon.className.includes('fa-regular')) {
             icon.className = 'fa-solid fa-heart';
             icon.style.color = 'var(--accent)';
             showToast('✓ Đã lưu vào My List');
@@ -2390,11 +2430,13 @@
 
     // ── Device Pairing Modal (PairingViewModel) ──
     function openDevicePairingModal() {
+        triggerHaptic('light');
         document.getElementById('pairingModal').classList.add('active');
         generateFreshDeviceCode();
     }
 
     function closeDevicePairingModal() {
+        triggerHaptic('light');
         document.getElementById('pairingModal').classList.remove('active');
     }
 
@@ -2403,7 +2445,7 @@
             const res = await fetch(`${API_BASE}/api/auth/device/code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_name: "iOS Simulator", device_type: "ios" })
+                body: JSON.stringify({ device_name: "iPhone 16 Pro", device_type: "ios" })
             });
             const data = await res.json();
             if (data.code && data.code.length === 6) {
@@ -2420,6 +2462,7 @@
     }
 
     function simulatePairSuccess() {
+        triggerHaptic('success');
         document.getElementById('pairStatusText').innerHTML = "🟢 Ghép đôi thành công với Android TV Living Room!";
         showToast("✓ Đã ghép đôi với Android TV Living Room");
         setTimeout(closeDevicePairingModal, 1200);
@@ -2475,7 +2518,79 @@
         }
     });
 
+    // ── Capacitor Native iOS Bridge ──
+    const isCapacitorNative = typeof window.Capacitor !== 'undefined' && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.platform === 'ios');
+
+    function triggerHaptic(style = 'light') {
+        if (isCapacitorNative && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Haptics')) {
+            const { Haptics } = window.Capacitor.Plugins;
+            if (Haptics) {
+                if (style === 'light') Haptics.impact({ style: 'LIGHT' }).catch(() => {});
+                else if (style === 'medium') Haptics.impact({ style: 'MEDIUM' }).catch(() => {});
+                else if (style === 'heavy') Haptics.impact({ style: 'HEAVY' }).catch(() => {});
+                else if (style === 'success') Haptics.notification({ type: 'SUCCESS' }).catch(() => {});
+                else if (style === 'error') Haptics.notification({ type: 'ERROR' }).catch(() => {});
+            }
+        }
+    }
+
+    async function persistNativeData(key, value) {
+        if (isCapacitorNative && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Preferences')) {
+            try {
+                await window.Capacitor.Plugins.Preferences.set({
+                    key,
+                    value: typeof value === 'string' ? value : JSON.stringify(value)
+                });
+            } catch (e) {}
+        }
+    }
+
+    async function initNativeCapacitorBridge() {
+        if (!isCapacitorNative) {
+            console.log('[App] Running in Web / Simulator Mode');
+            return;
+        }
+        console.log('[Native iOS] Initializing Capacitor native plugins...');
+        try {
+            // 1. Status Bar Setup (Dark theme, overlays WebView for frosted glass)
+            if (window.Capacitor.isPluginAvailable('StatusBar')) {
+                const { StatusBar } = window.Capacitor.Plugins;
+                await StatusBar.setStyle({ style: 'DARK' });
+                await StatusBar.setOverlaysWebView({ overlay: true });
+            }
+            // 2. Preferences sync (permanent UserDefaults cache)
+            if (window.Capacitor.isPluginAvailable('Preferences')) {
+                const { Preferences } = window.Capacitor.Plugins;
+                const tokenRes = await Preferences.get({ key: 'auth_token' });
+                if (tokenRes && tokenRes.value && !authToken) {
+                    authToken = tokenRes.value;
+                    localStorage.setItem('auth_token', authToken);
+                    console.log('[Native iOS] Restored auth_token from native storage');
+                }
+                const profileRes = await Preferences.get({ key: 'user_profile' });
+                if (profileRes && profileRes.value && !userProfile) {
+                    try {
+                        userProfile = JSON.parse(profileRes.value);
+                        localStorage.setItem('user_profile', profileRes.value);
+                    } catch (e) {}
+                }
+            }
+            // 3. App Lifecycle (Auto-pause when minimized)
+            if (window.Capacitor.isPluginAvailable('App')) {
+                const { App } = window.Capacitor.Plugins;
+                App.addListener('appStateChange', ({ isActive }) => {
+                    if (!isActive && video && !video.paused) {
+                        video.pause();
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('[Native iOS] Bridge init warning:', e);
+        }
+    }
+
     // Boot
+    initNativeCapacitorBridge();
     loadHomeFeed();
 </script>
 </body>
