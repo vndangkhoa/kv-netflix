@@ -1,0 +1,24 @@
+{
+  "name": "kv-netflix-ionic",
+  "version": "1.0.0",
+  "description": "KV-Netflix iOS Mobile Client built with Ionic Framework",
+  "main": "simulator-web/app.html",
+  "scripts": {
+    "start": "python3 -m http.server 3270 --directory simulator-web",
+    "build": "echo 'Ionic assets ready in simulator-web'"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@ionic/core": "^8.4.1"
+  },
+  "keywords": [
+    "ionic",
+    "capacitor",
+    "netflix",
+    "video-streaming",
+    "ios"
+  ],
+  "author": "KV-Netflix",
+  "license": "UNLICENSED"
+}

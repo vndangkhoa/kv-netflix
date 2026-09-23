@@ -1,0 +1,7 @@
+{
+  "name": "kv-netflix-ionic",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}

@@ -1,0 +1,10 @@
+{
+  "appId": "com.kvnetflix.ionic",
+  "appName": "KV-Netflix",
+  "webDir": "simulator-web",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://nf.khoavo.myds.me",
+    "cleartext": true
+  }
+}
