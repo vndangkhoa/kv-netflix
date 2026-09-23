@@ -3,61 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KV-Netflix — Enhanced with Ionic Framework</title>
+    <title>KV-Netflix Mobile iOS</title>
 
-    <!-- Ionic Framework v8 (iOS Cupertino Mode) -->
-    <link rel="stylesheet" href="/vendor/ionic/ionic.bundle.css">
-    <script type="module" src="/vendor/ionic/ionic.esm.js"></script>
-    <script nomodule src="/vendor/ionic/ionic.js"></script>
-    <script type="module" src="/vendor/ionic/ionicons.esm.js"></script>
-    <script nomodule src="/vendor/ionic/ionicons.js"></script>
-    <script src="/vendor/ionic/hls.min.js"></script>
+    <!-- FontAwesome & HLS.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 
     <style>
         :root {
-            --ion-background-color: #141414;
-            --ion-text-color: #ffffff;
-            --ion-item-background: #1f1f1f;
-            --ion-card-background: #242424;
-            --ion-color-primary: #E50914;
-            --ion-color-primary-rgb: 229, 9, 20;
-            --ion-color-primary-contrast: #ffffff;
-            --ion-color-primary-contrast-rgb: 255, 255, 255;
-            --ion-color-primary-shade: #ca0812;
-            --ion-color-primary-tint: #e8222c;
+            --bg-color: #141414;
+            --surface-color: #1f1f1f;
+            --card-color: #262626;
+            --border-color: #333333;
             --netflix-red: #E50914;
+            --netflix-red-hover: #f40612;
+            --text-primary: #FFFFFF;
+            --text-secondary: #999999;
+            --accent-green: #46d369;
+            --accent-blue: #3880ff;
             --safe-area-top: 48px;
-            --safe-area-bottom: 34px;
+            --safe-area-bottom: 24px;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             -webkit-font-smoothing: antialiased;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        ion-app {
-            background-color: var(--ion-background-color);
-            color: #fff;
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-            height: 100vh;
-            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* Main Phone App Container */
+        #appContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--bg-color);
             padding-top: var(--safe-area-top);
         }
 
-        /* Netflix Header Bar */
+        /* Top Header Navbar */
         .top-navbar {
+            height: 52px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(16px);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 16px;
-            background: linear-gradient(180deg, rgba(20,20,20,0.98) 0%, rgba(20,20,20,0.7) 70%, transparent 100%);
+            padding: 0 16px;
             position: sticky;
             top: 0;
             z-index: 100;
-            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .brand-logo {
@@ -71,54 +80,91 @@
         }
 
         .brand-badge {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
-            background: #2a2a2a;
-            color: #fff;
+            background: #2b2b2b;
+            color: #eee;
             padding: 2px 6px;
             border-radius: 4px;
             border: 1px solid #444;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .nav-icon-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
         }
 
         .user-avatar {
             width: 30px;
             height: 30px;
             border-radius: 6px;
-            background: linear-gradient(135deg, #E50914, #8b0000);
+            background: linear-gradient(135deg, #E50914, #900);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
             color: #fff;
-            box-shadow: 0 2px 6px rgba(229, 9, 20, 0.4);
             cursor: pointer;
+            box-shadow: 0 2px 6px rgba(229, 9, 20, 0.4);
         }
 
-        /* Filter Chips with Ionic Chip Styling */
+        /* Content Viewport */
+        .content-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 74px;
+        }
+
+        .tab-screen {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .tab-screen.active {
+            display: flex;
+        }
+
+        /* Filter Chips (Ionic Style) */
         .filter-row {
             display: flex;
             gap: 8px;
-            padding: 8px 16px;
+            padding: 10px 16px;
             overflow-x: auto;
             scrollbar-width: none;
         }
         .filter-row::-webkit-scrollbar { display: none; }
 
-        ion-chip.netflix-chip {
-            --background: rgba(255, 255, 255, 0.12);
-            --color: #fff;
+        .chip {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
-            margin: 0;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.2s;
+            white-space: nowrap;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
-        ion-chip.netflix-chip.active {
-            --background: #fff;
-            --color: #000;
+        .chip.active {
+            background: #fff;
+            color: #000;
             font-weight: 800;
             border-color: #fff;
         }
@@ -182,6 +228,19 @@
             font-weight: 600;
         }
 
+        .hero-tags span.dot {
+            font-size: 8px;
+            opacity: 0.6;
+        }
+
+        .badge-fhd {
+            background: rgba(255,255,255,0.2);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 800;
+        }
+
         .hero-btn-row {
             display: flex;
             gap: 12px;
@@ -191,7 +250,7 @@
         .hero-btn {
             flex: 1;
             height: 42px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: none;
             font-size: 15px;
             font-weight: 700;
@@ -200,7 +259,7 @@
             justify-content: center;
             gap: 8px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
         }
 
         .hero-btn.play {
@@ -208,12 +267,12 @@
             color: #000;
         }
         .hero-btn.play:active {
-            background: #dcdcdc;
+            background: #ddd;
             transform: scale(0.98);
         }
 
         .hero-btn.mylist {
-            background: rgba(90, 90, 90, 0.6);
+            background: rgba(80, 80, 80, 0.65);
             color: #fff;
             backdrop-filter: blur(10px);
         }
@@ -236,6 +295,12 @@
             font-size: 17px;
             font-weight: 800;
             letter-spacing: -0.3px;
+        }
+
+        .shelf-more {
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
         }
 
         .shelf-cards {
@@ -309,97 +374,341 @@
 
         .movie-sub {
             font-size: 11px;
-            color: #888;
+            color: var(--text-secondary);
         }
 
-        /* Ionic Tab Bar Customization */
-        ion-tab-bar.netflix-tab-bar {
-            --background: rgba(18, 18, 18, 0.95);
-            --border: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            height: 60px;
-            padding-bottom: 12px;
+        /* Search Screen */
+        .search-screen {
+            padding: 16px;
         }
 
-        ion-tab-button {
-            --color: #888;
-            --color-selected: #fff;
-            font-size: 10px;
-            font-weight: 600;
+        .search-input-wrap {
+            position: relative;
+            margin-bottom: 16px;
         }
 
-        ion-tab-button[aria-selected="true"] ion-icon {
-            color: var(--netflix-red);
-            transform: scale(1.1);
+        .search-input {
+            width: 100%;
+            height: 44px;
+            background: #262626;
+            border: 1px solid #3d3d3d;
+            border-radius: 12px;
+            padding: 0 40px 0 42px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+        .search-input:focus {
+            border-color: var(--netflix-red);
         }
 
-        /* Ionic Searchbar Customization */
-        ion-searchbar.netflix-searchbar {
-            --background: #262626;
-            --color: #fff;
-            --placeholder-color: #888;
-            --icon-color: #888;
-            --clear-button-color: #888;
-            --border-radius: 10px;
-            padding: 0 16px 12px;
+        .search-input-wrap i.fa-magnifying-glass {
+            position: absolute;
+            left: 14px;
+            top: 14px;
+            color: var(--text-secondary);
         }
 
-        /* Ionic Segment (My List / History) */
-        ion-segment.netflix-segment {
-            --background: #242424;
+        .search-clear-btn {
+            position: absolute;
+            right: 12px;
+            top: 13px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        /* Segmented Control (Cupertino Style) */
+        .cupertino-segment {
+            display: flex;
+            background: #262626;
             padding: 4px;
             border-radius: 10px;
             margin: 0 16px 16px;
         }
 
-        ion-segment-button {
-            --color: #aaa;
-            --color-checked: #fff;
-            --indicator-color: #383838;
+        .segment-btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
             font-size: 13px;
             font-weight: 600;
             border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        /* Movie Detail Sheet (Ionic Modal) */
-        ion-modal#detailModal {
-            --border-radius: 20px 20px 0 0;
-            --background: #181818;
-        }
-
-        .modal-content {
-            padding: 16px;
+        .segment-btn.active {
+            background: #383838;
             color: #fff;
-            overflow-y: auto;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
 
-        .modal-hero {
+        /* TV Pairing Screen */
+        .pairing-screen {
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .pairing-icon-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: rgba(229, 9, 20, 0.15);
+            border: 2px solid var(--netflix-red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: var(--netflix-red);
+            margin-bottom: 16px;
+            box-shadow: 0 0 24px rgba(229, 9, 20, 0.4);
+        }
+
+        .pin-container {
+            display: flex;
+            gap: 10px;
+            margin: 24px 0 16px;
+        }
+
+        .pin-digit {
+            width: 44px;
+            height: 56px;
+            background: #262626;
+            border: 2px solid #444;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            font-family: monospace;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #1c261e;
+            border: 1px solid #2d5538;
+            color: var(--accent-green);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        /* Settings Screen */
+        .settings-screen {
+            padding: 16px;
+        }
+
+        .settings-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+        .settings-row:last-child { border-bottom: none; }
+
+        .settings-row-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .settings-row-label i {
+            color: var(--netflix-red);
+            width: 20px;
+            text-align: center;
+        }
+
+        .settings-val {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Bottom Tab Bar (iOS Style) */
+        .bottom-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(18, 18, 18, 0.96);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding-bottom: 12px;
+            z-index: 200;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            transition: color 0.15s;
+        }
+
+        .tab-btn i {
+            font-size: 18px;
+        }
+
+        .tab-btn.active {
+            color: #fff;
+        }
+
+        .tab-btn.active i {
+            color: var(--netflix-red);
+            transform: scale(1.1);
+        }
+
+        /* Movie Detail Sheet Modal */
+        .detail-sheet {
+            position: fixed;
+            top: var(--safe-area-top);
+            left: 0; right: 0; bottom: 0;
+            background: #181818;
+            z-index: 400;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .detail-sheet.active {
+            display: flex;
+            transform: translateY(0);
+        }
+
+        .detail-hero {
             position: relative;
             width: 100%;
-            height: 220px;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 16px;
+            height: 230px;
+            background: #000;
         }
 
-        .modal-hero img {
+        .detail-hero img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
+        .detail-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .detail-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .episodes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .ep-btn {
+            background: #282828;
+            border: 1px solid #383838;
+            color: #fff;
+            padding: 10px 4px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+        }
+        .ep-btn.active, .ep-btn:active {
+            background: var(--netflix-red);
+            border-color: var(--netflix-red);
+        }
+
         /* Fullscreen Video Player */
-        .player-modal {
+        .player-view {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: #000;
-            z-index: 9999;
+            z-index: 900;
             display: none;
             flex-direction: column;
             justify-content: center;
+            align-items: center;
         }
 
-        .player-modal.active {
+        .player-view.active {
             display: flex;
         }
 
@@ -410,14 +719,14 @@
             background: #000;
         }
 
-        .player-controls-overlay {
+        .player-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             padding: 50px 20px 30px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.88) 100%);
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.88) 100%);
             transition: opacity 0.3s;
         }
 
@@ -429,7 +738,7 @@
             cursor: pointer;
         }
 
-        .play-pause-btn {
+        .ctrl-btn.play-pause {
             width: 58px;
             height: 58px;
             border-radius: 50%;
@@ -441,7 +750,7 @@
             font-size: 26px;
         }
 
-        .timeline-bar {
+        .scrub-bar {
             flex: 1;
             height: 5px;
             background: rgba(255,255,255,0.3);
@@ -450,7 +759,7 @@
             cursor: pointer;
         }
 
-        .timeline-fill {
+        .scrub-fill {
             height: 100%;
             width: 0%;
             background: var(--netflix-red);
@@ -458,7 +767,7 @@
             position: relative;
         }
 
-        .timeline-thumb {
+        .scrub-thumb {
             position: absolute;
             right: -6px; top: -4px;
             width: 13px; height: 13px;
@@ -467,86 +776,95 @@
             box-shadow: 0 0 6px rgba(229,9,20,0.9);
         }
 
-        /* TV Pairing UI */
-        .pin-box-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin: 24px 0 16px;
-        }
-
-        .pin-box {
-            width: 44px;
-            height: 56px;
-            background: #242424;
-            border: 2px solid #444;
-            border-radius: 10px;
+        /* Toast Popup */
+        .toast {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(30,30,30,0.95);
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 26px;
-            font-weight: 800;
-            color: #fff;
-            font-family: monospace;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
     </style>
 </head>
 <body>
 
-<ion-app mode="ios">
+<div id="appContainer">
     <!-- Top Global Header -->
     <div class="top-navbar">
         <div class="brand-logo">
-            <ion-icon name="play" style="font-size: 20px;"></ion-icon>
+            <i class="fa-solid fa-play" style="font-size: 18px;"></i>
             KV-FLIX
             <span class="brand-badge">IONIC</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <ion-icon name="search" style="font-size: 20px; cursor: pointer;" onclick="selectTab('search')"></ion-icon>
-            <div class="user-avatar" onclick="selectTab('settings')">KV</div>
+        <div class="nav-actions">
+            <button class="nav-icon-btn" onclick="switchTab('search')"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <div class="user-avatar" onclick="switchTab('settings')">KV</div>
         </div>
     </div>
 
-    <!-- Main Ionic Content Viewport -->
-    <ion-content id="mainContent" fullscreen="true">
-        <!-- 1. HOME TAB -->
-        <div id="tabViewHome" class="tab-view active">
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i>
+        <span id="toastMsg">Ready</span>
+    </div>
+
+    <!-- Scrollable Content Viewport -->
+    <div class="content-scroll">
+        <!-- 1. HOME SCREEN -->
+        <div id="screenHome" class="tab-screen active">
             <!-- Filter Chips -->
             <div class="filter-row">
-                <ion-chip class="netflix-chip active" onclick="filterCat(this, 'all')">Tất cả</ion-chip>
-                <ion-chip class="netflix-chip" onclick="filterCat(this, 'series')">Phim Bộ</ion-chip>
-                <ion-chip class="netflix-chip" onclick="filterCat(this, 'movies')">Phim Lẻ</ion-chip>
-                <ion-chip class="netflix-chip" onclick="filterCat(this, 'anime')">Hoạt Hình</ion-chip>
-                <ion-chip class="netflix-chip" onclick="filterCat(this, 'korea')">Hàn Quốc</ion-chip>
+                <div class="chip active" onclick="filterCategory(this, 'all')">Tất cả</div>
+                <div class="chip" onclick="filterCategory(this, 'series')">Phim Bộ</div>
+                <div class="chip" onclick="filterCategory(this, 'movies')">Phim Lẻ</div>
+                <div class="chip" onclick="filterCategory(this, 'anime')">Hoạt Hình</div>
+                <div class="chip" onclick="filterCategory(this, 'korea')">Hàn Quốc</div>
             </div>
 
             <!-- Hero Billboard -->
             <div class="hero-billboard" style="background-image: url('https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-thumb.webp');">
                 <div class="hero-content">
-                    <div class="hero-top-badge"><ion-icon name="flame"></ion-icon> TOP 1 HÔM NAY</div>
+                    <div class="hero-top-badge"><i class="fa-solid fa-fire"></i> TOP 1 HÔM NAY</div>
                     <div class="hero-title">Học Viện Minerva</div>
                     <div class="hero-tags">
                         <span style="color: #46d369;">98% Phù hợp</span>
-                        <span>•</span>
+                        <span class="dot">•</span>
                         <span>2026</span>
-                        <span>•</span>
-                        <ion-badge color="danger">FHD</ion-badge>
-                        <span>•</span>
+                        <span class="dot">•</span>
+                        <span class="badge-fhd">FHD</span>
+                        <span class="dot">•</span>
                         <span>Tập 8</span>
                     </div>
                     <div class="hero-btn-row">
                         <button class="hero-btn play" onclick="playMovie('hoc-vien-minerva', 'Học Viện Minerva', 1)">
-                            <ion-icon name="play"></ion-icon> Phát
+                            <i class="fa-solid fa-play"></i> Phát
                         </button>
-                        <button class="hero-btn mylist" onclick="saveBookmark('hoc-vien-minerva', 'Học Viện Minerva')">
-                            <ion-icon name="add"></ion-icon> Danh sách
+                        <button class="hero-btn mylist" onclick="showToast('Đã lưu Học Viện Minerva vào Danh sách')">
+                            <i class="fa-solid fa-plus"></i> Danh sách
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Continue Watching Shelf -->
+            <!-- Shelf: Continue Watching -->
             <div class="shelf">
                 <div class="shelf-header">
                     <span class="shelf-title">Tiếp tục xem cho Khoa</span>
@@ -554,7 +872,7 @@
                 <div class="shelf-cards">
                     <div class="movie-card" onclick="playMovie('hoc-vien-minerva', 'Học Viện Minerva', 1)">
                         <div class="poster-wrap">
-                            <img src="https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp">
+                            <img src="https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp" alt="Poster">
                             <span class="quality-tag">FHD</span>
                             <div class="card-progress"><div class="card-progress-fill" style="width: 68%;"></div></div>
                         </div>
@@ -563,7 +881,7 @@
                     </div>
                     <div class="movie-card" onclick="playMovie('big-buck-bunny', 'Big Buck Bunny 4K', 1)">
                         <div class="poster-wrap">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/440px-Big_buck_bunny_poster_big.jpg">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/440px-Big_buck_bunny_poster_big.jpg" alt="Poster">
                             <span class="quality-tag">4K</span>
                             <div class="card-progress"><div class="card-progress-fill" style="width: 42%;"></div></div>
                         </div>
@@ -573,248 +891,229 @@
                 </div>
             </div>
 
-            <!-- Live Trending Shelf -->
+            <!-- Shelf: Trending Now (Live API) -->
             <div class="shelf">
                 <div class="shelf-header">
                     <span class="shelf-title">Phim mới cập nhật</span>
-                    <span style="font-size: 12px; color: #888; cursor: pointer;" onclick="presentToast('Dữ liệu đồng bộ trực tiếp từ máy chủ')">Xem tất cả</span>
+                    <span class="shelf-more" onclick="showToast('Dữ liệu đồng bộ trực tiếp từ máy chủ')">Xem tất cả</span>
                 </div>
                 <div class="shelf-cards" id="trendingShelf">
                     <div class="movie-card">
                         <div class="poster-wrap" style="display:flex; align-items:center; justify-content:center; color:#666;">
-                            <ion-spinner name="crescent"></ion-spinner>
+                            <i class="fa-solid fa-spinner fa-spin"></i>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Recommended Shelf -->
-            <div class="shelf" style="padding-bottom: 80px;">
+            <!-- Shelf: Recommended -->
+            <div class="shelf">
                 <div class="shelf-header">
                     <span class="shelf-title">Đề xuất hàng đầu cho bạn</span>
                 </div>
-                <div class="shelf-cards" id="recommendedShelf">
-                    <!-- Populated via API -->
+                <div class="shelf-cards" id="recommendedShelf"></div>
+            </div>
+        </div>
+
+        <!-- 2. SEARCH SCREEN -->
+        <div id="screenSearch" class="tab-screen search-screen">
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="Tìm phim, diễn viên, thể loại..." oninput="handleSearch(this.value)">
+                <button class="search-clear-btn" onclick="clearSearch()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="filter-row" style="padding: 0 0 16px 0;">
+                <div class="chip" onclick="searchTag('Hành Động')">Hành Động</div>
+                <div class="chip" onclick="searchTag('Kinh Dị')">Kinh Dị</div>
+                <div class="chip" onclick="searchTag('Hàn Quốc')">Hàn Quốc</div>
+                <div class="chip" onclick="searchTag('Hoạt Hình')">Hoạt Hình</div>
+                <div class="chip" onclick="searchTag('Tình Cảm')">Tình Cảm</div>
+            </div>
+
+            <div class="search-grid" id="searchResultsGrid"></div>
+        </div>
+
+        <!-- 3. MY LIST SCREEN -->
+        <div id="screenMyList" class="tab-screen" style="padding: 16px 0;">
+            <div style="font-size: 20px; font-weight: 800; padding: 0 16px 14px;">Danh Sách & Lịch Sử</div>
+            
+            <div class="cupertino-segment">
+                <button class="segment-btn active" id="segBtnBookmarks" onclick="switchSegment('bookmarks')">Danh sách của tôi</button>
+                <button class="segment-btn" id="segBtnHistory" onclick="switchSegment('history')">Lịch sử xem</button>
+            </div>
+
+            <div class="search-grid" id="myListGrid" style="padding: 0 16px;"></div>
+        </div>
+
+        <!-- 4. TV PAIRING SCREEN -->
+        <div id="screenPairing" class="tab-screen pairing-screen">
+            <div class="pairing-icon-box">
+                <i class="fa-solid fa-tv"></i>
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 8px;">Ghép Đôi Android TV</h2>
+            <p style="color: var(--text-secondary); font-size: 13.5px; max-width: 320px; line-height: 1.5; margin-bottom: 16px;">
+                Nhập mã 6 chữ số để kết nối và điều khiển ứng dụng KV-Netflix trên Android TV của bạn.
+            </p>
+
+            <div class="pin-container" id="pinBoxRow">
+                <div class="pin-digit" id="p1">8</div>
+                <div class="pin-digit" id="p2">4</div>
+                <div class="pin-digit" id="p3">2</div>
+                <div class="pin-digit" id="p4">1</div>
+                <div class="pin-digit" id="p5">9</div>
+                <div class="pin-digit" id="p6">0</div>
+            </div>
+
+            <div class="status-badge">
+                <span id="pairingStatusText">Đang chờ Android TV kết nối...</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; width: 100%; max-width: 340px; margin-top: 10px;">
+                <button class="hero-btn play" style="font-size: 14px;" onclick="refreshPairingCode()">
+                    <i class="fa-solid fa-arrows-rotate"></i> Tạo mã mới
+                </button>
+                <button class="hero-btn mylist" style="font-size: 14px;" onclick="simulatePairSuccess()">
+                    <i class="fa-solid fa-check"></i> Ghép đôi ngay
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. SETTINGS SCREEN -->
+        <div id="screenSettings" class="tab-screen settings-screen">
+            <div style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">Cài Đặt Ứng Dụng</div>
+
+            <div class="settings-card">
+                <div class="settings-row" style="padding: 16px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div class="user-avatar" style="width: 44px; height: 44px; font-size: 18px;">KV</div>
+                        <div>
+                            <div style="font-weight: 800; font-size: 16px;">Khoa Vo</div>
+                            <div style="color: var(--text-secondary); font-size: 13px;">khoavo@kv-netflix.local</div>
+                        </div>
+                    </div>
+                    <span style="color: var(--accent-green); font-size: 12px; font-weight: 700; background: rgba(70,211,105,0.15); padding: 4px 8px; border-radius: 4px;">Premium 4K</span>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-row">
+                    <div class="settings-row-label"><i class="fa-solid fa-server"></i> API Gateway</div>
+                    <div class="settings-val">https://nf.khoavo.myds.me</div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-label"><i class="fa-solid fa-shield-halved"></i> Ad-Blocker Web Engine</div>
+                    <div class="settings-val" style="color: var(--accent-green); font-weight: 600;">Active (45 Rules)</div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-label"><i class="fa-solid fa-bolt"></i> Ionic UI Engine</div>
+                    <div class="settings-val" style="color: var(--accent-blue); font-weight: 700;">v8.4.1 Cupertino iOS</div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-label"><i class="fa-brands fa-apple"></i> Gói Cài Đặt (IPA)</div>
+                    <a href="/KvNetflix.ipa" download style="color: var(--netflix-red); font-weight: 700; text-decoration: none; font-size: 13px;">
+                        <i class="fa-solid fa-download"></i> Tải KvNetflix.ipa
+                    </a>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- 2. SEARCH TAB -->
-        <div id="tabViewSearch" class="tab-view" style="display:none; padding-bottom:80px;">
-            <ion-searchbar class="netflix-searchbar" placeholder="Tìm phim, diễn viên, thể loại..." onionInput="handleSearch(event.target.value)"></ion-searchbar>
-            
-            <div class="filter-row">
-                <ion-chip class="netflix-chip" onclick="searchTag('Hành Động')">Hành Động</ion-chip>
-                <ion-chip class="netflix-chip" onclick="searchTag('Kinh Dị')">Kinh Dị</ion-chip>
-                <ion-chip class="netflix-chip" onclick="searchTag('Hàn Quốc')">Hàn Quốc</ion-chip>
-                <ion-chip class="netflix-chip" onclick="searchTag('Hoạt Hình')">Hoạt Hình</ion-chip>
-                <ion-chip class="netflix-chip" onclick="searchTag('Tình Cảm')">Tình Cảm</ion-chip>
-            </div>
+    <!-- Bottom Tab Bar -->
+    <div class="bottom-tab-bar">
+        <button class="tab-btn active" id="tabHome" onclick="switchTab('home')">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </button>
+        <button class="tab-btn" id="tabSearch" onclick="switchTab('search')">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Tìm kiếm</span>
+        </button>
+        <button class="tab-btn" id="tabMyList" onclick="switchTab('mylist')">
+            <i class="fa-solid fa-bookmark"></i>
+            <span>Danh sách</span>
+        </button>
+        <button class="tab-btn" id="tabPairing" onclick="switchTab('pairing')">
+            <i class="fa-solid fa-tv"></i>
+            <span>Ghép đôi</span>
+        </button>
+        <button class="tab-btn" id="tabSettings" onclick="switchTab('settings')">
+            <i class="fa-solid fa-gear"></i>
+            <span>Cài đặt</span>
+        </button>
+    </div>
 
-            <div id="searchResultsGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px;">
-                <!-- Populated search items -->
-            </div>
+    <!-- Movie Detail Sheet -->
+    <div id="detailSheet" class="detail-sheet">
+        <div class="detail-hero">
+            <img id="detailHeroImg" src="" alt="Backdrop">
+            <button class="detail-close-btn" onclick="closeDetailSheet()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-
-        <!-- 3. MY LIST TAB -->
-        <div id="tabViewMyList" class="tab-view" style="display:none; padding-bottom:80px;">
-            <div style="font-size: 20px; font-weight: 800; padding: 16px 16px 8px;">Danh Sách & Lịch Sử</div>
-            
-            <ion-segment class="netflix-segment" value="bookmarks" onionChange="handleSegmentChange(event.detail.value)">
-                <ion-segment-button value="bookmarks">
-                    <ion-label>Danh sách của tôi</ion-label>
-                </ion-segment-button>
-                <ion-segment-button value="history">
-                    <ion-label>Lịch sử xem</ion-label>
-                </ion-segment-button>
-            </ion-segment>
-
-            <div id="myListGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 16px;">
-                <!-- Populated saved items -->
-            </div>
-        </div>
-
-        <!-- 4. TV PAIRING TAB -->
-        <div id="tabViewPairing" class="tab-view" style="display:none; padding: 24px 16px 80px; text-align: center;">
-            <div style="width: 80px; height: 80px; border-radius: 20px; background: rgba(229,9,20,0.15); border: 2px solid var(--netflix-red); display: flex; align-items: center; justify-content: center; font-size: 38px; color: var(--netflix-red); margin: 0 auto 16px; box-shadow: 0 0 24px rgba(229,9,20,0.4);">
-                <ion-icon name="tv-outline"></ion-icon>
-            </div>
-            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 8px;">Ghép Đôi Android TV</h2>
-            <p style="color: #aaa; font-size: 13.5px; max-width: 320px; margin: 0 auto 16px; line-height: 1.5;">
-                Nhập mã 6 chữ số để ghép nối với thiết bị TV trong cùng mạng gia đình.
-            </p>
-
-            <div class="pin-box-row" id="pinBoxRow">
-                <div class="pin-box" id="pin1">8</div>
-                <div class="pin-box" id="pin2">4</div>
-                <div class="pin-box" id="pin3">2</div>
-                <div class="pin-box" id="pin4">1</div>
-                <div class="pin-box" id="pin5">9</div>
-                <div class="pin-box" id="pin6">0</div>
-            </div>
-
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: #1c261e; border: 1px solid #2d5538; color: #46d369; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 24px;">
-                <ion-icon name="radio-outline"></ion-icon>
-                <span id="pairingStatusMsg">Đang chờ Android TV kết nối...</span>
-            </div>
-
-            <div style="display: flex; gap: 10px; max-width: 340px; margin: 0 auto;">
-                <button class="hero-btn play" style="font-size: 14px;" onclick="fetchPairingCode()">
-                    <ion-icon name="refresh"></ion-icon> Tạo mã mới
-                </button>
-                <button class="hero-btn mylist" style="font-size: 14px;" onclick="simulatePairSuccess()">
-                    <ion-icon name="checkmark"></ion-icon> Ghép đôi ngay
-                </button>
-            </div>
-        </div>
-
-        <!-- 5. SETTINGS TAB -->
-        <div id="tabViewSettings" class="tab-view" style="display:none; padding: 16px 16px 80px;">
-            <div style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">Cài Đặt Ứng Dụng</div>
-
-            <ion-list mode="ios" style="border-radius: 14px; overflow: hidden; margin-bottom: 16px; background: #202020;">
-                <ion-item lines="none" style="--background: #202020; padding: 8px 0;">
-                    <div class="user-avatar" style="width: 44px; height: 44px; font-size: 16px; margin-right: 14px;">KV</div>
-                    <ion-label>
-                        <h2 style="font-weight: 800; color: #fff;">Khoa Vo</h2>
-                        <p style="color: #888;">Gói xem: Ultra HD 4K (4 thiết bị)</p>
-                    </ion-label>
-                    <ion-badge color="danger" slot="end">Active</ion-badge>
-                </ion-item>
-            </ion-list>
-
-            <ion-list mode="ios" style="border-radius: 14px; overflow: hidden; margin-bottom: 16px; background: #202020;">
-                <ion-item lines="full" style="--background: #202020;">
-                    <ion-icon name="server-outline" slot="start" style="color: var(--netflix-red);"></ion-icon>
-                    <ion-label>
-                        <h3 style="color:#fff;">API Gateway</h3>
-                        <p style="color:#888;">https://nf.khoavo.myds.me</p>
-                    </ion-label>
-                    <span style="color:#46d369; font-weight:700; font-size:12px;">🟢 200 OK</span>
-                </ion-item>
-                <ion-item lines="full" style="--background: #202020;">
-                    <ion-icon name="shield-checkmark-outline" slot="start" style="color: var(--netflix-red);"></ion-icon>
-                    <ion-label style="color:#fff;">Ad-Blocker Web Engine</ion-label>
-                    <span style="color:#46d369; font-weight:600; font-size:12px;">Active (45 Rules)</span>
-                </ion-item>
-                <ion-item lines="none" style="--background: #202020;">
-                    <ion-icon name="phone-portrait-outline" slot="start" style="color: var(--netflix-red);"></ion-icon>
-                    <ion-label>
-                        <h3 style="color:#fff;">Ionic Framework</h3>
-                        <p style="color:#888;">v8.4.1 (iOS Cupertino Design)</p>
-                    </ion-label>
-                    <ion-badge color="primary">Enhanced</ion-badge>
-                </ion-item>
-            </ion-list>
-
-            <ion-list mode="ios" style="border-radius: 14px; overflow: hidden; background: #202020;">
-                <ion-item lines="none" style="--background: #202020;" button onclick="downloadIPA()">
-                    <ion-icon name="download-outline" slot="start" style="color: var(--netflix-red);"></ion-icon>
-                    <ion-label>
-                        <h3 style="color:#fff;">Tải Gói Cài Đặt KvNetflix.ipa</h3>
-                        <p style="color:#888;">Bản dựng Mach-O arm64 cho iPhone</p>
-                    </ion-label>
-                    <ion-icon name="chevron-forward" slot="end" style="color: #666;"></ion-icon>
-                </ion-item>
-            </ion-list>
-        </div>
-    </ion-content>
-
-    <!-- Bottom Ionic Tab Bar -->
-    <ion-tab-bar slot="bottom" class="netflix-tab-bar">
-        <ion-tab-button tab="home" selected="true" onclick="selectTab('home')">
-            <ion-icon name="home"></ion-icon>
-            <ion-label>Home</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="search" onclick="selectTab('search')">
-            <ion-icon name="search"></ion-icon>
-            <ion-label>Tìm kiếm</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="mylist" onclick="selectTab('mylist')">
-            <ion-icon name="bookmark"></ion-icon>
-            <ion-label>Danh sách</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="pairing" onclick="selectTab('pairing')">
-            <ion-icon name="tv"></ion-icon>
-            <ion-label>Ghép đôi</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="settings" onclick="selectTab('settings')">
-            <ion-icon name="settings"></ion-icon>
-            <ion-label>Cài đặt</ion-label>
-        </ion-tab-button>
-    </ion-tab-bar>
-
-    <!-- Movie Detail Modal (Ionic iOS Modal) -->
-    <ion-modal id="detailModal" mode="ios">
-        <div class="modal-content">
-            <div style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
-                <ion-icon name="close-circle" style="font-size: 28px; cursor: pointer; color:#888;" onclick="dismissModal()"></ion-icon>
-            </div>
-            <div class="modal-hero">
-                <img id="modalHeroImg" src="" alt="Poster">
-            </div>
-            <h1 id="modalTitle" style="font-size: 22px; font-weight: 900; margin-bottom: 6px;">Tên Phim</h1>
-            <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; color: #888; margin-bottom: 14px;">
-                <span style="color:#46d369; font-weight:700;">98% Match</span>
+        <div class="detail-body">
+            <h1 id="detailTitle" style="font-size: 22px; font-weight: 900;">Tên Phim</h1>
+            <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; color: #888;">
+                <span style="color:#46d369; font-weight:700;">98% Phù hợp</span>
                 <span>•</span>
-                <span id="modalYear">2026</span>
+                <span id="detailYear">2026</span>
                 <span>•</span>
-                <ion-badge color="danger" id="modalQuality">FHD</ion-badge>
+                <span class="badge-fhd" id="detailQuality">FHD</span>
                 <span>•</span>
-                <span id="modalLang">Vietsub</span>
+                <span id="detailLang">Vietsub</span>
             </div>
-            <button class="hero-btn play" style="margin-bottom: 8px;" onclick="playCurrentModalMovie()">
-                <ion-icon name="play"></ion-icon> Xem Phim
+            <button class="hero-btn play" onclick="playCurrentDetailMovie()">
+                <i class="fa-solid fa-play"></i> Xem Phim
             </button>
-            <button class="hero-btn mylist" style="margin-bottom: 14px;" onclick="saveModalBookmark()">
-                <ion-icon name="bookmark-outline"></ion-icon> Lưu Vào Danh Sách
+            <button class="hero-btn mylist" onclick="showToast('Đã lưu phim vào Danh sách!')">
+                <i class="fa-solid fa-bookmark"></i> Lưu Vào Danh Sách
             </button>
-            <p id="modalSynopsis" style="font-size: 13.5px; line-height: 1.5; color: #ccc; margin-bottom: 16px;">
+            <p id="detailSynopsis" style="font-size: 13.5px; line-height: 1.5; color: #ccc;">
                 Mô tả nội dung phim...
             </p>
-            <div style="font-weight: 700; margin-bottom: 8px;">Chọn tập phim:</div>
-            <div id="modalEpisodesGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
+            <div style="font-weight: 700; margin-top: 6px;">Danh sách tập:</div>
+            <div class="episodes-grid" id="detailEpisodesGrid"></div>
         </div>
-    </ion-modal>
+    </div>
 
     <!-- Full Video Player Overlay -->
-    <div id="playerModal" class="player-modal">
+    <div id="playerView" class="player-view">
         <div style="position:relative; width:100%; height:100%;">
             <video id="mainVideo" playsinline></video>
-            <div class="player-controls-overlay" id="playerOverlay" onclick="togglePlayerControls()">
+            <div class="player-overlay" id="playerOverlay" onclick="togglePlayerControls()">
                 <div style="display: flex; justify-content: space-between; align-items: center;" onclick="event.stopPropagation()">
-                    <button class="ctrl-btn" onclick="exitPlayer()"><ion-icon name="arrow-back"></ion-icon></button>
+                    <button class="ctrl-btn" onclick="closePlayer()"><i class="fa-solid fa-arrow-left"></i></button>
                     <div style="text-align: center;">
-                        <div id="playerTitle" style="font-size: 14px; font-weight: 700;">Học Viện Minerva</div>
-                        <div id="playerSubTitle" style="font-size: 12px; color: #aaa;">Tập 1 • FHD</div>
+                        <div id="playerMovieTitle" style="font-size: 14px; font-weight: 700;">Học Viện Minerva</div>
+                        <div id="playerEpTitle" style="font-size: 12px; color: #aaa;">Tập 1 • FHD</div>
                     </div>
-                    <ion-badge color="danger" id="playerServerBadge">Server #1</ion-badge>
+                    <span id="playerServerBadge" style="background: var(--netflix-red); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">Server #1</span>
                 </div>
 
                 <div style="display: flex; justify-content: center; align-items: center; gap: 36px;" onclick="event.stopPropagation()">
-                    <button class="ctrl-btn" onclick="seekSec(-10)"><ion-icon name="refresh-outline" style="transform: scaleX(-1);"></ion-icon></button>
-                    <button class="ctrl-btn play-pause-btn" onclick="togglePlayPause()"><ion-icon name="pause" id="playPauseIcon"></ion-icon></button>
-                    <button class="ctrl-btn" onclick="seekSec(10)"><ion-icon name="refresh-outline"></ion-icon></button>
+                    <button class="ctrl-btn" onclick="seekSec(-10)"><i class="fa-solid fa-rotate-left"></i><div style="font-size: 10px; margin-top: -3px;">10s</div></button>
+                    <button class="ctrl-btn play-pause" onclick="togglePlayPause()"><i class="fa-solid fa-pause" id="playPauseIcon"></i></button>
+                    <button class="ctrl-btn" onclick="seekSec(10)"><i class="fa-solid fa-rotate-right"></i><div style="font-size: 10px; margin-top: -3px;">10s</div></button>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 12px;" onclick="event.stopPropagation()">
                     <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; font-family: monospace;">
-                        <span id="playerCurrentTime">00:00</span>
-                        <div class="timeline-bar" id="timelineBar" onclick="handleTimelineScrub(event)">
-                            <div class="timeline-fill" id="timelineFill"><div class="timeline-thumb"></div></div>
+                        <span id="timeCurrent">00:00</span>
+                        <div class="scrub-bar" id="scrubBar" onclick="handleScrub(event)">
+                            <div class="scrub-fill" id="scrubFill"><div class="scrub-thumb"></div></div>
                         </div>
-                        <span id="playerDuration">00:00</span>
+                        <span id="timeDuration">00:00</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <ion-chip class="netflix-chip" onclick="cycleSpeed()"><span id="speedIndicator">1.0x</span></ion-chip>
-                        <ion-chip class="netflix-chip" onclick="switchStreamServer()"><ion-icon name="swap-horizontal"></ion-icon> Đổi Server</ion-chip>
-                        <ion-badge color="success"><ion-icon name="shield-checkmark"></ion-icon> AdBlock Active</ion-badge>
+                        <div style="display:flex; gap:8px;">
+                            <button class="chip" style="padding: 4px 10px; font-size: 12px;" onclick="cycleSpeed()"><span id="speedLabel">1.0x</span></button>
+                            <button class="chip" style="padding: 4px 10px; font-size: 12px;" onclick="switchVideoServer()"><i class="fa-solid fa-shuffle"></i> Đổi Server</button>
+                        </div>
+                        <span style="color: #46d369; font-size: 12px; font-weight: 700;"><i class="fa-solid fa-shield-halved"></i> AdBlock Active</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</ion-app>
+</div>
 
 <script>
     const API_BASE = "https://nf.khoavo.myds.me";
@@ -822,81 +1121,76 @@
     let currentMovie = null;
     let currentEpisode = 1;
     let activeServerIdx = 0;
-    const streamServers = [
+    const serversList = [
         { name: "VSMOV HLS #1", url: "https://v8.streamvsmov.com/stream/6a80d47f-3984-4ccc-954e-6b7dcb5c2b9f/master.m3u8" },
         { name: "KKPhim HLS #2", url: "https://a.kvp726.com/20260922/G9LXmodU/index.m3u8" },
         { name: "Backup Big Buck Bunny", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
     ];
 
-    // Ionic Toast helper
-    function presentToast(message) {
-        const toast = document.createElement('ion-toast');
-        toast.message = message;
-        toast.duration = 2500;
-        toast.position = 'top';
-        toast.mode = 'ios';
-        toast.style.setProperty('--background', '#2a2a2a');
-        toast.style.setProperty('--color', '#ffffff');
-        document.body.appendChild(toast);
-        return toast.present();
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastMsg').innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2600);
     }
 
-    // Switch View Tabs
-    function selectTab(tab) {
-        document.querySelectorAll('.tab-view').forEach(v => v.style.display = 'none');
-        document.querySelectorAll('ion-tab-button').forEach(b => b.removeAttribute('selected'));
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
 
-        if (tab === 'home') {
-            document.getElementById('tabViewHome').style.display = 'block';
-            document.querySelector('ion-tab-button[tab="home"]').setAttribute('selected', 'true');
-        } else if (tab === 'search') {
-            document.getElementById('tabViewSearch').style.display = 'block';
-            document.querySelector('ion-tab-button[tab="search"]').setAttribute('selected', 'true');
-        } else if (tab === 'mylist') {
-            document.getElementById('tabViewMyList').style.display = 'block';
-            document.querySelector('ion-tab-button[tab="mylist"]').setAttribute('selected', 'true');
+        if (tabId === 'home') {
+            document.getElementById('screenHome').classList.add('active');
+            document.getElementById('tabHome').classList.add('active');
+        } else if (tabId === 'search') {
+            document.getElementById('screenSearch').classList.add('active');
+            document.getElementById('tabSearch').classList.add('active');
+            document.getElementById('searchInput').focus();
+        } else if (tabId === 'mylist') {
+            document.getElementById('screenMyList').classList.add('active');
+            document.getElementById('tabMyList').classList.add('active');
             renderMyList();
-        } else if (tab === 'pairing') {
-            document.getElementById('tabViewPairing').style.display = 'block';
-            document.querySelector('ion-tab-button[tab="pairing"]').setAttribute('selected', 'true');
-            fetchPairingCode();
-        } else if (tab === 'settings') {
-            document.getElementById('tabViewSettings').style.display = 'block';
-            document.querySelector('ion-tab-button[tab="settings"]').setAttribute('selected', 'true');
+        } else if (tabId === 'pairing') {
+            document.getElementById('screenPairing').classList.add('active');
+            document.getElementById('tabPairing').classList.add('active');
+            refreshPairingCode();
+        } else if (tabId === 'settings') {
+            document.getElementById('screenSettings').classList.add('active');
+            document.getElementById('tabSettings').classList.add('active');
         }
     }
 
-    function filterCat(el, cat) {
-        document.querySelectorAll('.netflix-chip').forEach(c => c.classList.remove('active'));
+    function filterCategory(el, cat) {
+        document.querySelectorAll('.filter-row .chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
-        presentToast(`Đang lọc danh mục: ${el.innerText}`);
+        showToast(`Đang lọc: ${el.innerText}`);
     }
 
-    // Load Live Videos
+    // Load Live Home Videos
     async function loadHomeFeed() {
         try {
             const res = await fetch(`${API_BASE}/api/videos/home`);
             const data = await res.json();
-            const shelf1 = document.getElementById('trendingShelf');
-            const shelf2 = document.getElementById('recommendedShelf');
-            shelf1.innerHTML = '';
-            shelf2.innerHTML = '';
+            const shelf = document.getElementById('trendingShelf');
+            const recommended = document.getElementById('recommendedShelf');
+            shelf.innerHTML = '';
+            recommended.innerHTML = '';
 
-            data.slice(0, 10).forEach(m => shelf1.appendChild(makeMovieCard(m)));
-            data.slice(10, 20).forEach(m => shelf2.appendChild(makeMovieCard(m)));
+            data.slice(0, 10).forEach(m => shelf.appendChild(createMovieCard(m)));
+            data.slice(10, 20).forEach(m => recommended.appendChild(createMovieCard(m)));
         } catch (e) {
-            console.error("Feed error:", e);
+            console.error("Home feed error:", e);
         }
     }
 
-    function makeMovieCard(m) {
+    function createMovieCard(m) {
         const card = document.createElement('div');
         card.className = 'movie-card';
-        card.onclick = () => openMovieDetail(m);
-        const poster = m.thumbnail || 'https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp';
+        card.onclick = () => openDetailSheet(m);
+
+        const posterImg = m.thumbnail || 'https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp';
         card.innerHTML = `
             <div class="poster-wrap">
-                <img src="${poster}" alt="${m.title}" loading="lazy" onerror="this.src='https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp'">
+                <img src="${posterImg}" alt="${m.title}" loading="lazy" onerror="this.src='https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-poster.webp'">
                 <span class="quality-tag">${m.quality || 'FHD'}</span>
             </div>
             <div class="movie-name">${m.title}</div>
@@ -905,71 +1199,63 @@
         return card;
     }
 
-    // Detail Modal
-    function openMovieDetail(m) {
-        currentMovie = m;
-        document.getElementById('modalTitle').innerText = m.title;
-        document.getElementById('modalYear').innerText = m.year || '2026';
-        document.getElementById('modalQuality').innerText = m.quality || 'FHD';
-        document.getElementById('modalLang').innerText = m.lang || 'Vietsub';
-        document.getElementById('modalHeroImg').src = m.backdrop || m.thumbnail || 'https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-thumb.webp';
-        document.getElementById('modalSynopsis').innerText = m.description || "Tác phẩm hấp dẫn đầy kịch tính với dàn diễn viên xuất sắc.";
+    // Detail Sheet
+    function openDetailSheet(movie) {
+        currentMovie = movie;
+        document.getElementById('detailTitle').innerText = movie.title;
+        document.getElementById('detailYear').innerText = movie.year || '2026';
+        document.getElementById('detailQuality').innerText = movie.quality || 'FHD';
+        document.getElementById('detailLang').innerText = movie.lang || 'Vietsub';
+        document.getElementById('detailHeroImg').src = movie.backdrop || movie.thumbnail || 'https://phimimg.com/uploads/movies/20260923/hoc-vien-minerva-thumb.webp';
+        document.getElementById('detailSynopsis').innerText = movie.description || "Bộ phim hấp dẫn với nhiều tình tiết kịch tính, kỹ xảo đỉnh cao và nội dung gay cấn.";
 
-        const grid = document.getElementById('modalEpisodesGrid');
+        const grid = document.getElementById('detailEpisodesGrid');
         grid.innerHTML = '';
         for (let i = 1; i <= 8; i++) {
-            const btn = document.createElement('button');
-            btn.className = 'hero-btn mylist';
-            btn.style.height = '36px';
-            btn.style.fontSize = '12px';
+            const btn = document.createElement('div');
+            btn.className = `ep-btn ${i === 1 ? 'active' : ''}`;
             btn.innerText = `Tập ${i}`;
             btn.onclick = () => {
-                dismissModal();
-                playMovie(m.slug || 'hoc-vien-minerva', m.title, i);
+                currentEpisode = i;
+                playMovie(movie.slug || 'hoc-vien-minerva', movie.title, i);
             };
             grid.appendChild(btn);
         }
 
-        const modal = document.getElementById('detailModal');
-        modal.isOpen = true;
+        const sheet = document.getElementById('detailSheet');
+        sheet.style.display = 'flex';
+        setTimeout(() => sheet.classList.add('active'), 10);
     }
 
-    function dismissModal() {
-        document.getElementById('detailModal').isOpen = false;
+    function closeDetailSheet() {
+        const sheet = document.getElementById('detailSheet');
+        sheet.classList.remove('active');
+        setTimeout(() => sheet.style.display = 'none', 300);
     }
 
-    function playCurrentModalMovie() {
-        dismissModal();
-        if (currentMovie) playMovie(currentMovie.slug || 'hoc-vien-minerva', currentMovie.title, 1);
-    }
-
-    function saveModalBookmark() {
-        if (currentMovie) saveBookmark(currentMovie.slug, currentMovie.title);
-    }
-
-    function saveBookmark(slug, title) {
-        presentToast(`Đã thêm "${title}" vào Danh sách của tôi!`);
+    function playCurrentDetailMovie() {
+        if (currentMovie) playMovie(currentMovie.slug || 'hoc-vien-minerva', currentMovie.title, currentEpisode);
     }
 
     // Search Engine
-    let searchTimer = null;
-    function handleSearch(query) {
-        clearTimeout(searchTimer);
-        if (!query.trim()) {
+    let searchTimeout = null;
+    function handleSearch(val) {
+        clearTimeout(searchTimeout);
+        if (!val.trim()) {
             document.getElementById('searchResultsGrid').innerHTML = '';
             return;
         }
-        searchTimer = setTimeout(async () => {
+        searchTimeout = setTimeout(async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/videos/search?q=${encodeURIComponent(query)}`);
-                const items = await res.json();
+                const res = await fetch(`${API_BASE}/api/videos/search?q=${encodeURIComponent(val)}`);
+                const results = await res.json();
                 const grid = document.getElementById('searchResultsGrid');
                 grid.innerHTML = '';
-                if (!items || items.length === 0) {
-                    grid.innerHTML = `<div style="grid-column: span 2; text-align:center; color:#888; padding:30px;">Không có kết quả phù hợp.</div>`;
+                if (!results || results.length === 0) {
+                    grid.innerHTML = `<div style="grid-column: span 2; text-align:center; color:#888; padding:30px;">Không tìm thấy phim phù hợp.</div>`;
                     return;
                 }
-                items.forEach(m => grid.appendChild(makeMovieCard(m)));
+                results.forEach(m => grid.appendChild(createMovieCard(m)));
             } catch (e) {
                 console.error("Search error:", e);
             }
@@ -977,16 +1263,23 @@
     }
 
     function searchTag(tag) {
-        document.querySelector('ion-searchbar').value = tag;
+        document.getElementById('searchInput').value = tag;
         handleSearch(tag);
     }
 
-    // My List & History
-    function handleSegmentChange(val) {
-        renderMyList(val);
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchResultsGrid').innerHTML = '';
     }
 
-    function renderMyList(mode = 'bookmarks') {
+    // My List & History
+    function switchSegment(sub) {
+        document.getElementById('segBtnBookmarks').classList.toggle('active', sub === 'bookmarks');
+        document.getElementById('segBtnHistory').classList.toggle('active', sub === 'history');
+        renderMyList(sub);
+    }
+
+    function renderMyList(sub = 'bookmarks') {
         const grid = document.getElementById('myListGrid');
         grid.innerHTML = `
             <div class="movie-card" onclick="playMovie('hoc-vien-minerva', 'Học Viện Minerva', 1)">
@@ -995,7 +1288,7 @@
                     <span class="quality-tag">FHD</span>
                 </div>
                 <div class="movie-name">Học Viện Minerva</div>
-                <div class="movie-sub">${mode === 'history' ? 'Đã xem 68%' : '8 Tập'}</div>
+                <div class="movie-sub">${sub === 'history' ? 'Đã xem 68%' : 'Tập 1-8'}</div>
             </div>
             <div class="movie-card" onclick="playMovie('big-buck-bunny', 'Big Buck Bunny 4K', 1)">
                 <div class="poster-wrap">
@@ -1003,7 +1296,7 @@
                     <span class="quality-tag">4K</span>
                 </div>
                 <div class="movie-name">Big Buck Bunny</div>
-                <div class="movie-sub">${mode === 'history' ? 'Đã xem 42%' : 'Phim lẻ'}</div>
+                <div class="movie-sub">${sub === 'history' ? 'Đã xem 42%' : 'Phim lẻ'}</div>
             </div>
         `;
     }
@@ -1011,77 +1304,80 @@
     // Video Player
     const video = document.getElementById('mainVideo');
 
-    function playMovie(slug, title, ep = 1) {
-        document.getElementById('playerTitle').innerText = title;
-        document.getElementById('playerSubTitle').innerText = `Tập ${ep} • FHD`;
-        document.getElementById('playerModal').classList.add('active');
+    function playMovie(slug, title, episode = 1) {
+        closeDetailSheet();
+        document.getElementById('playerMovieTitle').innerText = title;
+        document.getElementById('playerEpTitle').innerText = `Tập ${episode} • FHD`;
+        document.getElementById('playerView').classList.add('active');
+
         activeServerIdx = 0;
-        startHlsPlayback(streamServers[activeServerIdx].url);
-        presentToast(`Đang phát: ${title}`);
+        loadVideoStream(serversList[activeServerIdx].url);
+        showToast(`Đang phát: ${title}`);
     }
 
-    function startHlsPlayback(url) {
-        document.getElementById('playerServerBadge').innerText = streamServers[activeServerIdx].name.split(' ')[0];
+    function loadVideoStream(streamUrl) {
+        document.getElementById('playerServerBadge').innerText = serversList[activeServerIdx].name.split(' ')[0];
+
         if (Hls.isSupported()) {
             if (hls) hls.destroy();
             hls = new Hls({ lowLatencyMode: true });
-            hls.loadSource(url);
+            hls.loadSource(streamUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(e => console.log(e)));
             hls.on(Hls.Events.ERROR, (evt, data) => {
                 if (data.fatal) {
-                    presentToast("⚠️ Máy chủ gặp sự cố, tự động chuyển server dự phòng...");
-                    activeServerIdx = (activeServerIdx + 1) % streamServers.length;
-                    startHlsPlayback(streamServers[activeServerIdx].url);
+                    showToast("⚠️ Máy chủ gặp sự cố, tự động chuyển server dự phòng...");
+                    activeServerIdx = (activeServerIdx + 1) % serversList.length;
+                    loadVideoStream(serversList[activeServerIdx].url);
                 }
             });
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = url;
+            video.src = streamUrl;
             video.play().catch(e => console.log(e));
         }
     }
 
-    function exitPlayer() {
+    function closePlayer() {
         if (hls) { hls.destroy(); hls = null; }
         video.pause();
         video.src = '';
-        document.getElementById('playerModal').classList.remove('active');
+        document.getElementById('playerView').classList.remove('active');
     }
 
     function togglePlayPause() {
         if (video.paused) {
             video.play();
-            document.getElementById('playPauseIcon').setAttribute('name', 'pause');
+            document.getElementById('playPauseIcon').className = 'fa-solid fa-pause';
         } else {
             video.pause();
-            document.getElementById('playPauseIcon').setAttribute('name', 'play');
+            document.getElementById('playPauseIcon').className = 'fa-solid fa-play';
         }
     }
 
     function seekSec(sec) {
         video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + sec));
-        presentToast(`${sec > 0 ? '+' : ''}${sec}s`);
+        showToast(`${sec > 0 ? '+' : ''}${sec}s`);
     }
 
-    function handleTimelineScrub(e) {
-        const bar = document.getElementById('timelineBar');
+    function handleScrub(e) {
+        const bar = document.getElementById('scrubBar');
         const rect = bar.getBoundingClientRect();
         const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         if (video.duration) video.currentTime = pct * video.duration;
     }
 
     function cycleSpeed() {
-        const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
-        const next = speeds[(speeds.indexOf(video.playbackRate) + 1) % speeds.length];
+        const rates = [0.75, 1.0, 1.25, 1.5, 2.0];
+        const next = rates[(rates.indexOf(video.playbackRate) + 1) % rates.length];
         video.playbackRate = next;
-        document.getElementById('speedIndicator').innerText = `${next}x`;
-        presentToast(`Tốc độ: ${next}x`);
+        document.getElementById('speedLabel').innerText = `${next}x`;
+        showToast(`Tốc độ phát: ${next}x`);
     }
 
-    function switchStreamServer() {
-        activeServerIdx = (activeServerIdx + 1) % streamServers.length;
-        startHlsPlayback(streamServers[activeServerIdx].url);
-        presentToast(`Đã chuyển sang ${streamServers[activeServerIdx].name}`);
+    function switchVideoServer() {
+        activeServerIdx = (activeServerIdx + 1) % serversList.length;
+        loadVideoStream(serversList[activeServerIdx].url);
+        showToast(`Đã chuyển sang ${serversList[activeServerIdx].name}`);
     }
 
     function togglePlayerControls() {
@@ -1092,9 +1388,9 @@
     video.addEventListener('timeupdate', () => {
         const c = video.currentTime || 0;
         const d = video.duration || 1;
-        document.getElementById('playerCurrentTime').innerText = formatClock(c);
-        document.getElementById('playerDuration').innerText = formatClock(d);
-        document.getElementById('timelineFill').style.width = `${(c / d) * 100}%`;
+        document.getElementById('timeCurrent').innerText = formatClock(c);
+        document.getElementById('timeDuration').innerText = formatClock(d);
+        document.getElementById('scrubFill').style.width = `${(c / d) * 100}%`;
     });
 
     function formatClock(sec) {
@@ -1104,47 +1400,43 @@
     }
 
     // TV Pairing
-    async function fetchPairingCode() {
+    async function refreshPairingCode() {
         try {
             const res = await fetch(`${API_BASE}/api/auth/device/code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_name: "Ionic iPhone Simulator", device_type: "ios" })
+                body: JSON.stringify({ device_name: "iPhone Simulator", device_type: "ios" })
             });
             const data = await res.json();
             if (data.code && data.code.length === 6) {
                 for (let i = 0; i < 6; i++) {
-                    document.getElementById(`pin${i+1}`).innerText = data.code[i];
+                    document.getElementById(`p${i+1}`).innerText = data.code[i];
                 }
-                presentToast(`Mã ghép đôi mới: ${data.code}`);
+                showToast(`Đã cấp mã kết nối: ${data.code}`);
             }
         } catch (e) {
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            for (let i = 0; i < 6; i++) document.getElementById(`pin${i+1}`).innerText = code[i];
-            presentToast(`Mã ngoại tuyến: ${code}`);
+            const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
+            for (let i = 0; i < 6; i++) document.getElementById(`p${i+1}`).innerText = fallbackCode[i];
+            showToast(`Mã ngoại tuyến: ${fallbackCode}`);
         }
     }
 
     function simulatePairSuccess() {
-        document.getElementById('pairingStatusMsg').innerText = "🟢 Ghép đôi thành công với Android TV!";
-        presentToast("✓ Đã kết nối thành công với Android TV Living Room!");
+        document.getElementById('pairingStatusText').innerText = "🟢 Ghép đôi thành công với Android TV Living Room!";
+        showToast("✓ Đã ghép đôi với Android TV Living Room");
     }
 
-    function downloadIPA() {
-        window.location.href = '/KvNetflix.ipa';
-    }
-
-    // Parent Message Handler
+    // Parent Harness Message Receiver
     window.addEventListener('message', (e) => {
         const msg = e.data;
         if (!msg) return;
         if (msg.type === 'TEST_PLAYBACK') {
-            playMovie('hoc-vien-minerva', 'Học Viện Minerva (Ionic Stream Test)', 1);
+            playMovie('hoc-vien-minerva', 'Học Viện Minerva (Stream Test)', 1);
         } else if (msg.type === 'TEST_PAIRING') {
-            selectTab('pairing');
-            fetchPairingCode();
+            switchTab('pairing');
+            refreshPairingCode();
         } else if (msg.type === 'SET_TAB') {
-            selectTab(msg.tab);
+            switchTab(msg.tab);
         } else if (msg.type === 'EXPAND_PLAYER') {
             togglePlayPause();
         }
