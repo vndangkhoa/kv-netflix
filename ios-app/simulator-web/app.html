@@ -11,23 +11,24 @@
 
     <style>
         :root {
-            /* Exact Android App Colors (Color.kt & Theme.kt) */
+            /* Apple Cupertino & KV-Netflix Design Tokens */
             --accent: #FFD875;             /* KvYellow */
             --accent-hover: #FECF59;       /* KvYellowHover */
-            --accent-bg: rgba(255, 216, 117, 0.15); /* KvYellowBg */
-            --bg-primary: #0A0A0A;         /* DarkBg */
-            --bg-secondary: #141414;       /* DarkSecondary */
-            --bg-tertiary: #1A1A1A;        /* DarkTertiary */
-            --bg-elevated: #222222;        /* DarkElevated */
-            --text-primary: #FFFFFF;       /* TextWhite */
-            --text-secondary: #D1D5DB;     /* TextLightGray */
-            --text-muted: #9CA3AF;         /* TextGray */
-            --text-dim: #6B7280;           /* TextDimGray */
-            --green-match: #22C55E;        /* GreenMatch */
-            --border-primary: rgba(255, 255, 255, 0.10);
-            --border-subtle: rgba(255, 255, 255, 0.05);
-            --safe-area-top: 44px;
-            --safe-area-bottom: 20px;
+            --accent-bg: rgba(255, 216, 117, 0.15);
+            --bg-primary: #000000;         /* True OLED Black */
+            --bg-secondary: #121214;       /* Cupertino Dark Secondary */
+            --bg-tertiary: #1C1C1E;        /* Cupertino Tertiary Fill */
+            --bg-elevated: #242426;        /* Cupertino Elevated */
+            --bg-glass: rgba(18, 18, 20, 0.85);
+            --text-primary: #FFFFFF;       /* iOS Primary Label */
+            --text-secondary: rgba(235, 235, 245, 0.75); /* iOS Secondary Label */
+            --text-muted: rgba(235, 235, 245, 0.50);     /* iOS Tertiary Label */
+            --text-dim: rgba(235, 235, 245, 0.35);       /* iOS Quaternary Label */
+            --green-match: #34C759;        /* iOS Cupertino Green */
+            --border-primary: rgba(255, 255, 255, 0.12);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --safe-area-top: 54px;
+            --safe-area-bottom: 34px;
         }
 
         * {
@@ -44,8 +45,9 @@
             height: 100%;
             background-color: var(--bg-primary);
             color: var(--text-primary);
-            font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
             overflow: hidden;
+            letter-spacing: -0.01em;
         }
 
         /* Phone App Root Container */
@@ -56,107 +58,116 @@
             flex-direction: column;
             position: relative;
             background: var(--bg-primary);
-            padding-top: var(--safe-area-top);
+            padding-top: 0;
         }
 
-        /* ── Top Navbar (Navbar.kt Parity) ── */
+        /* ── Top Navbar (Native Apple iOS NavigationBar) ── */
         .top-navbar {
-            height: 54px;
-            background: rgba(20, 20, 20, 0.95);
-            backdrop-filter: blur(16px);
+            padding-top: var(--safe-area-top);
+            padding-bottom: 8px;
+            padding-left: 14px;
+            padding-right: 14px;
+            background: rgba(14, 14, 16, 0.82);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
+            gap: 10px;
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.12);
         }
 
-        /* KV Yellow Brand Box (40x40 rounded 12px) */
+        /* KV Brand Box (Squircle rounded 10px) */
         .kv-brand-box {
-            width: 40px;
-            height: 40px;
-            min-width: 40px;
-            border-radius: 12px;
-            background: var(--accent);
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #FFD875 0%, #E5A820 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 0.15s ease;
+            box-shadow: 0 2px 8px rgba(255, 216, 117, 0.3);
+            transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .kv-brand-box:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
         }
         .kv-brand-box span {
-            color: #191B24;
-            font-size: 14px;
+            color: #0c0c0e;
+            font-size: 13.5px;
             font-weight: 900;
             letter-spacing: -0.5px;
         }
 
-        /* Integrated Search Pill (44px height, rounded 22px) */
+        /* Integrated Search Pill (Apple UISearchBar Styling) */
         .search-pill-container {
             flex: 1;
+            min-width: 0;
             position: relative;
         }
 
         .search-pill-box {
             width: 100%;
-            height: 42px;
-            border-radius: 21px;
-            background: var(--bg-tertiary);
+            height: 36px;
+            border-radius: 18px;
+            background: rgba(118, 118, 128, 0.22);
             display: flex;
             align-items: center;
-            padding: 0 14px;
-            gap: 10px;
-            border: 1px solid transparent;
-            transition: border-color 0.2s ease;
+            padding: 0 12px;
+            gap: 8px;
+            border: 0.5px solid rgba(255, 255, 255, 0.08);
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
         .search-pill-box:focus-within {
-            border-color: var(--accent);
+            background: rgba(118, 118, 128, 0.32);
+            border-color: rgba(255, 216, 117, 0.6);
         }
 
         .search-pill-box i {
-            color: var(--text-muted);
-            font-size: 15px;
+            color: rgba(235, 235, 245, 0.5);
+            font-size: 13px;
         }
 
         .search-pill-box input {
             flex: 1;
+            min-width: 0;
             background: transparent;
             border: none;
             outline: none;
-            color: var(--text-primary);
-            font-size: 14px;
+            color: #fff;
+            font-size: 13.5px;
             font-family: inherit;
         }
         .search-pill-box input::placeholder {
-            color: var(--text-muted);
+            color: rgba(235, 235, 245, 0.45);
         }
 
         .search-clear-btn {
             background: none;
             border: none;
-            color: var(--text-muted);
-            font-size: 14px;
+            color: rgba(235, 235, 245, 0.5);
+            font-size: 13px;
             cursor: pointer;
             padding: 4px;
             display: none;
         }
 
-        /* Search Dropdown / Live Suggestions */
+        /* Search Dropdown / Live Suggestions (Cupertino Popover) */
         .search-dropdown {
             position: absolute;
-            top: 48px;
+            top: 44px;
             left: 0;
             right: 0;
-            background: var(--bg-elevated);
-            border-radius: 12px;
+            background: rgba(28, 28, 30, 0.96);
+            backdrop-filter: blur(25px) saturate(190%);
+            -webkit-backdrop-filter: blur(25px) saturate(190%);
+            border-radius: 14px;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
-            border: 1px solid var(--border-primary);
+            border: 0.5px solid rgba(255, 255, 255, 0.15);
             max-height: 360px;
             overflow-y: auto;
             z-index: 200;
@@ -169,10 +180,11 @@
             gap: 12px;
             padding: 10px 14px;
             cursor: pointer;
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+            transition: background 0.15s ease;
         }
         .search-item:last-child { border-bottom: none; }
-        .search-item:active { background: rgba(255, 216, 117, 0.1); }
+        .search-item:active { background: rgba(255, 216, 117, 0.15); }
         .search-item-info {
             display: flex;
             flex-direction: column;
@@ -192,44 +204,45 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .circle-action-btn {
-            width: 38px;
-            height: 38px;
-            border-radius: 19px;
-            background: var(--bg-tertiary);
-            border: none;
-            color: var(--text-secondary);
-            font-size: 14px;
+            width: 34px;
+            height: 34px;
+            border-radius: 17px;
+            background: rgba(118, 118, 128, 0.22);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 11.5px;
             font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .circle-action-btn:active {
-            background: #252525;
+            transform: scale(0.92);
+            background: rgba(118, 118, 128, 0.35);
         }
 
-        .sign-in-pill {
-            height: 38px;
-            border-radius: 19px;
-            background: var(--accent);
-            color: #191B24;
-            border: none;
-            padding: 0 14px;
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
+        .avatar-action-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 17px;
+            background: linear-gradient(135deg, rgba(255, 216, 117, 0.25), rgba(255, 216, 117, 0.08));
+            border: 0.5px solid rgba(255, 216, 117, 0.5);
+            color: var(--accent);
+            font-size: 13.5px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.15s;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .sign-in-pill:active {
-            background: var(--accent-hover);
+        .avatar-action-btn:active {
+            transform: scale(0.92);
         }
 
         /* ── Content Viewport ── */
@@ -238,7 +251,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 58px;
+            padding-bottom: 92px;
         }
 
         .tab-screen {
@@ -250,57 +263,66 @@
             flex-direction: column;
         }
 
-        /* ── 5-Tab Bottom Navigation Bar (BottomTabBar.kt Parity) ── */
+        /* ── 5-Tab Bottom Navigation Bar (Apple UITabBar Style) ── */
         .bottom-tab-bar {
-            height: 48px;
-            background: rgba(20, 20, 20, 0.95);
-            backdrop-filter: blur(16px);
-            border-top: 1px solid var(--border-subtle);
+            height: 82px;
+            background: rgba(16, 16, 18, 0.88);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.15);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-around;
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             z-index: 100;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-top: 8px;
+            padding-bottom: max(26px, env(safe-area-inset-bottom, 26px));
         }
 
         .tab-btn-item {
-            width: 48px;
-            height: 48px;
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             cursor: pointer;
             position: relative;
+            background: none;
+            border: none;
+            padding: 0;
+            transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .tab-btn-item:active {
+            transform: scale(0.92);
         }
 
         .tab-btn-item i {
-            font-size: 21px;
-            color: var(--text-muted);
-            transition: color 0.2s ease, transform 0.15s ease;
+            font-size: 20px;
+            color: rgba(235, 235, 245, 0.48);
+            transition: color 0.2s ease, transform 0.2s ease;
         }
 
-        .tab-pill-indicator {
-            width: 0px;
-            height: 2px;
-            border-radius: 1px;
-            background: transparent;
-            margin-top: 4px;
-            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+        .tab-btn-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: rgba(235, 235, 245, 0.48);
+            margin-top: 3px;
+            letter-spacing: -0.2px;
+            transition: color 0.2s ease;
         }
 
         .tab-btn-item.active i {
             color: var(--accent);
-            transform: scale(1.05);
+            transform: scale(1.08);
         }
 
-        .tab-btn-item.active .tab-pill-indicator {
-            width: 16px;
-            background: var(--accent);
+        .tab-btn-item.active .tab-btn-label {
+            color: var(--accent);
+            font-weight: 600;
         }
 
         /* ── Hero Carousel (HeroCarousel.kt Parity) ── */
@@ -462,36 +484,45 @@
             background: var(--accent);
         }
 
-        /* ── Genre Chips (HomeScreen.kt GenreChips Parity) ── */
+        /* ── Genre Chips (Apple Capsule Chips) ── */
         .genre-chips-scroll {
             display: flex;
             gap: 8px;
             padding: 12px 16px;
             overflow-x: auto;
             scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
         }
         .genre-chips-scroll::-webkit-scrollbar { display: none; }
 
         .genre-chip {
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
-            padding: 7px 15px;
-            border-radius: 20px;
+            background: rgba(118, 118, 128, 0.2);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: rgba(235, 235, 245, 0.75);
+            padding: 6px 14px;
+            border-radius: 9999px;
             font-size: 12.5px;
             font-weight: 500;
             white-space: nowrap;
             cursor: pointer;
-            transition: all 0.15s ease;
+            border: 0.5px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .genre-chip:active, .genre-chip.active {
+        .genre-chip:active {
+            transform: scale(0.93);
+        }
+        .genre-chip.active {
             background: var(--accent);
-            color: #191B24;
+            color: #0c0c0e;
             font-weight: 700;
+            border-color: transparent;
+            box-shadow: 0 2px 10px rgba(255, 216, 117, 0.35);
         }
 
-        /* ── Movie Shelf (MovieRow.kt Parity) ── */
+        /* ── Movie Shelf (Apple HIG Row) ── */
         .movie-shelf {
-            padding: 8px 0 16px;
+            padding: 10px 0 18px;
         }
 
         .shelf-header {
@@ -502,45 +533,61 @@
         }
 
         .shelf-title {
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
+            letter-spacing: -0.3px;
         }
 
         .shelf-see-all {
-            font-size: 12px;
+            font-size: 12.5px;
             color: var(--accent);
             cursor: pointer;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            transition: opacity 0.15s ease;
+        }
+        .shelf-see-all:active {
+            opacity: 0.7;
         }
 
         .shelf-cards-row {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             padding: 0 16px;
             overflow-x: auto;
             scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
         }
         .shelf-cards-row::-webkit-scrollbar { display: none; }
 
-        /* ── Movie Card (MovieCard.kt Parity) ── */
+        /* ── Movie Card (Apple iOS Cupertino Card) ── */
         .movie-card {
-            width: 136px;
-            min-width: 136px;
+            width: 138px;
+            min-width: 138px;
             cursor: pointer;
             display: flex;
             flex-direction: column;
             position: relative;
+            scroll-snap-align: start;
+            transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .movie-card:active {
+            transform: scale(0.95);
         }
 
         .movie-card-thumb-wrap {
             width: 100%;
             aspect-ratio: 2 / 3;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
             background: var(--bg-tertiary);
             position: relative;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+            border: 0.5px solid rgba(255, 255, 255, 0.08);
         }
 
         .movie-card-thumb-wrap img {
@@ -555,23 +602,27 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 70px;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+            height: 74px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
             pointer-events: none;
         }
 
-        /* Quality Badge in top-right with KvYellow */
+        /* Quality Badge with Cupertino Blur */
         .card-quality-badge {
             position: absolute;
-            top: 6px;
-            right: 6px;
-            background: var(--accent);
-            color: #191B24;
+            top: 7px;
+            right: 7px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 0.5px solid rgba(255, 255, 255, 0.2);
+            color: var(--accent);
             font-size: 9.5px;
-            font-weight: 800;
-            padding: 2px 5px;
-            border-radius: 4px;
+            font-weight: 700;
+            padding: 2.5px 6px;
+            border-radius: 6px;
             line-height: 1;
+            letter-spacing: 0.3px;
         }
 
         /* Rank Badge for Top lists */
@@ -581,14 +632,15 @@
             left: 0;
             width: 32px;
             height: 32px;
-            background: linear-gradient(to bottom, var(--accent), rgba(255, 216, 117, 0.7));
+            background: linear-gradient(135deg, var(--accent) 0%, #D97706 100%);
             border-radius: 0 8px 8px 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #191B24;
+            color: #0c0c0e;
             font-size: 16px;
             font-weight: 900;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
         }
 
         .card-movie-title {
@@ -677,37 +729,37 @@
 
         .subtab-bar {
             display: flex;
-            gap: 18px;
-            padding: 6px 16px 12px;
-            border-bottom: 1px solid var(--border-subtle);
-            overflow-x: auto;
-            scrollbar-width: none;
+            background: rgba(118, 118, 128, 0.24);
+            border-radius: 9px;
+            padding: 2px;
+            margin: 8px 16px 16px;
+            position: relative;
+            gap: 0;
+            border-bottom: none;
         }
-        .subtab-bar::-webkit-scrollbar { display: none; }
 
         .subtab-item {
-            font-size: 14.5px;
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
             font-weight: 500;
-            color: var(--text-muted);
+            color: rgba(235, 235, 245, 0.7);
             cursor: pointer;
-            padding-bottom: 6px;
+            padding: 6px 0;
+            border-radius: 7px;
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
             position: relative;
             white-space: nowrap;
         }
 
         .subtab-item.active {
-            color: var(--accent);
-            font-weight: 700;
+            background: rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
         .subtab-item.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--accent);
-            border-radius: 1px;
+            display: none;
         }
 
         .subtab-content {
@@ -1246,7 +1298,7 @@
 <body>
 
 <div id="appContainer">
-    <!-- Top Global Navbar (Matches Android Navbar.kt) -->
+    <!-- Top Global Navbar (Apple iOS Navigation Bar) -->
     <div class="top-navbar">
         <!-- KV Brand Logo -->
         <div class="kv-brand-box" onclick="switchTab('home')" title="KV-Netflix">
@@ -1257,7 +1309,7 @@
         <div class="search-pill-container">
             <div class="search-pill-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="navbarSearchInput" placeholder="Search movies..." autocomplete="off" oninput="handleNavbarSearch(this.value)">
+                <input type="text" id="navbarSearchInput" placeholder="Tìm kiếm phim, diễn viên..." autocomplete="off" oninput="handleNavbarSearch(this.value)">
                 <button class="search-clear-btn" id="navbarSearchClear" onclick="clearNavbarSearch()">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -1270,13 +1322,9 @@
         <div class="header-actions">
             <!-- Language Toggle (VI / EN) -->
             <button class="circle-action-btn" id="langToggleBtn" onclick="toggleLanguage()">VI</button>
-            <!-- Settings Button -->
-            <button class="circle-action-btn" onclick="switchTab('settings')">
-                <i class="fa-solid fa-gear"></i>
-            </button>
-            <!-- Account / Sign In -->
-            <button class="sign-in-pill" id="authButton" onclick="switchTab('account')">
-                Sign In
+            <!-- Account / Profile Avatar -->
+            <button class="avatar-action-btn" id="authButton" onclick="switchTab('account')" title="Tài khoản">
+                <i class="fa-regular fa-user"></i>
             </button>
         </div>
     </div>
@@ -1560,27 +1608,27 @@
         </div>
     </div>
 
-    <!-- ── Bottom Tab Bar (5 Tabs) ── -->
+    <!-- ── Apple UITabBar (5 Native iOS Tabs) ── -->
     <div class="bottom-tab-bar">
-        <div class="tab-btn-item active" id="tabHome" onclick="switchTab('home')" title="Home">
+        <div class="tab-btn-item active" id="tabHome" onclick="switchTab('home')" title="Trang chủ">
             <i class="fa-solid fa-house"></i>
-            <div class="tab-pill-indicator"></div>
+            <span class="tab-btn-label" id="tabLabelHome">Trang chủ</span>
         </div>
-        <div class="tab-btn-item" id="tabPhimLe" onclick="switchTab('phim-le')" title="Movies">
+        <div class="tab-btn-item" id="tabPhimLe" onclick="switchTab('phim-le')" title="Phim lẻ">
             <i class="fa-solid fa-film"></i>
-            <div class="tab-pill-indicator"></div>
+            <span class="tab-btn-label" id="tabLabelPhimLe">Phim lẻ</span>
         </div>
-        <div class="tab-btn-item" id="tabPhimBo" onclick="switchTab('phim-bo')" title="Series">
+        <div class="tab-btn-item" id="tabPhimBo" onclick="switchTab('phim-bo')" title="Phim bộ">
             <i class="fa-solid fa-tv"></i>
-            <div class="tab-pill-indicator"></div>
+            <span class="tab-btn-label" id="tabLabelPhimBo">Phim bộ</span>
         </div>
-        <div class="tab-btn-item" id="tabMyList" onclick="switchTab('my-list')" title="My List">
-            <i class="fa-regular fa-heart"></i>
-            <div class="tab-pill-indicator"></div>
+        <div class="tab-btn-item" id="tabMyList" onclick="switchTab('my-list')" title="Danh sách">
+            <i class="fa-solid fa-bookmark"></i>
+            <span class="tab-btn-label" id="tabLabelMyList">Danh sách</span>
         </div>
-        <div class="tab-btn-item" id="tabSettings" onclick="switchTab('settings')" title="Settings">
+        <div class="tab-btn-item" id="tabSettings" onclick="switchTab('settings')" title="Cài đặt">
             <i class="fa-solid fa-gear"></i>
-            <div class="tab-pill-indicator"></div>
+            <span class="tab-btn-label" id="tabLabelSettings">Cài đặt</span>
         </div>
     </div>
 </div>
@@ -1787,6 +1835,23 @@
         document.getElementById('langToggleBtn').innerText = currentLang.toUpperCase();
         document.getElementById('catTitlePhimLe').innerText = (currentLang === "vi") ? "Phim lẻ" : "Movies";
         document.getElementById('catTitlePhimBo').innerText = (currentLang === "vi") ? "Phim bộ" : "Series";
+
+        // Tab labels
+        const lblHome = document.getElementById('tabLabelHome');
+        if (lblHome) lblHome.innerText = (currentLang === "vi") ? "Trang chủ" : "Home";
+        const lblPhimLe = document.getElementById('tabLabelPhimLe');
+        if (lblPhimLe) lblPhimLe.innerText = (currentLang === "vi") ? "Phim lẻ" : "Movies";
+        const lblPhimBo = document.getElementById('tabLabelPhimBo');
+        if (lblPhimBo) lblPhimBo.innerText = (currentLang === "vi") ? "Phim bộ" : "Series";
+        const lblMyList = document.getElementById('tabLabelMyList');
+        if (lblMyList) lblMyList.innerText = (currentLang === "vi") ? "Danh sách" : "My List";
+        const lblSettings = document.getElementById('tabLabelSettings');
+        if (lblSettings) lblSettings.innerText = (currentLang === "vi") ? "Cài đặt" : "Settings";
+
+        // Search placeholder
+        const searchInput = document.getElementById('navbarSearchInput');
+        if (searchInput) searchInput.placeholder = (currentLang === "vi") ? "Tìm kiếm phim, diễn viên..." : "Search movies, actors...";
+
         showToast(currentLang === "vi" ? "Đã chuyển sang Tiếng Việt" : "Switched to English");
     }
 
