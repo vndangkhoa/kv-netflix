@@ -1319,12 +1319,20 @@
 
             <!-- Genre Filter Chips (GenreChips Parity) -->
             <div class="genre-chips-scroll" id="homeGenreChips">
-                <div class="genre-chip active" onclick="filterGenreChip(this, 'all')">Tất cả</div>
-                <div class="genre-chip" onclick="filterGenreChip(this, 'hanh-dong')">Hành Động</div>
-                <div class="genre-chip" onclick="filterGenreChip(this, 'tinh-cam')">Tình Cảm</div>
-                <div class="genre-chip" onclick="filterGenreChip(this, 'kinh-di')">Kinh Dị</div>
-                <div class="genre-chip" onclick="filterGenreChip(this, 'hoat-hinh')">Hoạt Hình</div>
-                <div class="genre-chip" onclick="filterGenreChip(this, 'khoa-hoc')">Viễn Tưởng</div>
+                <div class="genre-chip active" onclick="filterGenreChip(this, 'all', 'Tất cả')">Tất cả</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'phim-le', 'Phim Lẻ')">Phim Lẻ</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'phim-bo', 'Phim Bộ')">Phim Bộ</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'hoat-hinh', 'Hoạt Hình & Anime')">Hoạt Hình</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'phim-long-tieng', 'Phim Lồng Tiếng')">Lồng Tiếng</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'han-quoc', 'K-drama (Hàn Quốc)')">Hàn Quốc</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'trung-quoc', 'C-drama (Trung Quốc)')">Trung Quốc</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'tv-shows', 'TV Shows')">TV Shows</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'viet-nam', 'Phim Việt Nam')">Việt Nam</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'hanh-dong', 'Hành Động')">Hành Động</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'tinh-cam', 'Tình Cảm')">Tình Cảm</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'kinh-di', 'Kinh Dị')">Kinh Dị</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'co-trang', 'Cổ Trang')">Cổ Trang</div>
+                <div class="genre-chip" onclick="filterGenreChip(this, 'vien-tuong', 'Viễn Tưởng')">Viễn Tưởng</div>
             </div>
 
             <!-- Shelf: Continue Watching (16:9 cards) -->
@@ -1358,7 +1366,7 @@
             <div class="movie-shelf">
                 <div class="shelf-header">
                     <span class="shelf-title">Phim mới cập nhật</span>
-                    <span class="shelf-see-all" onclick="switchTab('phim-le')">Xem tất cả</span>
+                    <span class="shelf-see-all" onclick="openCategoryView('phim-le', 'Phim Mới Cập Nhật')">Xem tất cả</span>
                 </div>
                 <div class="shelf-cards-row" id="trendingShelf">
                     <div style="padding: 20px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading movies...</div>
@@ -1372,6 +1380,9 @@
                 </div>
                 <div class="shelf-cards-row" id="recommendedShelf"></div>
             </div>
+
+            <!-- Multi-Category Shelves (Loaded dynamically from mainCategories) -->
+            <div id="dynamicCategoryShelves"></div>
         </div>
 
         <!-- 2. MOVIES SCREEN (Phim Lẻ - HomeScreen.kt CategoryPage) -->
@@ -1404,6 +1415,21 @@
                     <i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách phim bộ...
                 </div>
             </div>
+        </div>
+
+        <!-- DYNAMIC CATEGORY VIEW (HomeScreen.kt CategoryPage Parity) -->
+        <div id="screenCategoryView" class="tab-screen">
+            <div class="category-header-row">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="circle-action-btn" onclick="switchTab('home')"><i class="fa-solid fa-arrow-left"></i></button>
+                    <div class="category-title" id="catViewTitle">Danh Mục</div>
+                </div>
+                <div class="sort-pill" onclick="cycleCategorySort()">
+                    <span id="catViewSortLabel">Mới nhất</span>
+                    <i class="fa-solid fa-caret-down"></i>
+                </div>
+            </div>
+            <div class="category-grid" id="catViewGrid"></div>
         </div>
 
         <!-- 4. MY LIST SCREEN (MyListScreen.kt Parity with 4 Sub-Tabs) -->
@@ -1732,11 +1758,11 @@
         } else if (tabId === 'phim-le') {
             document.getElementById('screenPhimLe').classList.add('active');
             document.getElementById('tabPhimLe').classList.add('active');
-            loadCategoryGrid('movies', 'gridPhimLe');
+            loadCategoryGrid('phim-le', 'gridPhimLe');
         } else if (tabId === 'phim-bo') {
             document.getElementById('screenPhimBo').classList.add('active');
             document.getElementById('tabPhimBo').classList.add('active');
-            loadCategoryGrid('series', 'gridPhimBo');
+            loadCategoryGrid('phim-bo', 'gridPhimBo');
         } else if (tabId === 'my-list') {
             document.getElementById('screenMyList').classList.add('active');
             document.getElementById('tabMyList').classList.add('active');
@@ -1797,7 +1823,25 @@
         return card;
     }
 
-    // ── Load Home Feed (HomeScreen.kt) ──
+    // ── Main Categories (Matching Android HomeViewModel.kt) ──
+    const mainCategories = [
+        { slug: 'phim-le', title: 'Phim Lẻ' },
+        { slug: 'phim-bo', title: 'Phim Bộ' },
+        { slug: 'phim-long-tieng', title: 'Phim Lồng Tiếng' },
+        { slug: 'hoat-hinh', title: 'Hoạt Hình & Anime' },
+        { slug: 'tv-shows', title: 'TV Shows' },
+        { slug: 'han-quoc', title: 'K-Drama (Hàn Quốc)' },
+        { slug: 'trung-quoc', title: 'C-Drama (Trung Quốc)' },
+        { slug: 'viet-nam', title: 'Phim Việt Nam' }
+    ];
+
+    let currentCategorySlug = '';
+    let currentCategoryTitle = '';
+    let currentCategoryMovies = [];
+    let currentSortMode = 0; // 0: Mới nhất, 1: Xem nhiều, 2: Nổi bật
+    const sortModes = ['Mới nhất', 'Xem nhiều', 'Nổi bật'];
+
+    // ── Load Home Feed (HomeScreen.kt Parity) ──
     async function loadHomeFeed() {
         try {
             const res = await fetch(`${API_BASE}/api/videos/home`);
@@ -1818,8 +1862,57 @@
             rec.innerHTML = '';
             data.slice(8, 16).forEach(m => rec.appendChild(createMovieCardEl(m)));
 
+            // Load all 8 main category shelves concurrently (HomeScreen.kt parity)
+            loadAllCategoryShelves();
+
         } catch (e) {
             console.error("Home feed error:", e);
+        }
+    }
+
+    // ── Load All Category Shelves Concurrently (HomeScreen.kt categoryMovies.forEach) ──
+    async function loadAllCategoryShelves() {
+        const container = document.getElementById('dynamicCategoryShelves');
+        if (!container) return;
+
+        container.innerHTML = '<div style="padding: 20px 16px; color: var(--text-muted); font-size: 13px;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải các danh mục phim...</div>';
+
+        try {
+            const promises = mainCategories.map(async (cat) => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/videos/home?category=${encodeURIComponent(cat.slug)}`);
+                    const movies = await res.json();
+                    return { ...cat, movies: Array.isArray(movies) ? movies : [] };
+                } catch (e) {
+                    console.error(`Error loading category ${cat.slug}:`, e);
+                    return { ...cat, movies: [] };
+                }
+            });
+
+            const results = await Promise.all(promises);
+            container.innerHTML = '';
+
+            results.forEach(res => {
+                if (!res.movies || res.movies.length === 0) return;
+
+                const shelf = document.createElement('div');
+                shelf.className = 'movie-shelf';
+                shelf.innerHTML = `
+                    <div class="shelf-header">
+                        <span class="shelf-title">${res.title}</span>
+                        <span class="shelf-see-all" onclick="openCategoryView('${res.slug}', '${res.title.replace(/'/g, "\\'")}')">Xem tất cả</span>
+                    </div>
+                    <div class="shelf-cards-row" id="shelf-${res.slug}"></div>
+                `;
+                const row = shelf.querySelector(`#shelf-${res.slug}`);
+                res.movies.slice(0, 10).forEach(m => {
+                    row.appendChild(createMovieCardEl(m));
+                });
+                container.appendChild(shelf);
+            });
+        } catch (err) {
+            console.error("loadAllCategoryShelves error:", err);
+            container.innerHTML = '';
         }
     }
 
@@ -1860,30 +1953,96 @@
         if (m) showToast(`✓ Đã thêm "${m.title}" vào My List`);
     }
 
-    function filterGenreChip(el, genre) {
+    // ── Genre Chips & Category Navigation (CategoryPage Parity) ──
+    function filterGenreChip(el, slug, name) {
         document.querySelectorAll('.genre-chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
-        showToast(`Đang lọc: ${el.innerText}`);
+
+        if (slug === 'all') {
+            switchTab('home');
+            return;
+        }
+
+        openCategoryView(slug, name || el.innerText.trim());
     }
 
-    // ── Category Grids (Movies / Series) ──
+    function openCategoryView(slug, title) {
+        document.querySelectorAll('.tab-screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn-item').forEach(b => b.classList.remove('active'));
+
+        const catScreen = document.getElementById('screenCategoryView');
+        catScreen.classList.add('active');
+        document.getElementById('catViewTitle').innerText = title || slug;
+
+        currentCategorySlug = slug;
+        currentCategoryTitle = title;
+        currentCategoryMovies = [];
+
+        loadCategoryGrid(slug, 'catViewGrid');
+        catScreen.scrollTop = 0;
+    }
+
+    // ── Category Grids (Movies / Series / Dynamic CategoryPage) ──
     async function loadCategoryGrid(cat, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
+        container.innerHTML = '<div style="grid-column: span 2; text-align:center; padding: 30px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách phim...</div>';
+
         try {
-            const res = await fetch(`${API_BASE}/api/videos/home`);
+            const url = (!cat || cat === 'all') 
+                ? `${API_BASE}/api/videos/home` 
+                : `${API_BASE}/api/videos/home?category=${encodeURIComponent(cat)}`;
+            const res = await fetch(url);
             const data = await res.json();
-            container.innerHTML = '';
-            data.slice(0, 16).forEach((m, idx) => {
-                container.appendChild(createMovieCardEl(m, idx < 5 ? idx + 1 : null));
-            });
+            currentCategoryMovies = Array.isArray(data) ? data : [];
+            renderCategoryGridMovies(containerId);
         } catch (e) {
             console.error("Cat grid error:", e);
+            container.innerHTML = '<div style="grid-column: span 2; text-align:center; padding: 40px; color: #ff5252;">Lỗi khi tải danh sách phim</div>';
         }
     }
 
+    function renderCategoryGridMovies(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!currentCategoryMovies || currentCategoryMovies.length === 0) {
+            container.innerHTML = '<div style="grid-column: span 2; text-align:center; padding: 40px; color: var(--text-muted);">Không tìm thấy phim nào trong danh mục này</div>';
+            return;
+        }
+
+        currentCategoryMovies.forEach((m, idx) => {
+            container.appendChild(createMovieCardEl(m, idx < 5 ? idx + 1 : null));
+        });
+    }
+
     function cycleCategorySort() {
-        showToast("Đã sắp xếp lại theo đánh giá");
+        currentSortMode = (currentSortMode + 1) % sortModes.length;
+        const label = sortModes[currentSortMode];
+
+        const sortLblPhimLe = document.getElementById('sortLabelPhimLe');
+        if (sortLblPhimLe) sortLblPhimLe.innerText = label;
+        const sortLblPhimBo = document.getElementById('sortLabelPhimBo');
+        if (sortLblPhimBo) sortLblPhimBo.innerText = label;
+        const catViewSortLabel = document.getElementById('catViewSortLabel');
+        if (catViewSortLabel) catViewSortLabel.innerText = label;
+
+        if (currentSortMode === 0) {
+            currentCategoryMovies.sort((a, b) => (b.year || 0) - (a.year || 0));
+        } else {
+            currentCategoryMovies.sort(() => Math.random() - 0.5);
+        }
+
+        if (document.getElementById('screenCategoryView').classList.contains('active')) {
+            renderCategoryGridMovies('catViewGrid');
+        } else if (document.getElementById('screenPhimLe').classList.contains('active')) {
+            renderCategoryGridMovies('gridPhimLe');
+        } else if (document.getElementById('screenPhimBo').classList.contains('active')) {
+            renderCategoryGridMovies('gridPhimBo');
+        }
+
+        showToast(`Đã sắp xếp: ${label}`);
     }
 
     // ── My List Sub-Tabs Rendering ──

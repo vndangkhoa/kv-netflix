@@ -74,11 +74,16 @@ public final class HomeViewModel: ObservableObject {
             async let homeCall = ApiClient.shared.getHomeVideos(category: nil, page: 1)
             async let singleCall = ApiClient.shared.getHomeVideos(category: "phim-le", page: 1)
             async let seriesCall = ApiClient.shared.getHomeVideos(category: "phim-bo", page: 1)
+            async let dubbedCall = ApiClient.shared.getHomeVideos(category: "phim-long-tieng", page: 1)
             async let animeCall = ApiClient.shared.getHomeVideos(category: "hoat-hinh", page: 1)
+            async let tvShowsCall = ApiClient.shared.getHomeVideos(category: "tv-shows", page: 1)
+            async let kdramaCall = ApiClient.shared.getHomeVideos(category: "han-quoc", page: 1)
+            async let cdramaCall = ApiClient.shared.getHomeVideos(category: "trung-quoc", page: 1)
+            async let vnCall = ApiClient.shared.getHomeVideos(category: "viet-nam", page: 1)
             async let exploreCall = ApiClient.shared.exploreMovies()
 
-            let (homeMovies, singleMovies, seriesMovies, animeMovies, exploreList) = try await (
-                homeCall, singleCall, seriesCall, animeCall, (try? exploreCall) ?? []
+            let (homeMovies, singleMovies, seriesMovies, dubbedMovies, animeMovies, tvShows, kdrama, cdrama, vnMovies, exploreList) = try await (
+                homeCall, singleCall, seriesCall, dubbedCall, animeCall, tvShowsCall, kdramaCall, cdramaCall, vnCall, (try? exploreCall) ?? []
             )
 
             // Select 5-6 top items for Hero Carousel
@@ -120,6 +125,39 @@ public final class HomeViewModel: ObservableObject {
                 )
             }
 
+            if !kdrama.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "K-Drama (Phim Hàn Quốc)",
+                        movies: kdrama,
+                        isHorizontal: false,
+                        categorySlug: "han-quoc"
+                    )
+                )
+            }
+
+            if !cdrama.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "C-Drama (Phim Trung Quốc)",
+                        movies: cdrama,
+                        isHorizontal: true,
+                        categorySlug: "trung-quoc"
+                    )
+                )
+            }
+
+            if !dubbedMovies.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Phim Lồng Tiếng Đặc Sắc",
+                        movies: dubbedMovies,
+                        isHorizontal: true,
+                        categorySlug: "phim-long-tieng"
+                    )
+                )
+            }
+
             if !animeMovies.isEmpty {
                 newShelves.append(
                     Shelf(
@@ -127,6 +165,28 @@ public final class HomeViewModel: ObservableObject {
                         movies: animeMovies,
                         isHorizontal: false,
                         categorySlug: "hoat-hinh"
+                    )
+                )
+            }
+
+            if !tvShows.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "TV Shows & Chương Trình",
+                        movies: tvShows,
+                        isHorizontal: false,
+                        categorySlug: "tv-shows"
+                    )
+                )
+            }
+
+            if !vnMovies.isEmpty {
+                newShelves.append(
+                    Shelf(
+                        title: "Phim Việt Nam",
+                        movies: vnMovies,
+                        isHorizontal: false,
+                        categorySlug: "viet-nam"
                     )
                 )
             }

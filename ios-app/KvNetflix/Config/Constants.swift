@@ -292,10 +292,12 @@ public struct AppConstants {
     public static let categories: [(id: String, vi: String, en: String)] = [
         ("phim-le", "Phim Lẻ", "Movies"),
         ("phim-bo", "Phim Bộ", "TV Series"),
+        ("phim-long-tieng", "Phim Lồng Tiếng", "Dubbed"),
         ("hoat-hinh", "Hoạt Hình", "Animation"),
         ("tv-shows", "TV Shows", "TV Shows"),
-        ("k-drama", "K-Drama", "K-Drama"),
-        ("c-drama", "C-Drama", "C-Drama")
+        ("han-quoc", "K-Drama", "K-Drama"),
+        ("trung-quoc", "C-Drama", "C-Drama"),
+        ("viet-nam", "Phim Việt Nam", "Vietnamese")
     ]
 
     public static let genres: [(id: String, vi: String, en: String)] = [
