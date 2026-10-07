@@ -32,6 +32,10 @@ node_modules/
 *.bat
 *.apk
 *.zip
+*.spk
+android-app/
+ios-app/
+synology/
 __pycache__/
 .venv/
 venv/
