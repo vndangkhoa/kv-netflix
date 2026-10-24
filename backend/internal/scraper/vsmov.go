@@ -398,7 +398,7 @@ func (s *VSMOVScraper) GetMovieDetail(slug string) (*models.RophimMovie, error) 
 	epMap := make(map[string]int)
 
 	for _, server := range result.Episodes {
-		serverLabel := server.ServerName
+		serverLabel := strings.Join(strings.Fields(server.ServerName), " ")
 		if serverLabel == "" {
 			serverLabel = "Vietsub"
 		}

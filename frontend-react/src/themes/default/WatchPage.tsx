@@ -449,7 +449,7 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             invertTime: false,
             seekTime: 10,
             keyboard: { focused: true, global: true },
-            captions: { active: true, update: true },
+            captions: { active: true, update: true, language: 'vi' },
             // Plyr's own fullscreen is unreliable on iPhone (it degrades to a
             // CSS "fill the viewport" zoom instead of a real fullscreen
             // player), so it is disabled here — a custom cross-platform
@@ -560,6 +560,251 @@ export const WatchPage = ({ slug, episode }: { slug: string, episode: string }) 
             (player as any).off('controlshidden', onControlsHide);
         };
     }, [source?.stream_url]);
+
+    // Synchronize Plyr's caption overlay (.plyr__captions) and HTML5 TextTrack modes
+    // with useWatchMovie's subtitle selection, including iOS native fullscreen support.
+    useEffect(() => {
+        const video = videoRef.current as (HTMLVideoElement & { webkitDisplayingFullscreen?: boolean }) | null;
+        const plyr = plyrRef.current;
+        if (!video) return;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const plyrAny = plyr as any;
+
+        const getCaptionTracks = (): TextTrack[] =>
+            Array.from(video.textTracks || []).filter(
+                t => t.kind === 'subtitles' || t.kind === 'captions'
+            );
+
+        const findMatchingTrackIndex = (
+            captionTracks: TextTrack[],
+            sub: (typeof subtitles)[number]
+        ): number => {
+            if (sub.lang) {
+                const exactIdx = captionTracks.findIndex(
+                    t => t.label === sub.name && t.language?.toLowerCase() === sub.lang.toLowerCase()
+                );
+                if (exactIdx !== -1) return exactIdx;
+            }
+            const byLabel = captionTracks.findIndex(t => t.label === sub.name);
+            if (byLabel !== -1) return byLabel;
+
+            if (sub.lang) {
+                const byLang = captionTracks.findIndex(
+                    t => t.language && t.language.toLowerCase() === sub.lang.toLowerCase()
+                );
+                if (byLang !== -1) return byLang;
+                const baseLang = sub.lang.toLowerCase().split('-')[0];
+                const byBaseLang = captionTracks.findIndex(
+                    t => t.language && t.language.toLowerCase().startsWith(baseLang)
+                );
+                if (byBaseLang !== -1) return byBaseLang;
+            }
+
+            if (!sub.isCustom && !sub.isSidecar && sub.id >= 0 && sub.id < captionTracks.length) {
+                return sub.id;
+            }
+            return -1;
+        };
+
+        let verifyTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const syncPlyrCaptions = () => {
+            if (verifyTimer) {
+                clearTimeout(verifyTimer);
+                verifyTimer = null;
+            }
+
+            if (currentSubtitle === -1) {
+                if (plyr) {
+                    try {
+                        plyr.toggleCaptions(false);
+                    } catch {
+                        // ignore if Plyr UI is not initialized
+                    }
+                    plyrAny?.elements?.container?.classList?.remove('plyr--captions-active');
+                    if (plyrAny?.elements?.captions) {
+                        plyrAny.elements.captions.innerHTML = '';
+                    }
+                }
+                if (video.textTracks) {
+                    for (let i = 0; i < video.textTracks.length; i++) {
+                        video.textTracks[i].mode = 'disabled';
+                    }
+                }
+                verifyTimer = setTimeout(() => {
+                    if (plyr) {
+                        try {
+                            plyr.toggleCaptions(false);
+                        } catch {
+                            // ignore
+                        }
+                        plyrAny?.elements?.container?.classList?.remove('plyr--captions-active');
+                        if (plyrAny?.elements?.captions) {
+                            plyrAny.elements.captions.innerHTML = '';
+                        }
+                    }
+                    if (video.textTracks) {
+                        for (let i = 0; i < video.textTracks.length; i++) {
+                            video.textTracks[i].mode = 'disabled';
+                        }
+                    }
+                }, 30);
+                return;
+            }
+
+            const sub = subtitles.find(s => s.id === currentSubtitle);
+            if (!sub) return;
+
+            const captionTracks = getCaptionTracks();
+            const trackIdx = findMatchingTrackIndex(captionTracks, sub);
+            if (trackIdx === -1) return;
+
+            const selectedTrack = captionTracks[trackIdx];
+            const activeMode: TextTrackMode = video.webkitDisplayingFullscreen
+                ? 'showing'
+                : (plyr ? 'hidden' : 'showing');
+
+            for (let i = 0; i < video.textTracks.length; i++) {
+                const t = video.textTracks[i];
+                t.mode = t === selectedTrack ? activeMode : 'disabled';
+            }
+
+            if (plyr) {
+                try {
+                    // plyr.currentTrack setter calls captions.set(idx, false) AND captions.setup(),
+                    // which resets captions.toggled = false and schedules setTimeout(captions.update, 0).
+                    const metaTracks = plyrAny?.captions?.meta
+                        ? captionTracks.filter(t => plyrAny.captions.meta.has(t))
+                        : captionTracks;
+                    const metaIdx = metaTracks.indexOf(selectedTrack);
+                    plyr.currentTrack = metaIdx !== -1 ? metaIdx : trackIdx;
+                    if (metaTracks.length > 0) {
+                        plyr.toggleCaptions(true);
+                    }
+                } catch {
+                    // Post-tick verification below reconciles state once Plyr finishes captions.update
+                }
+            }
+
+            verifyTimer = setTimeout(() => {
+                const latestCaptionTracks = getCaptionTracks();
+                const latestIdx = findMatchingTrackIndex(latestCaptionTracks, sub);
+                if (latestIdx === -1) return;
+
+                const targetTrack = latestCaptionTracks[latestIdx];
+                const desiredMode: TextTrackMode = video.webkitDisplayingFullscreen
+                    ? 'showing'
+                    : (plyr ? 'hidden' : 'showing');
+
+                if (plyr) {
+                    const metaTracks = plyrAny?.captions?.meta
+                        ? latestCaptionTracks.filter(t => plyrAny.captions.meta.has(t))
+                        : latestCaptionTracks;
+                    const plyrIdx = metaTracks.indexOf(targetTrack);
+
+                    if (metaTracks.length > 0 && !plyrAny?.captions?.toggled) {
+                        try {
+                            plyr.toggleCaptions(true);
+                        } catch {
+                            // ignore
+                        }
+                    }
+
+                    if (plyrAny?.captions) {
+                        plyrAny.captions.active = true;
+                        plyrAny.captions.toggled = true;
+                        plyrAny.captions.currentTrack = plyrIdx !== -1 ? plyrIdx : latestIdx;
+                        plyrAny.captions.currentTrackNode = targetTrack;
+                        if (targetTrack.language) {
+                            plyrAny.captions.language = targetTrack.language.toLowerCase();
+                        }
+                    }
+                    plyrAny?.elements?.container?.classList?.add('plyr--captions-enabled');
+                    plyrAny?.elements?.container?.classList?.add('plyr--captions-active');
+                }
+
+                for (let i = 0; i < video.textTracks.length; i++) {
+                    const t = video.textTracks[i];
+                    t.mode = t === targetTrack ? desiredMode : 'disabled';
+                }
+
+                try {
+                    targetTrack.dispatchEvent(new Event('cuechange'));
+                } catch {
+                    // ignore if TextTrack EventTarget dispatch is unsupported
+                }
+            }, 30);
+        };
+
+        syncPlyrCaptions();
+
+        const onTrackAdded = () => {
+            if (currentSubtitle !== -1) {
+                syncPlyrCaptions();
+            }
+        };
+
+        const onWebkitBeginFullscreen = () => {
+            if (currentSubtitle === -1) {
+                for (let i = 0; i < video.textTracks.length; i++) {
+                    video.textTracks[i].mode = 'disabled';
+                }
+                return;
+            }
+            const sub = subtitles.find(s => s.id === currentSubtitle);
+            if (!sub) return;
+            const captionTracks = getCaptionTracks();
+            const idx = findMatchingTrackIndex(captionTracks, sub);
+            if (idx === -1) return;
+            const targetTrack = captionTracks[idx];
+            for (let i = 0; i < video.textTracks.length; i++) {
+                const t = video.textTracks[i];
+                t.mode = t === targetTrack ? 'showing' : 'disabled';
+            }
+        };
+
+        const onWebkitEndFullscreen = () => {
+            if (currentSubtitle === -1) {
+                for (let i = 0; i < video.textTracks.length; i++) {
+                    video.textTracks[i].mode = 'disabled';
+                }
+                return;
+            }
+            const sub = subtitles.find(s => s.id === currentSubtitle);
+            if (!sub) return;
+            const captionTracks = getCaptionTracks();
+            const idx = findMatchingTrackIndex(captionTracks, sub);
+            if (idx === -1) return;
+            const targetTrack = captionTracks[idx];
+            const restoreMode: TextTrackMode = plyrRef.current ? 'hidden' : 'showing';
+            for (let i = 0; i < video.textTracks.length; i++) {
+                const t = video.textTracks[i];
+                t.mode = t === targetTrack ? restoreMode : 'disabled';
+            }
+            if (plyrRef.current) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (plyrRef.current as any).elements?.container?.classList?.add('plyr--captions-active');
+                try {
+                    targetTrack.dispatchEvent(new Event('cuechange'));
+                } catch {
+                    // ignore
+                }
+            }
+        };
+
+        const textTracks = video.textTracks;
+        textTracks?.addEventListener?.('addtrack', onTrackAdded);
+        video.addEventListener('webkitbeginfullscreen', onWebkitBeginFullscreen);
+        video.addEventListener('webkitendfullscreen', onWebkitEndFullscreen);
+
+        return () => {
+            if (verifyTimer) clearTimeout(verifyTimer);
+            textTracks?.removeEventListener?.('addtrack', onTrackAdded);
+            video.removeEventListener('webkitbeginfullscreen', onWebkitBeginFullscreen);
+            video.removeEventListener('webkitendfullscreen', onWebkitEndFullscreen);
+        };
+    }, [currentSubtitle, subtitles, source, videoRef]);
 
     // Keep the injected next-episode button in the Plyr bar in sync with the
     // current episode (the button is re-injected per stream, but the episode

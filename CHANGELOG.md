@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.6] - 2026-10-24
+### Fixed
+- **WebVTT Subtitle Timestamp Normalization & Proxy (`GET /api/stream/vtt`)**:
+  - Fixed VSMOV sidecar `.vtt` subtitles that contain SRT comma millisecond separators (`00:01:30,780` -> `00:01:30.780`) via `NormalizeWebVTT` and `StreamSubtitleVTT`, ensuring strict W3C WebVTT compliance across Web HTML5 `<track>`, Android Mobile/TV ExoPlayer, and iOS AVPlayer.
+  - Rewrote sidecar subtitle track URLs returned by `GET /api/stream/subtitles` and movie detail endpoints through `/api/stream/vtt?url=...` with permissive CORS headers and upstream `Referer` spoofing; cleaned VSMOV server labels.
+- **Plyr Caption Overlay & Track Synchronization (`WatchPage.tsx` / `useWatchMovie.ts`)**:
+  - Synchronized `plyr.currentTrack`, `.plyr--captions-active`, and `TextTrack.mode` (including iOS native fullscreen `webkitbeginfullscreen` / `webkitendfullscreen` handling) so Vietnamese sidecar, custom, and HLS subtitles render reliably regardless of browser UI locale.
+
+### Changed
+- Bumped Docker container image tag to `1.0.0-31` and SPK package version to `1.0.0-34` (standalone SPK `1.0.0-0005`).
+
 ## [v9.3.5] - 2026-09-22
 ### Added
 - **Native VSMOV Sidecar Subtitle Integration (Android Mobile & Android TV)**:

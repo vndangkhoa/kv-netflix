@@ -75,6 +75,18 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.kvnetflix.ionic</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kvnetflix</string>
+				<string>streamflow</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

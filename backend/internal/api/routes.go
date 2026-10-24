@@ -13,6 +13,7 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/categories/countries", h.GetCountries)
 	r.Get("/stream", h.StreamVideo)
 	r.Get("/stream/subtitles", h.GetStreamSubtitles)
+	r.Get("/stream/vtt", h.StreamSubtitleVTT)
 	r.Get("/actors", h.GetActors)
 	r.Get("/actors/{slug}", h.GetActorDetail)
 

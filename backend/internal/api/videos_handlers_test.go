@@ -159,7 +159,7 @@ func TestHandler_GetStreamSubtitles(t *testing.T) {
 	t.Logf("Returned %d subtitles: %+v", len(subs), subs)
 	hasVietnamese := false
 	for _, sub := range subs {
-		if sub.Lang == "vi" && strings.HasPrefix(sub.URL, "https://") && strings.HasSuffix(sub.URL, ".vtt") {
+		if sub.Lang == "vi" && strings.HasPrefix(sub.URL, "http://example.com/api/stream/vtt?url=") && strings.HasSuffix(sub.URL, ".vtt") {
 			hasVietnamese = true
 		}
 	}

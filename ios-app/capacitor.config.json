@@ -4,7 +4,7 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "ios": {
-    "contentInset": "automatic",
+    "contentInset": "never",
     "allowsLinkPreview": false,
     "scrollEnabled": true,
     "preferredContentMode": "mobile",

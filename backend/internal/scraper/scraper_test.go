@@ -1,8 +1,54 @@
 package scraper
 
 import (
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestVSMOVScraper_ServerNameWhitespaceCleanup(t *testing.T) {
+	s := &VSMOVScraper{
+		client: &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				body := `{
+					"status": true,
+					"movie": {"name": "Test", "slug": "test-slug", "type": "single"},
+					"episodes": [
+						{
+							"server_name": "Vietsub\r\n                        #1",
+							"server_data": [
+								{"name": "Full", "slug": "full", "link_m3u8": "https://v8.streamvsmov.com/stream/abc/master.m3u8"}
+							]
+						}
+					]
+				}`
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader(body)),
+				}, nil
+			}),
+		},
+	}
+
+	movie, err := s.GetMovieDetail("test-slug")
+	if err != nil {
+		t.Fatalf("GetMovieDetail failed: %v", err)
+	}
+	if len(movie.Episodes) != 1 {
+		t.Fatalf("expected 1 episode, got %d", len(movie.Episodes))
+	}
+	if got, want := movie.Episodes[0].ServerName, "VSMOV - Vietsub #1"; got != want {
+		t.Errorf("ServerName = %q, want %q", got, want)
+	}
+}
 
 
 func TestVSMOVScraper_Live(t *testing.T) {

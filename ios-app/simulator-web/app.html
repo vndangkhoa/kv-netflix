@@ -2575,12 +2575,23 @@
                     } catch (e) {}
                 }
             }
-            // 3. App Lifecycle (Auto-pause when minimized)
+            // 3. App Lifecycle & Deep Linking
             if (window.Capacitor.isPluginAvailable('App')) {
                 const { App } = window.Capacitor.Plugins;
                 App.addListener('appStateChange', ({ isActive }) => {
                     if (!isActive && video && !video.paused) {
                         video.pause();
+                    }
+                });
+                App.addListener('appUrlOpen', (data) => {
+                    console.log('[Native iOS] Deep link received:', data.url);
+                    if (data && data.url) {
+                        const match = data.url.match(/(?:kvnetflix|streamflow):\/\/watch\/([^\/\?#]+)(?:\/(\d+))?/i);
+                        if (match) {
+                            const slug = match[1];
+                            const ep = match[2] ? parseInt(match[2], 10) : 1;
+                            playMovie(slug, slug.replace(/-/g, ' '), ep);
+                        }
                     }
                 });
             }

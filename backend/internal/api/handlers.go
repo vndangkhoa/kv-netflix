@@ -339,6 +339,17 @@ func (h *Handler) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if len(movie.Episodes) > 0 {
+		origin := h.baseURL(r)
+		eps := make([]models.Episode, len(movie.Episodes))
+		copy(eps, movie.Episodes)
+		for i := range eps {
+			if len(eps[i].Subtitles) > 0 {
+				eps[i].Subtitles = rewriteSubtitleTracks(origin, eps[i].Subtitles)
+			}
+		}
+		movie.Episodes = eps
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(movie)
 }
@@ -766,13 +777,20 @@ func (h *Handler) GetStreamSubtitles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origin := h.baseURL(r)
+
 	if cached, ok := subtitleCache.Load(embedURL); ok {
+		rawSubs, _ := cached.([]models.SubtitleTrack)
+		rewritten := rewriteSubtitleTracks(origin, rawSubs)
+		if rewritten == nil {
+			rewritten = []models.SubtitleTrack{}
+		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(cached)
+		_ = json.NewEncoder(w).Encode(rewritten)
 		return
 	}
 
-	subs, err := scraper.ExtractVSMOVSubtitles(nil, embedURL)
+	subs, err := scraper.ExtractVSMOVSubtitles(h.StreamClient, embedURL)
 	if err != nil {
 		http.Error(w, "failed to extract subtitles: "+err.Error(), http.StatusBadGateway)
 		return
@@ -782,10 +800,13 @@ func (h *Handler) GetStreamSubtitles(w http.ResponseWriter, r *http.Request) {
 		subs = []models.SubtitleTrack{}
 	}
 
-	subtitleCache.Store(embedURL, subs)
+	rawSubs := make([]models.SubtitleTrack, len(subs))
+	copy(rawSubs, subs)
+	subtitleCache.Store(embedURL, rawSubs)
 
+	rewritten := rewriteSubtitleTracks(origin, rawSubs)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(subs)
+	_ = json.NewEncoder(w).Encode(rewritten)
 }
 
 func (h *Handler) handleHLSManifest(w http.ResponseWriter, statusCode int, body []byte, baseURL string) {
