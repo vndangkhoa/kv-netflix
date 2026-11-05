@@ -132,6 +132,7 @@ class PlayerViewModel : ViewModel() {
                         isLoading = false,
                         retryCount = 0
                     )
+                    prefetchNextEpisode(filteredEpisodes, episode)
                 } else {
                     android.util.Log.d("PlayerViewModel", "Extracting or embedding from URL: ${ep.url}")
                     var extractedSource: VideoSource? = null
@@ -161,6 +162,7 @@ class PlayerViewModel : ViewModel() {
                                 isLoading = false,
                                 retryCount = 0
                             )
+                            prefetchNextEpisode(filteredEpisodes, episode)
                         } else {
                             android.util.Log.d("PlayerViewModel", "Extracted Embed stream: ${extractedSource.streamUrl}")
                             _uiState.value = _uiState.value.copy(
@@ -202,6 +204,23 @@ class PlayerViewModel : ViewModel() {
                 isLoading = false,
                 error = e.message ?: "Failed to extract stream"
             )
+        }
+    }
+
+    private fun prefetchNextEpisode(episodes: List<com.streamflow.tv.data.model.Episode>, currentEp: Int) {
+        val nextEp = episodes.find { it.number == currentEp + 1 } ?: return
+        if (nextEp.url.isBlank()) return
+        val realUrl = extractRealStreamUrl(nextEp.url)
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                android.util.Log.d("PlayerViewModel", "Prefetching next episode ${nextEp.number} stream URL...")
+                if (!realUrl.contains(".m3u8", ignoreCase = true)) {
+                    repository.extractVideo(realUrl)
+                }
+                android.util.Log.d("PlayerViewModel", "Next episode ${nextEp.number} ready in cache")
+            } catch (e: Exception) {
+                android.util.Log.w("PlayerViewModel", "Prefetch next episode skipped: ${e.message}")
+            }
         }
     }
 

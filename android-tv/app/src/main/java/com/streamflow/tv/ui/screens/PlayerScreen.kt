@@ -444,18 +444,20 @@ fun PlayerScreen(
         }
     }
 
-    // ExoPlayer setup with optimized buffer
+    // ExoPlayer setup with ultra-low latency start buffer (500ms)
     val exoPlayer = remember {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
-                DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
-                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                /* minBufferMs = */ 15_000,
+                /* maxBufferMs = */ 30_000,
+                /* bufferForPlaybackMs = */ 500, // Instant playback start
+                /* bufferForPlaybackAfterRebufferMs = */ 1_500
             )
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         ExoPlayer.Builder(context)
             .setLoadControl(loadControl)
+            .setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
             .build()
     }
 

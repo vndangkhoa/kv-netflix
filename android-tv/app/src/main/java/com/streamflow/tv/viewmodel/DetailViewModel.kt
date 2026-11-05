@@ -42,6 +42,24 @@ class DetailViewModel : ViewModel() {
                     isInMyList = isInMyList,
                     selectedServer = firstServer
                 )
+
+                // Prefetch Episode 1 stream URL for instantaneous playback start
+                val firstEp = movie.episodes?.firstOrNull()
+                if (firstEp != null && firstEp.url.isNotBlank()) {
+                    launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val realUrl = if (firstEp.url.contains("?url=")) {
+                                android.net.Uri.parse(firstEp.url).getQueryParameter("url") ?: firstEp.url
+                            } else firstEp.url
+                            if (!realUrl.contains(".m3u8", ignoreCase = true)) {
+                                repository.extractVideo(realUrl)
+                                android.util.Log.d("DetailViewModel", "Prefetched Episode 1 stream URL")
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.w("DetailViewModel", "Prefetch Episode 1 skipped: ${e.message}")
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

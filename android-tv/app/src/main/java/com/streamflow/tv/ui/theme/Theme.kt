@@ -14,7 +14,12 @@ data class StreamFlowColors(
     val textPrimary: Color = TextPrimary,
     val textSecondary: Color = TextSecondary,
     val card: Color = CardBackground,
-    val divider: Color = DividerColor
+    val divider: Color = DividerColor,
+    val focusGlow: Color = NetflixFocusGlow,
+    val badgeBg: Color = NetflixBadgePill,
+    val badgeBorder: Color = NetflixBadgeBorder,
+    val top10Red: Color = NetflixPrimary,
+    val progressBar: Color = NetflixPrimary
 )
 
 val LocalStreamFlowColors = staticCompositionLocalOf {
@@ -39,17 +44,35 @@ fun streamFlowColors(themeName: String): StreamFlowColors {
         "netflix" -> StreamFlowColors(
             primary = NetflixPrimary,
             secondary = NetflixSecondary,
-            accent = NetflixAccent
+            accent = NetflixAccent,
+            background = NetflixBlack,
+            surface = NetflixCanvas,
+            surfaceVariant = NetflixSurfaceElevated,
+            focusGlow = NetflixFocusGlow,
+            badgeBg = NetflixBadgePill,
+            badgeBorder = NetflixBadgeBorder,
+            top10Red = NetflixPrimary,
+            progressBar = NetflixPrimary
         )
         "apple" -> StreamFlowColors(
             primary = ApplePrimary,
             secondary = AppleSecondary,
-            accent = AppleAccent
+            accent = AppleAccent,
+            focusGlow = Color(0x66FFFFFF),
+            badgeBg = Color(0x33FFFFFF),
+            badgeBorder = Color(0x4DFFFFFF),
+            top10Red = ApplePrimary,
+            progressBar = ApplePrimary
         )
         else -> StreamFlowColors(
             primary = StreamFlowPrimary,
             secondary = StreamFlowSecondary,
-            accent = StreamFlowAccent
+            accent = StreamFlowAccent,
+            focusGlow = Color(0x66FFD875),
+            badgeBg = Color(0x26FFD875),
+            badgeBorder = Color(0x4DFFD875),
+            top10Red = NetflixPrimary,
+            progressBar = StreamFlowPrimary
         )
     }
 }

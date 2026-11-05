@@ -66,7 +66,8 @@ fun HomeScreen(
                     item {
                         HeroBanner(
                             movies = uiState.heroMovies,
-                            onPlayClick = { movie -> onMovieClick(movie.slug) }
+                            onPlayClick = { movie -> onMovieClick(movie.slug) },
+                            onInfoClick = { movie -> onMovieClick(movie.slug) }
                         )
                     }
                 }

@@ -70,13 +70,14 @@ fun StreamFlowTvApp(mainActivity: MainActivity? = null) {
         mainActivity?.registerNavController(navController)
     }
 
-    var currentTheme by remember { mutableStateOf("default") }
+    var currentTheme by remember { mutableStateOf("netflix") }
     var selectedNavId by remember { mutableStateOf("home") }
 
     // Load persisted settings on app launch
     LaunchedEffect(Unit) {
         try {
-            currentTheme = userRepo.theme.first()
+            val savedTheme = userRepo.theme.first()
+            currentTheme = if (savedTheme.isNotBlank() && savedTheme != "default") savedTheme else "netflix"
             val serverUrl = userRepo.serverUrl.first()
             if (serverUrl.isNotBlank()) {
                 ApiClient.baseUrl = serverUrl
@@ -149,7 +150,8 @@ fun StreamFlowTvApp(mainActivity: MainActivity? = null) {
 
                             composable(
                                 "detail/{slug}",
-                                arguments = listOf(navArgument("slug") { type = NavType.StringType })
+                                arguments = listOf(navArgument("slug") { type = NavType.StringType }),
+                                deepLinks = listOf(androidx.navigation.navDeepLink { uriPattern = "streamflow://detail/{slug}" })
                             ) { entry ->
                                 val slug = entry.arguments?.getString("slug") ?: return@composable
                                 DetailScreen(

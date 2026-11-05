@@ -98,27 +98,26 @@ fun DetailScreen(
                 stripHtml(movie.description)
             }
 
-            // Cinematic Blurred Hero Backdrop Background Image
+            // Cinematic Hero Backdrop with Dynamic Multi-stage Vignette
             AsyncImage(
-                model = ApiClient.imageProxyUrl(movie.backdrop ?: movie.thumbnail, 1280),
+                model = ApiClient.imageProxyUrl(movie.backdrop ?: movie.thumbnail, 1920),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(radius = 32.dp)
+                modifier = Modifier.fillMaxSize()
             )
 
-            // Left Horizontal Dark Vignette Gradient
+            // Left Horizontal Dark Vignette Gradient (Focus readability on text)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.horizontalGradient(
                             colorStops = arrayOf(
-                                0.0f to Color(0xFF0D0E15),
-                                0.45f to Color(0xEE0D0E15),
-                                0.70f to Color(0x990D0E15),
-                                1.0f to Color(0x220D0E15)
+                                0.0f to Color(0xFF0F0F14),
+                                0.40f to Color(0xFA0F0F14),
+                                0.65f to Color(0xB30F0F14),
+                                0.85f to Color(0x400F0F14),
+                                1.0f to Color.Transparent
                             )
                         )
                     )
@@ -128,11 +127,16 @@ fun DetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.60f)
+                    .fillMaxHeight(0.65f)
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFF0D0E15).copy(alpha = 0.95f), Color(0xFF0D0E15))
+                            colorStops = arrayOf(
+                                0.0f to Color.Transparent,
+                                0.40f to Color(0x800F0F14),
+                                0.80f to Color(0xF50F0F14),
+                                1.0f to Color(0xFF0F0F14)
+                            )
                         )
                     )
             )
@@ -155,11 +159,11 @@ fun DetailScreen(
                 if (!movie.thumbnail.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
-                            .width(170.dp)
-                            .height(255.dp)
-                            .shadow(20.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Red, spotColor = Color.Black)
-                            .clip(RoundedCornerShape(14.dp))
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+                            .width(175.dp)
+                            .height(260.dp)
+                            .shadow(24.dp, shape = RoundedCornerShape(12.dp), ambientColor = colors.focusGlow, spotColor = Color.Black)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.5.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
                     ) {
                         AsyncImage(
                             model = ApiClient.imageProxyUrl(movie.thumbnail, 400),
@@ -249,10 +253,10 @@ fun DetailScreen(
                                 val firstEp = filteredEpisodes.firstOrNull()?.number ?: 1
                                 onPlayClick(movie.slug, firstEp, activeServer)
                             },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
                             colors = ClickableSurfaceDefaults.colors(
-                                containerColor = colors.primary,
-                                focusedContainerColor = Color(0xFFFECF59)
+                                containerColor = Color.White,
+                                focusedContainerColor = Color.White
                             ),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
                             modifier = Modifier.focusRequester(focusRequester)
@@ -264,8 +268,8 @@ fun DetailScreen(
                                 Text(
                                     "▶  Xem Phim",
                                     style = StreamFlowTheme.typography.titleMedium.copy(
-                                        color = Color(0xFF191B24),
-                                        fontWeight = FontWeight.Bold
+                                        color = Color(0xFF141414),
+                                        fontWeight = FontWeight.Black
                                     )
                                 )
                             }
@@ -273,10 +277,10 @@ fun DetailScreen(
 
                         Surface(
                             onClick = { viewModel.toggleMyList() },
-                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
                             colors = ClickableSurfaceDefaults.colors(
-                                containerColor = if (uiState.isInMyList) colors.primary.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.12f),
-                                focusedContainerColor = Color.White.copy(alpha = 0.30f)
+                                containerColor = if (uiState.isInMyList) colors.top10Red.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f),
+                                focusedContainerColor = Color.White.copy(alpha = 0.32f)
                             ),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f)
                         ) {
@@ -288,7 +292,7 @@ fun DetailScreen(
                                     if (uiState.isInMyList) "✓ Trong Danh Sách" else "+ Danh Sách Của Tôi",
                                     style = StreamFlowTheme.typography.titleMedium.copy(
                                         color = Color.White,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 )
                             }
@@ -328,21 +332,21 @@ fun BadgePill(text: String, isHighlight: Boolean = false) {
     val colors = StreamFlowTheme.colors
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (isHighlight) colors.primary.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.12f))
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (isHighlight) colors.top10Red.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.10f))
             .border(
                 width = 1.dp,
-                color = if (isHighlight) colors.primary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.20f),
-                shape = RoundedCornerShape(6.dp)
+                color = if (isHighlight) colors.top10Red.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(4.dp)
             )
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
         Text(
             text = text,
             style = StreamFlowTheme.typography.labelSmall.copy(
-                color = if (isHighlight) colors.primary else Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp
+                color = if (isHighlight) Color.White else Color.White.copy(alpha = 0.90f),
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp
             )
         )
     }

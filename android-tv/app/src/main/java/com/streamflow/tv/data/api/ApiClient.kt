@@ -51,13 +51,17 @@ object ApiClient {
         chain.proceed(requestBuilder.build())
     }
 
+    private val connectionPool = okhttp3.ConnectionPool(10, 5, TimeUnit.MINUTES)
+
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .connectionPool(connectionPool)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .addInterceptor(authInterceptor)
         .addInterceptor(
             HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.HEADERS
+                level = HttpLoggingInterceptor.Level.BASIC
             }
         )
         .build()

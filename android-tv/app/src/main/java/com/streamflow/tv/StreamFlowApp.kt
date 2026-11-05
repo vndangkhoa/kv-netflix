@@ -25,6 +25,8 @@ class StreamFlowApp : Application(), ImageLoaderFactory {
                     .build()
             }
             .respectCacheHeaders(false) // Often needed for some CDNs
+            .crossfade(true)
+            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
             .build()
     }
 }
