@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kvnetflix.mobile.ui.adaptive.LocalWindowState
 import com.kvnetflix.mobile.ui.theme.KvTheme
 import com.kvnetflix.mobile.viewmodel.SearchViewModel
 
@@ -44,6 +45,9 @@ fun Navbar(
     scrollState: androidx.compose.foundation.ScrollState? = null
 ) {
     val colors = KvTheme.colors
+    val windowState = LocalWindowState.current
+    val showRail = windowState.useNavigationRail
+    val isWide = windowState.isWide
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
     val uiState by searchViewModel.uiState.collectAsState()
     var menuOpen by remember { mutableStateOf(false) }
@@ -56,7 +60,7 @@ fun Navbar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = colors.bgSecondary.copy(alpha = 0.95f),
+        color = colors.bgSecondary.copy(alpha = 0.96f),
         tonalElevation = 0.dp
     ) {
         Column {
@@ -65,34 +69,59 @@ fun Navbar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(
+                        horizontal = if (isWide) 16.dp else 12.dp,
+                        vertical = if (showRail) 6.dp else 8.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(if (isWide) 12.dp else 8.dp)
             ) {
-                // KV Brand Logo
+                // KV Brand Logo (+ wordmark on wide foldables & tablets)
                 if (!isTyping) {
-                    Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier
-                            .size(40.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(colors.accent)
-                            .clickable(onClick = onHomeClick),
-                        contentAlignment = Alignment.Center
+                            .clickable(onClick = onHomeClick)
+                            .padding(end = if (isWide) 4.dp else 0.dp)
                     ) {
-                        Text(
-                            text = "KV",
-                            color = Color(0xFF191B24),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(colors.accent),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "KV",
+                                color = colors.onAccent,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        if (isWide) {
+                            Text(
+                                text = "KV-NETFLIX",
+                                color = colors.textPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
                     }
                 }
 
-                // Search bar + dropdown
+                // Search bar + dropdown (capped width on wide screens)
                 Box(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 540.dp)
+                            .fillMaxWidth()
+                    ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -238,20 +267,22 @@ fun Navbar(
                         )
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(colors.bgTertiary)
-                            .clickable(onClick = onSettingsClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    if (!showRail) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(colors.bgTertiary)
+                                .clickable(onClick = onSettingsClick),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
 
                     if (isAuthenticated) {
@@ -282,7 +313,7 @@ fun Navbar(
                         ) {
                             Text(
                                 text = "Sign In",
-                                color = Color(0xFF191B24),
+                                color = colors.onAccent,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -290,6 +321,8 @@ fun Navbar(
                     }
                 }
             }
+
+            HorizontalDivider(thickness = 1.dp, color = colors.borderSubtle)
         }
     }
 }

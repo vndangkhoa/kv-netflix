@@ -41,7 +41,7 @@ fun MovieCard(
     movie: Movie,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    width: Int = 190,
+    width: Int? = 190,
     rank: Int? = null,
     progress: Float? = null
 ) {
@@ -60,9 +60,11 @@ fun MovieCard(
     var fallbackStage by remember(movie.slug, primaryProxyUrl) { mutableIntStateOf(0) }
     var isFailed by remember(movie.slug, primaryProxyUrl) { mutableStateOf(initialRawUrl.isBlank()) }
 
+    val widthModifier = if (width != null) Modifier.width(width.dp) else Modifier.fillMaxWidth()
+
     Box(
         modifier = modifier
-            .width(width.dp)
+            .then(widthModifier)
             .aspectRatio(2f / 3f)
             .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
@@ -182,7 +184,7 @@ fun MovieCard(
             ) {
                 Text(
                     text = movie.quality,
-                    color = Color(0xFF191B24),
+                    color = colors.onAccent,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
@@ -210,7 +212,7 @@ fun MovieCard(
             ) {
                 Text(
                     text = "$rank",
-                    color = Color(0xFF191B24),
+                    color = colors.onAccent,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     lineHeight = 20.sp
@@ -255,7 +257,7 @@ fun HorizontalMovieCard(
     movie: Movie,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    width: Int = 220,
+    width: Int? = 220,
     progress: Float? = null
 ) {
     val colors = KvTheme.colors
@@ -274,9 +276,11 @@ fun HorizontalMovieCard(
     var fallbackStage by remember(movie.slug, primaryProxyUrl) { mutableIntStateOf(0) }
     var isFailed by remember(movie.slug, primaryProxyUrl) { mutableStateOf(initialRawUrl.isBlank()) }
 
+    val widthModifier = if (width != null) Modifier.width(width.dp) else Modifier.fillMaxWidth()
+
     Box(
         modifier = modifier
-            .width(width.dp)
+            .then(widthModifier)
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
@@ -395,7 +399,7 @@ fun HorizontalMovieCard(
             ) {
                 Text(
                     text = movie.quality,
-                    color = Color(0xFF191B24),
+                    color = colors.onAccent,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1

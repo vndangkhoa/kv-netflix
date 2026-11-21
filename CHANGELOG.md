@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v9.3.7] - 2026-11-21
+### Added
+- **Android Phone, Foldable & Tablet Adaptive UI (`v1.6.0`, `versionCode: 23`)**:
+  - **Flex / Tabletop Mode**: Added Jetpack WindowManager `FoldingFeature` posture detection with `KvTabletopVideoControls` lower-half control sheet (episode skip, `±10s`, speed cycle, scrub bar, mute, and fullscreen) while keeping the upper half unobstructed for playback.
+  - **Unfolded Foldable Portrait Watch**: Pure-black status strip with white icons, pinned 16:9 player, full-span metadata/episodes/genres, and 2-column 16:9 recommendations grid.
+  - **Unfolded Foldable Landscape, Book Posture & Tablet Watch**: 2-pane layout (pinned player + movie info/genres on left, elevated episodes + `CompactMovieRow` side panel on right) with Theater Mode toggle and hoisted `ExoPlayer` / `WebView` instances for uninterrupted playback across fold/rotate/theater switches.
+  - **Adaptive Navigation Chrome**: Centered `560.dp` `BottomTabBar` (`>= 60.dp` height, bilingual `EN`/`VI` labels) on phones and foldables; fixed `88.dp` `KvNavigationRail` on large landscape tablets (`>= 960dp`); adaptive `Navbar` with `KV-NETFLIX` wordmark and `540.dp` capped search bar.
+  - **Responsive Grids & Screens**: Adaptive poster grids (`2` / `3–4` / `4–6` columns), responsive `HeroCarousel`, non-lazy chunked `EpisodeGrid`, `720.dp` readable width caps on Settings & Account, scrollable/IME-safe auth cards, and `KvOnAccent` (`#191B24`) contrast on `#FFD875` surfaces.
+
+### Changed
+- Bumped Android Phone app version to `v1.6.0` (`versionCode: 23`).
+- Bumped Docker container image tag to `1.0.0-32` and SPK package version to `1.0.0-35`.
+
 ## [v9.3.6] - 2026-10-24
 ### Fixed
 - **WebVTT Subtitle Timestamp Normalization & Proxy (`GET /api/stream/vtt`)**:

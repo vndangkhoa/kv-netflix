@@ -27,7 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kvnetflix.mobile.data.model.Movie
 import com.kvnetflix.mobile.data.model.UserProfile
+import com.kvnetflix.mobile.ui.components.CenteredContent
+import com.kvnetflix.mobile.ui.components.MaxGridContentWidthDp
+import com.kvnetflix.mobile.ui.components.MaxReadableWidthDp
 import com.kvnetflix.mobile.ui.components.MovieCard
+import com.kvnetflix.mobile.ui.components.gridHorizontalSpacing
+import com.kvnetflix.mobile.ui.components.gridVerticalSpacing
+import com.kvnetflix.mobile.ui.components.rememberPosterGridCells
 import com.kvnetflix.mobile.ui.theme.KvTheme
 import com.kvnetflix.mobile.viewmodel.AccountViewModel
 import com.kvnetflix.mobile.viewmodel.MyListViewModel
@@ -51,59 +57,61 @@ fun MyListScreen(
         "Explore", "History", "Saved", "Account"
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.bgPrimary)
-    ) {
-        Text(
-            "My List",
-            color = colors.textPrimary,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(16.dp)
-        )
-
-        // Tab bar
-        ScrollableTabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.Transparent,
-            contentColor = colors.accent,
-            edgePadding = 16.dp,
-            divider = {}
+    CenteredContent(maxWidth = MaxGridContentWidthDp.dp) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.bgPrimary)
         ) {
-            tabs.forEachIndexed { index, label ->
-                Tab(
-                    selected = index == selectedTab,
-                    onClick = { selectedTab = index },
-                    text = {
-                        Text(
-                            text = label,
-                            fontSize = 15.sp,
-                            fontWeight = if (index == selectedTab) FontWeight.Bold
-                            else FontWeight.Normal
-                        )
-                    },
-                    selectedContentColor = colors.accent,
-                    unselectedContentColor = colors.textMuted
+            Text(
+                "My List",
+                color = colors.textPrimary,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(16.dp)
+            )
+
+            // Tab bar
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = colors.accent,
+                edgePadding = 16.dp,
+                divider = {}
+            ) {
+                tabs.forEachIndexed { index, label ->
+                    Tab(
+                        selected = index == selectedTab,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Text(
+                                text = label,
+                                fontSize = 15.sp,
+                                fontWeight = if (index == selectedTab) FontWeight.Bold
+                                else FontWeight.Normal
+                            )
+                        },
+                        selectedContentColor = colors.accent,
+                        unselectedContentColor = colors.textMuted
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (selectedTab) {
+                0 -> ExploreTab(uiState.exploreMovies, colors, onMovieClick, uiState.isLoadingExplore)
+                1 -> HistoryTab(uiState.watchHistory, colors, onMovieClick)
+                2 -> SavedTab(uiState.savedMovies, colors, onMovieClick)
+                3 -> AccountTab(
+                    colors = colors,
+                    onLoginClick = onLoginClick,
+                    isAuthenticated = isAuthenticated,
+                    userProfile = userProfile,
+                    onLogout = onLogout,
+                    accountViewModel = accountViewModel
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        when (selectedTab) {
-            0 -> ExploreTab(uiState.exploreMovies, colors, onMovieClick, uiState.isLoadingExplore)
-            1 -> HistoryTab(uiState.watchHistory, colors, onMovieClick)
-            2 -> SavedTab(uiState.savedMovies, colors, onMovieClick)
-            3 -> AccountTab(
-                colors = colors,
-                onLoginClick = onLoginClick,
-                isAuthenticated = isAuthenticated,
-                userProfile = userProfile,
-                onLogout = onLogout,
-                accountViewModel = accountViewModel
-            )
         }
     }
 }
@@ -143,21 +151,19 @@ private fun ExploreTab(
             }
         }
     } else {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val cardWidth = if (maxWidth > 720.dp) 180 else 140
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = cardWidth.dp),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(movies, key = { it.slug }) { movie ->
-                    MovieCard(
-                        movie = movie,
-                        onClick = { onMovieClick(movie.slug) },
-                        width = cardWidth
-                    )
-                }
+        LazyVerticalGrid(
+            columns = rememberPosterGridCells(),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(gridHorizontalSpacing()),
+            verticalArrangement = Arrangement.spacedBy(gridVerticalSpacing())
+        ) {
+            items(movies, key = { it.slug }) { movie ->
+                MovieCard(
+                    movie = movie,
+                    onClick = { onMovieClick(movie.slug) },
+                    width = null
+                )
             }
         }
     }
@@ -184,22 +190,20 @@ private fun MovieGridSection(
             }
         }
     } else {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val cardWidth = if (maxWidth > 720.dp) 180 else 140
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = cardWidth.dp),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(movies, key = { it.slug }) { movie ->
-                    MovieCard(
-                        movie = movie,
-                        onClick = { onMovieClick(movie.slug) },
-                        width = cardWidth,
-                        progress = if (showProgress) movie.progress else null
-                    )
-                }
+        LazyVerticalGrid(
+            columns = rememberPosterGridCells(),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(gridHorizontalSpacing()),
+            verticalArrangement = Arrangement.spacedBy(gridVerticalSpacing())
+        ) {
+            items(movies, key = { it.slug }) { movie ->
+                MovieCard(
+                    movie = movie,
+                    onClick = { onMovieClick(movie.slug) },
+                    width = null,
+                    progress = if (showProgress) movie.progress else null
+                )
             }
         }
     }
@@ -325,13 +329,14 @@ private fun AccountTab(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp)
-    ) {
-        if (isAuthenticated && userProfile != null) {
+    CenteredContent(maxWidth = MaxReadableWidthDp.dp) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 24.dp)
+        ) {
+            if (isAuthenticated && userProfile != null) {
             // Profile header
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -444,7 +449,9 @@ private fun AccountTab(
             }
         } else {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 64.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -465,14 +472,23 @@ private fun AccountTab(
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = onLoginClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.accent,
+                            contentColor = colors.onAccent
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Sign In", color = Color.White, fontSize = 16.sp)
+                        Text(
+                            "Sign In",
+                            color = colors.onAccent,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
         }
+    }
     }
 
     // ── Change Password Dialog ──

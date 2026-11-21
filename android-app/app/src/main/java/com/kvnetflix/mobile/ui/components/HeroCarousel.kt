@@ -1,16 +1,35 @@
 package com.kvnetflix.mobile.ui.components
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,7 +43,10 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.kvnetflix.mobile.data.api.ApiClient
 import com.kvnetflix.mobile.data.model.Movie
+import com.kvnetflix.mobile.ui.adaptive.LocalWindowState
+import com.kvnetflix.mobile.ui.adaptive.WidthClass
 import com.kvnetflix.mobile.ui.theme.KvTheme
+import com.kvnetflix.mobile.util.stripHtml
 import kotlinx.coroutines.delay
 
 @Composable
@@ -35,23 +57,33 @@ fun HeroCarousel(
     modifier: Modifier = Modifier
 ) {
     val colors = KvTheme.colors
+    val windowState = LocalWindowState.current
     if (movies.isEmpty()) return
 
     var currentIndex by remember { mutableIntStateOf(0) }
+    val safeIndex = currentIndex.coerceIn(0, movies.lastIndex)
 
-    LaunchedEffect(currentIndex) {
+    LaunchedEffect(safeIndex, movies.size) {
         if (movies.size > 1) {
             delay(8000)
-            currentIndex = (currentIndex + 1) % movies.size
+            currentIndex = (safeIndex + 1) % movies.size
         }
     }
 
-    val currentMovie = movies[currentIndex]
+    val currentMovie = movies[safeIndex]
+    val heroHeight = when {
+        windowState.isWide && windowState.isLandscape ->
+            (windowState.heightDp * 0.50f).dp.coerceIn(300.dp, 460.dp)
+        windowState.widthClass == WidthClass.Medium -> 400.dp
+        windowState.isWide -> 420.dp
+        else -> 440.dp
+    }
+    val horizontalPad = if (windowState.isWide) 28.dp else 20.dp
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(460.dp)
+            .height(heroHeight)
             .background(Color.Black)
     ) {
         AnimatedContent(
@@ -77,11 +109,11 @@ fun HeroCarousel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(110.dp)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Black.copy(alpha = 0.8f),
+                                    Color.Black.copy(alpha = 0.78f),
                                     Color.Transparent
                                 )
                             )
@@ -92,7 +124,7 @@ fun HeroCarousel(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(280.dp)
+                        .fillMaxWidth(if (windowState.isWide) 0.58f else 0.78f)
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
@@ -107,13 +139,13 @@ fun HeroCarousel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(210.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.4f),
+                                    Color.Black.copy(alpha = 0.45f),
                                     colors.bgPrimary
                                 )
                             )
@@ -124,19 +156,19 @@ fun HeroCarousel(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 52.dp),
+                        .padding(horizontal = horizontalPad)
+                        .padding(bottom = if (windowState.isWide) 40.dp else 52.dp),
                     verticalArrangement = Arrangement.Bottom
                 ) {
                     Text(
                         text = movie.title,
                         color = Color.White,
-                        fontSize = 30.sp,
+                        fontSize = if (windowState.isWide) 36.sp else 30.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 380.dp),
-                        lineHeight = 36.sp
+                        modifier = Modifier.widthIn(max = if (windowState.isWide) 540.dp else 380.dp),
+                        lineHeight = if (windowState.isWide) 42.sp else 36.sp
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -148,16 +180,16 @@ fun HeroCarousel(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
                         if (movie.year != null) {
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "${movie.year}",
                                 color = Color.White.copy(alpha = 0.7f),
                                 fontSize = 14.sp
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
                         if (!movie.quality.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.width(12.dp))
                             Box(
                                 modifier = Modifier
                                     .background(
@@ -176,16 +208,32 @@ fun HeroCarousel(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
                     if (!movie.originalTitle.isNullOrBlank() && movie.originalTitle != movie.title) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = movie.originalTitle,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = Color.White.copy(alpha = 0.55f),
                             fontSize = 13.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = if (windowState.isWide) 520.dp else 360.dp)
                         )
+                    }
+
+                    if (windowState.widthClass == WidthClass.Expanded) {
+                        val desc = movie.description?.stripHtml().orEmpty()
+                        if (desc.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = desc,
+                                color = Color.White.copy(alpha = 0.78f),
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 500.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -232,7 +280,7 @@ fun HeroCarousel(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 16.dp),
+                    .padding(end = horizontalPad, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -240,12 +288,13 @@ fun HeroCarousel(
                     Box(
                         modifier = Modifier
                             .height(6.dp)
-                            .width(if (index == currentIndex) 20.dp else 6.dp)
+                            .width(if (index == safeIndex) 20.dp else 6.dp)
                             .clip(CircleShape)
                             .background(
-                                if (index == currentIndex) colors.accent
+                                if (index == safeIndex) colors.accent
                                 else Color.White.copy(alpha = 0.35f)
                             )
+                            .clickable { currentIndex = index }
                     )
                 }
             }

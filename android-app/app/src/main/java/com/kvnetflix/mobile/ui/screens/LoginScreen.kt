@@ -3,8 +3,10 @@ package com.kvnetflix.mobile.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -35,7 +37,6 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val colors = KvTheme.colors
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
     var useCode by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -48,27 +49,22 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.bgPrimary)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
     ) {
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier.padding(
-                top = statusBarPadding.calculateTopPadding() + 8.dp,
-                start = 8.dp
-            )
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
-        }
-
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Column(
                 modifier = Modifier
-                    .widthIn(max = 400.dp)
+                    .widthIn(max = 420.dp)
+                    .fillMaxWidth()
                     .background(colors.bgSecondary, RoundedCornerShape(24.dp))
                     .padding(32.dp)
             ) {
@@ -87,7 +83,7 @@ fun LoginScreen(
                     ) {
                         Text(
                             text = "KV",
-                            color = Color(0xFF191B24),
+                            color = colors.onAccent,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -232,7 +228,7 @@ fun LoginScreen(
                 ) {
                     Text(
                         if (isLoading) "Signing in..." else "Sign In",
-                        color = Color(0xFF191B24),
+                        color = colors.onAccent,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -249,6 +245,15 @@ fun LoginScreen(
                         .align(Alignment.CenterHorizontally)
                 )
             }
+        }
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
         }
     }
 }

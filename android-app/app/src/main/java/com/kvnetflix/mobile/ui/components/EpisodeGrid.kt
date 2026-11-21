@@ -4,20 +4,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kvnetflix.mobile.data.model.Episode
@@ -31,6 +40,7 @@ fun EpisodeGrid(
     servers: List<String> = emptyList(),
     selectedServer: String = "",
     onServerChange: (String) -> Unit = {},
+    horizontalPadding: Dp = 16.dp,
     modifier: Modifier = Modifier
 ) {
     val colors = KvTheme.colors
@@ -50,7 +60,7 @@ fun EpisodeGrid(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = horizontalPadding, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 servers.forEach { server ->
@@ -72,7 +82,7 @@ fun EpisodeGrid(
                     ) {
                         Text(
                             text = server,
-                            color = if (isActive) Color.White else colors.textPrimary,
+                            color = if (isActive) colors.onAccent else colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium
                         )
@@ -82,45 +92,77 @@ fun EpisodeGrid(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 64.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.heightIn(max = 300.dp)
+        // Non-lazy chunked rows so EpisodeGrid embeds safely inside LazyColumn / LazyVerticalGrid.
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding)
         ) {
-            items(displayEpisodes, key = { "${it.number}-${it.title}" }) { episode ->
-                val isActive = episode.number == currentEpisode
+            val cols = ((maxWidth.value + 6f) / 62f).toInt().coerceIn(4, 12)
+            val rows = displayEpisodes.chunked(cols)
 
-                Box(
-                    modifier = Modifier
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .then(
-                            if (isActive) {
-                                Modifier.background(colors.accent)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                rows.forEach { rowEpisodes ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        rowEpisodes.forEach { episode ->
+                            val isActive = episode.number == currentEpisode
+                            val label = if (
+                                episode.title.isNotBlank() &&
+                                episode.title != "0" &&
+                                !episode.title.startsWith("0") &&
+                                !episode.title.startsWith("Tập 0")
+                            ) {
+                                episode.title
+                            } else if (episode.number <= 0) {
+                                "Full"
                             } else {
-                                Modifier
-                                    .background(colors.bgTertiary)
-                                    .border(
-                                        1.dp,
-                                        colors.borderPrimary,
-                                        RoundedCornerShape(8.dp)
-                                    )
+                                "${episode.number}"
                             }
-                        )
-                        .clickable { onEpisodeClick(episode) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (episode.title.isNotBlank() && episode.title != "0" && !episode.title.startsWith("0") && !episode.title.startsWith("Tập 0")) episode.title else (if (episode.number <= 0) "Full" else "${episode.number}"),
-                        color = if (isActive) Color.White
-                        else colors.textPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .then(
+                                        if (isActive) {
+                                            Modifier.background(colors.accent)
+                                        } else {
+                                            Modifier
+                                                .background(colors.bgTertiary)
+                                                .border(
+                                                    1.dp,
+                                                    colors.borderPrimary,
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                        }
+                                    )
+                                    .clickable { onEpisodeClick(episode) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (isActive) colors.onAccent else colors.textPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                            }
+                        }
+
+                        val missing = cols - rowEpisodes.size
+                        repeat(missing) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
@@ -133,7 +175,7 @@ fun EpisodeGrid(
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
                     .clickable { showAll = !showAll }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = horizontalPadding, vertical = 10.dp)
             )
         }
     }

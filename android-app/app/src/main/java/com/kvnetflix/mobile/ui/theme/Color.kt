@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 val KvYellow = Color(0xFFFFD875)
 val KvYellowHover = Color(0xFFFECF59)
 val KvYellowBg = Color(0x26FFD875)
+val KvOnAccent = Color(0xFF191B24)
 
 val NetflixRed = Color(0xFFE50914)
 val NetflixRedHover = Color(0xFFF40B17)

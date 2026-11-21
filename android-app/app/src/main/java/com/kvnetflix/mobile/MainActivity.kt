@@ -1,7 +1,6 @@
 package com.kvnetflix.mobile
 
 import android.app.PictureInPictureParams
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -9,15 +8,21 @@ import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,7 +31,10 @@ import androidx.navigation.compose.rememberNavController
 import com.kvnetflix.mobile.data.api.ApiClient
 import com.kvnetflix.mobile.data.model.UserProfile
 import com.kvnetflix.mobile.data.repository.UserDataRepository
+import com.kvnetflix.mobile.ui.adaptive.LocalWindowState
+import com.kvnetflix.mobile.ui.adaptive.ProvideWidthClass
 import com.kvnetflix.mobile.ui.components.BottomTabBar
+import com.kvnetflix.mobile.ui.components.KvNavigationRail
 import com.kvnetflix.mobile.ui.components.Navbar
 import com.kvnetflix.mobile.ui.navigation.AppNavHost
 import com.kvnetflix.mobile.ui.navigation.Routes
@@ -37,6 +45,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private var isInPipMode = false
+    private var isInPipModeState by mutableStateOf(false)
     private var isInWatchMode = false
     private var navController: androidx.navigation.NavHostController? = null
 
@@ -53,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KvTheme(darkTheme = true) {
+                ProvideWidthClass {
                 val navController = rememberNavController()
                 this@MainActivity.navController = navController
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -109,29 +119,19 @@ class MainActivity : ComponentActivity() {
                     userRepo.language.collect { lang -> language = lang }
                 }
 
-                val isFullScreen = currentRoute?.contains("watch/") == true
+                val isWatchRoute = currentRoute.contains("watch/") ||
+                    currentRoute == Routes.LOGIN ||
+                    currentRoute == Routes.REGISTER
 
                 LaunchedEffect(currentRoute) {
-                    isInWatchMode = currentRoute?.contains("watch/") == true
-                }
-
-                LaunchedEffect(isFullScreen) {
-                    val window = window
-                    val controller = WindowCompat.getInsetsController(window, window.decorView)
-                    if (isFullScreen) {
-                        controller.hide(WindowInsetsCompat.Type.systemBars())
-                        controller.systemBarsBehavior =
-                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    } else {
-                        controller.show(WindowInsetsCompat.Type.systemBars())
-                    }
+                    isInWatchMode = currentRoute.contains("watch/")
                 }
 
                 val selectedTabIndex = when {
                     currentRoute == Routes.SETTINGS -> 4
                     currentRoute == Routes.MY_LIST -> 3
                     currentRoute == Routes.HOME -> 0
-                    currentRoute?.startsWith("home") == true -> {
+                    currentRoute.startsWith("home") -> {
                         val category = navBackStackEntry?.arguments?.getString("category")
                         when (category) {
                             "phim-le" -> 1
@@ -146,84 +146,130 @@ class MainActivity : ComponentActivity() {
                     navController.navigate(Routes.watchRoute(slug))
                 }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = {
-                        if (!isFullScreen) {
-                            Navbar(
-                                isAuthenticated = isAuthenticated,
-                                isDarkTheme = isDarkTheme,
-                                language = language,
-                                onLanguageToggle = {
-                                    val newLang = if (language == "vi") "en" else "vi"
-                                    language = newLang
-                                },
-                                searchViewModel = searchViewModel,
-                                onMovieClick = onMovieClickNav,
-                                onSettingsClick = {
-                                    navController.navigate(Routes.SETTINGS)
-                                },
-                                onAuthClick = {
-                                    if (isAuthenticated) navController.navigate(Routes.MY_LIST)
-                                    else navController.navigate(Routes.LOGIN)
-                                },
-                                onCategoryClick = { category ->
-                                    navController.navigate(Routes.homeRoute(category))
-                                },
-                                onHomeClick = {
-                                    navController.navigate(Routes.HOME) {
-                                        popUpTo(Routes.HOME) { inclusive = true }
-                                    }
-                                }
-                            )
+                val onTabSelected: (String) -> Unit = { tab ->
+                    when (tab) {
+                        "home" -> navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.HOME) { inclusive = true }
                         }
-                    },
-                    bottomBar = {
-                        if (!isFullScreen) {
-                            BottomTabBar(
-                                selectedTabIndex = selectedTabIndex,
-                                onTabSelected = { tab ->
-                                    when (tab) {
-                                        "home" -> navController.navigate(Routes.HOME) {
-                                            popUpTo(Routes.HOME) { inclusive = true }
-                                        }
-                                        "my-list" -> {
-                                            myListViewModel.loadExplore()
-                                            navController.navigate(Routes.MY_LIST)
-                                        }
-                                        "settings" -> navController.navigate(Routes.SETTINGS)
-                                        else -> navController.navigate(Routes.homeRoute(tab))
-                                    }
-                                }
-                            )
+                        "my-list" -> {
+                            myListViewModel.loadExplore()
+                            navController.navigate(Routes.MY_LIST)
                         }
+                        "settings" -> navController.navigate(Routes.SETTINGS)
+                        else -> navController.navigate(Routes.homeRoute(tab))
                     }
-                ) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
-                        AppNavHost(
-                            navController = navController,
-                            userRepo = userRepo,
-                            homeViewModel = homeViewModel,
-                            detailViewModel = detailViewModel,
-                            playerViewModel = playerViewModel,
-                            myListViewModel = myListViewModel,
-                            pairingViewModel = pairingViewModel,
-                            accountViewModel = accountViewModel,
-                            updateViewModel = updateViewModel,
-                            language = language,
-                            isAuthenticated = isAuthenticated,
-                            userProfile = userProfile,
-                            onEnterPip = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPipMode) {
-                                    val params = PictureInPictureParams.Builder()
-                                        .setAspectRatio(Rational(16, 9))
-                                        .build()
-                                    enterPictureInPictureMode(params)
-                                    isInPipMode = true
-                                }
-                            }
+                }
+
+                val windowState = LocalWindowState.current
+                val showRail = windowState.useNavigationRail && !isWatchRoute
+                val showBottomNav = !isWatchRoute && !showRail
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(KvTheme.colors.bgPrimary)
+                ) {
+                    if (showRail) {
+                        KvNavigationRail(
+                            selectedTabIndex = selectedTabIndex,
+                            onTabSelected = onTabSelected,
+                            language = language
                         )
                     }
+                    Scaffold(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .then(
+                                if (showRail) {
+                                    Modifier.consumeWindowInsets(
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Start)
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        containerColor = KvTheme.colors.bgPrimary,
+                        contentWindowInsets = when {
+                            isWatchRoute -> WindowInsets(0, 0, 0, 0)
+                            showRail -> WindowInsets.systemBars.only(
+                                WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom
+                            )
+                            else -> ScaffoldDefaults.contentWindowInsets
+                        },
+                        topBar = {
+                            if (!isWatchRoute) {
+                                Navbar(
+                                    isAuthenticated = isAuthenticated,
+                                    isDarkTheme = isDarkTheme,
+                                    language = language,
+                                    onLanguageToggle = {
+                                        val newLang = if (language == "vi") "en" else "vi"
+                                        language = newLang
+                                    },
+                                    searchViewModel = searchViewModel,
+                                    onMovieClick = onMovieClickNav,
+                                    onSettingsClick = {
+                                        navController.navigate(Routes.SETTINGS)
+                                    },
+                                    onAuthClick = {
+                                        if (isAuthenticated) navController.navigate(Routes.MY_LIST)
+                                        else navController.navigate(Routes.LOGIN)
+                                    },
+                                    onCategoryClick = { category ->
+                                        navController.navigate(Routes.homeRoute(category))
+                                    },
+                                    onHomeClick = {
+                                        navController.navigate(Routes.HOME) {
+                                            popUpTo(Routes.HOME) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+                        },
+                        bottomBar = {
+                            if (showBottomNav) {
+                                BottomTabBar(
+                                    selectedTabIndex = selectedTabIndex,
+                                    onTabSelected = onTabSelected,
+                                    language = language
+                                )
+                            }
+                        }
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (isWatchRoute) Modifier else Modifier.padding(innerPadding))
+                        ) {
+                            AppNavHost(
+                                navController = navController,
+                                userRepo = userRepo,
+                                homeViewModel = homeViewModel,
+                                detailViewModel = detailViewModel,
+                                playerViewModel = playerViewModel,
+                                myListViewModel = myListViewModel,
+                                pairingViewModel = pairingViewModel,
+                                accountViewModel = accountViewModel,
+                                updateViewModel = updateViewModel,
+                                language = language,
+                                isAuthenticated = isAuthenticated,
+                                userProfile = userProfile,
+                                isInPip = isInPipModeState,
+                                onEnterPip = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPipMode) {
+                                        val params = PictureInPictureParams.Builder()
+                                            .setAspectRatio(Rational(16, 9))
+                                            .build()
+                                        enterPictureInPictureMode(params)
+                                        isInPipMode = true
+                                        isInPipModeState = true
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
                 }
             }
         }
@@ -235,6 +281,7 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipMode = isInPictureInPictureMode
+        isInPipModeState = isInPictureInPictureMode
         if (!isInPictureInPictureMode) {
             enableEdgeToEdge()
         }
@@ -249,6 +296,7 @@ class MainActivity : ComponentActivity() {
                     .build()
                 enterPictureInPictureMode(params)
                 isInPipMode = true
+                isInPipModeState = true
             } catch (_: Exception) {}
         }
     }

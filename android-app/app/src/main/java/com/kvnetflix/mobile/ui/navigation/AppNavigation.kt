@@ -44,6 +44,7 @@ fun AppNavHost(
     language: String = "vi",
     isAuthenticated: Boolean = false,
     userProfile: com.kvnetflix.mobile.data.model.UserProfile? = null,
+    isInPip: Boolean = false,
     onEnterPip: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -113,6 +114,7 @@ fun AppNavHost(
                 episode = episode,
                 userRepo = userRepo,
                 language = language,
+                isInPip = isInPip,
                 onBack = { navController.popBackStack() },
                 onMovieClick = { newSlug ->
                     navController.navigate(Routes.watchRoute(newSlug))
